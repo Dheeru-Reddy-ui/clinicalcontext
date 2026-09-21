@@ -1729,6 +1729,8 @@ export interface components {
          * @description Liveness: the process is up and serving requests.
          */
         HealthResponse: {
+            /** Release */
+            release: string;
             /**
              * Service
              * @default clinicalcontext-backend

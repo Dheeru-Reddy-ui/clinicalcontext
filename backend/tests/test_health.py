@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 
 from app import __version__
+from app.config import get_settings
 
 
 class FakePool:
@@ -37,6 +38,8 @@ async def test_health_is_alive_without_dependencies(client: AsyncClient) -> None
     assert body["status"] == "ok"
     assert body["service"] == "clinicalcontext-backend"
     assert body["version"] == __version__
+    # The deployed revision: a pipeline polls this until the new code answers.
+    assert body["release"] == get_settings().release
 
 
 async def test_ready_ok_when_all_dependencies_up(test_app: FastAPI, client: AsyncClient) -> None:

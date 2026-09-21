@@ -13,6 +13,9 @@ class HealthResponse(BaseModel):
     status: Literal["ok"] = "ok"
     service: str = "clinicalcontext-backend"
     version: str
+    # The deployed git revision ("dev" locally). A deploy pipeline polls this
+    # to know the new code is answering, not the old process still draining.
+    release: str
 
 
 class ReadinessCheck(BaseModel):

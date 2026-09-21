@@ -1909,6 +1909,10 @@
       "HealthResponse": {
         "description": "Liveness: the process is up and serving requests.",
         "properties": {
+          "release": {
+            "title": "Release",
+            "type": "string"
+          },
           "service": {
             "default": "clinicalcontext-backend",
             "title": "Service",
@@ -1926,7 +1930,8 @@
           }
         },
         "required": [
-          "version"
+          "version",
+          "release"
         ],
         "title": "HealthResponse",
         "type": "object"
