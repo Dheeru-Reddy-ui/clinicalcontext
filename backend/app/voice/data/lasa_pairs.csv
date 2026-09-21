@@ -1,0 +1,123 @@
+drug_a,class_a,drug_b,class_b
+hydroxyzine,the antihistamine,hydralazine,the antihypertensive
+clonidine,the alpha-2 agonist for blood pressure,clonazepam,the benzodiazepine
+clonidine,the alpha-2 agonist for blood pressure,klonopin,the benzodiazepine clonazepam
+celecoxib,the COX-2 anti-inflammatory,citalopram,the SSRI antidepressant
+celebrex,the anti-inflammatory celecoxib,celexa,the antidepressant citalopram
+celebrex,the anti-inflammatory celecoxib,cerebyx,the anticonvulsant fosphenytoin
+dopamine,the vasopressor,dobutamine,the inotrope
+hydromorphone,the potent opioid,morphine,the opioid
+lamotrigine,the anticonvulsant,lamivudine,the antiviral
+lamictal,the anticonvulsant lamotrigine,lamisil,the antifungal terbinafine
+metformin,the diabetes biguanide,metronidazole,the antibiotic
+prednisone,the oral corticosteroid,prednisolone,the corticosteroid
+vinblastine,the chemotherapy vinca alkaloid,vincristine,the chemotherapy vinca alkaloid
+zolpidem,the sleep medication,zolmitriptan,the migraine triptan
+oxycodone,the opioid,oxycontin,the extended-release oxycodone
+oxycodone,the opioid,hydrocodone,the opioid
+tramadol,the opioid analgesic,trazodone,the antidepressant used for sleep
+quinine,the antimalarial,quinidine,the antiarrhythmic
+carboplatin,the platinum chemotherapy,cisplatin,the platinum chemotherapy
+cyclosporine,the immunosuppressant,cycloserine,the tuberculosis antibiotic
+daptomycin,the gram-positive antibiotic,dactinomycin,the chemotherapy
+diazepam,the benzodiazepine,diltiazem,the calcium channel blocker
+doxorubicin,the anthracycline chemotherapy,daunorubicin,the anthracycline chemotherapy
+doxorubicin,the anthracycline chemotherapy,idarubicin,the anthracycline chemotherapy
+ephedrine,the vasopressor,epinephrine,adrenaline
+fentanyl,the potent opioid,sufentanil,the potent opioid
+fluoxetine,the SSRI antidepressant,fluvoxamine,the SSRI for OCD
+fluoxetine,the SSRI antidepressant,duloxetine,the SNRI antidepressant
+glipizide,the sulfonylurea,glyburide,the sulfonylurea
+glyburide,the sulfonylurea,glimepiride,the sulfonylurea
+guaifenesin,the expectorant,guanfacine,the ADHD and blood pressure medication
+haloperidol,the antipsychotic,halothane,the anesthetic
+heparin,the anticoagulant,hespan,the plasma expander hetastarch
+hydrocodone,the opioid,hydrocortisone,the corticosteroid
+hydroxyurea,the chemotherapy,hydroxyzine,the antihistamine
+hydroxychloroquine,the antimalarial for lupus and arthritis,hydroxyzine,the antihistamine
+ketorolac,the injectable NSAID,ketamine,the anesthetic
+lansoprazole,the proton pump inhibitor,aripiprazole,the antipsychotic
+leucovorin,the folinic acid rescue,leukeran,the chemotherapy chlorambucil
+levetiracetam,the anticonvulsant,levofloxacin,the fluoroquinolone antibiotic
+lisinopril,the ACE inhibitor,fosinopril,the ACE inhibitor
+lorazepam,the benzodiazepine,alprazolam,the benzodiazepine
+lorazepam,the benzodiazepine,clonazepam,the benzodiazepine
+methadone,the long-acting opioid,methylphenidate,the ADHD stimulant
+methotrexate,the immunosuppressant and chemotherapy,metolazone,the thiazide-like diuretic
+metoprolol,the beta blocker,misoprostol,the prostaglandin
+metoprolol tartrate,the immediate-release beta blocker,metoprolol succinate,the extended-release beta blocker
+mifepristone,the abortifacient,misoprostol,the prostaglandin
+morphine,the opioid,hydromorphone,the potent opioid
+naloxone,the opioid reversal agent,naltrexone,the opioid antagonist for dependence
+nifedipine,the calcium channel blocker,nicardipine,the calcium channel blocker
+nifedipine,the calcium channel blocker,nimodipine,the calcium channel blocker for subarachnoid hemorrhage
+olanzapine,the antipsychotic,oxcarbazepine,the anticonvulsant
+oxcarbazepine,the anticonvulsant,carbamazepine,the anticonvulsant
+paroxetine,the SSRI antidepressant,fluoxetine,the SSRI antidepressant
+penicillin,the antibiotic,penicillamine,the chelating agent
+phenobarbital,the barbiturate,pentobarbital,the barbiturate
+propranolol,the beta blocker,propylthiouracil,the antithyroid drug
+propofol,the anesthetic,propranolol,the beta blocker
+risperidone,the antipsychotic,ropinirole,the dopamine agonist for Parkinson's
+rifampin,the tuberculosis antibiotic,rifaximin,the gut antibiotic
+rituximab,the anti-CD20 antibody,infliximab,the anti-TNF antibody
+sertraline,the SSRI antidepressant,cetirizine,the antihistamine
+sitagliptin,the DPP-4 inhibitor for diabetes,sumatriptan,the migraine triptan
+sulfasalazine,the aminosalicylate for IBD,sulfadiazine,the sulfonamide antibiotic
+tamoxifen,the breast cancer antiestrogen,tamsulosin,the alpha blocker for prostate
+tizanidine,the muscle relaxant,tiagabine,the anticonvulsant
+tolbutamide,the sulfonylurea,terbutaline,the beta agonist bronchodilator
+topiramate,the anticonvulsant,topotecan,the chemotherapy
+valacyclovir,the antiviral,valganciclovir,the antiviral for CMV
+vinorelbine,the chemotherapy vinca alkaloid,vinblastine,the chemotherapy vinca alkaloid
+zyprexa,the antipsychotic olanzapine,zyrtec,the antihistamine cetirizine
+xanax,the benzodiazepine alprazolam,zantac,the H2 blocker ranitidine
+adderall,the amphetamine stimulant,inderal,the beta blocker propranolol
+allopurinol,the gout medication,haloperidol,the antipsychotic
+amiodarone,the antiarrhythmic,amantadine,the antiviral and Parkinson's drug
+amlodipine,the calcium channel blocker,amiloride,the potassium-sparing diuretic
+azathioprine,the immunosuppressant,azacitidine,the chemotherapy
+bupropion,the antidepressant,buspirone,the anxiolytic
+captopril,the ACE inhibitor,carvedilol,the beta blocker
+cefazolin,the first-generation cephalosporin,ceftazidime,the third-generation cephalosporin
+cefotaxime,the third-generation cephalosporin,cefoxitin,the second-generation cephalosporin
+ceftriaxone,the third-generation cephalosporin,cefotaxime,the third-generation cephalosporin
+chlorpromazine,the antipsychotic,chlorpropamide,the sulfonylurea
+clobazam,the benzodiazepine for seizures,clonazepam,the benzodiazepine
+cyclophosphamide,the alkylating chemotherapy,cyclosporine,the immunosuppressant
+dexamethasone,the corticosteroid,dexmedetomidine,the sedative
+digoxin,the cardiac glycoside,doxepin,the tricyclic antidepressant
+enalapril,the ACE inhibitor,ramipril,the ACE inhibitor
+escitalopram,the SSRI antidepressant,citalopram,the SSRI antidepressant
+esomeprazole,the proton pump inhibitor,omeprazole,the proton pump inhibitor
+famotidine,the H2 blocker,fluoxetine,the SSRI antidepressant
+folic acid,the vitamin,folinic acid,leucovorin the rescue agent
+gabapentin,the anticonvulsant for neuropathic pain,pregabalin,the anticonvulsant for neuropathic pain
+hydralazine,the antihypertensive,hydroxyurea,the chemotherapy
+ibuprofen,the NSAID,naproxen,the NSAID
+insulin glargine,the long-acting insulin,insulin glulisine,the rapid-acting insulin
+isotretinoin,the acne retinoid,tretinoin,the topical retinoid
+levothyroxine,the thyroid hormone,liothyronine,the T3 thyroid hormone
+losartan,the angiotensin receptor blocker,valsartan,the angiotensin receptor blocker
+meropenem,the carbapenem antibiotic,ertapenem,the carbapenem antibiotic
+methylprednisolone,the corticosteroid,medroxyprogesterone,the progestin
+midazolam,the benzodiazepine sedative,lorazepam,the benzodiazepine
+nitroglycerin,the vasodilator for angina,nitroprusside,the intravenous vasodilator
+oxybutynin,the bladder antispasmodic,oxycodone,the opioid
+pantoprazole,the proton pump inhibitor,pramipexole,the dopamine agonist
+pioglitazone,the thiazolidinedione for diabetes,rosiglitazone,the thiazolidinedione for diabetes
+quetiapine,the antipsychotic,olanzapine,the antipsychotic
+rivaroxaban,the factor Xa anticoagulant,apixaban,the factor Xa anticoagulant
+rosuvastatin,the statin,atorvastatin,the statin
+simvastatin,the statin,pravastatin,the statin
+spironolactone,the potassium-sparing diuretic,eplerenone,the aldosterone antagonist
+tacrolimus,the immunosuppressant,sirolimus,the mTOR immunosuppressant
+terbinafine,the antifungal,terbutaline,the beta agonist bronchodilator
+ticagrelor,the P2Y12 antiplatelet,clopidogrel,the P2Y12 antiplatelet
+vancomycin,the glycopeptide antibiotic,vecuronium,the neuromuscular blocker
+venlafaxine,the SNRI antidepressant,desvenlafaxine,the SNRI antidepressant
+warfarin,the vitamin K antagonist anticoagulant,wellbutrin,the antidepressant bupropion
+zonisamide,the anticonvulsant,zolpidem,the sleep medication
+semaglutide,the GLP-1 agonist,tirzepatide,the dual GIP and GLP-1 agonist
+semaglutide,the GLP-1 agonist,liraglutide,the GLP-1 agonist
+empagliflozin,the SGLT2 inhibitor,dapagliflozin,the SGLT2 inhibitor
