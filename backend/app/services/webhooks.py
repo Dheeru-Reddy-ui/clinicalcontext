@@ -13,6 +13,7 @@ replayed later, and receivers can reject stale deliveries.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -301,3 +302,24 @@ async def _attempt(client: httpx.AsyncClient, *, url: str, secret: str, body: st
     if 200 <= response.status_code < 300:
         return _Outcome(ok=True, status_code=response.status_code, error=None)
     return _Outcome(ok=False, status_code=response.status_code, error=response.text[:500])
+
+
+async def drain_forever(pool: DbPool, *, interval_seconds: float, limit: int = 100) -> None:
+    """Deliver due webhooks every ``interval_seconds`` until cancelled.
+
+    The in-process form of the worker's drain, for a platform without a
+    separate worker process. One shared HTTP client across ticks, one tick at
+    a time, and a tick that raises is logged and does not end the loop —
+    a tenant's broken endpoint must never stop everyone else's deliveries.
+    """
+    async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as client:
+        while True:
+            try:
+                tally = await deliver_pending(pool, limit=limit, client=client)
+                if any(tally.values()):
+                    logger.info("webhook_drain_tick", **tally)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                logger.warning("webhook_drain_failed", error=f"{type(exc).__name__}: {exc}")
+            await asyncio.sleep(interval_seconds)

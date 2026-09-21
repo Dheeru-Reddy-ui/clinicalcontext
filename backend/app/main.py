@@ -12,8 +12,9 @@ reports them as degraded instead, so orchestrators can gate traffic.
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 import asyncpg
 from fastapi import FastAPI
@@ -85,10 +86,29 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         socket_connect_timeout=5,
         socket_timeout=5,
     )
+
+    # Without a worker process (see config: webhook_drain_interval_seconds),
+    # the API drains its own webhook queue. Deliveries are queued by requests,
+    # so the process is awake whenever there is work.
+    drain: asyncio.Task[None] | None = None
+    if settings.webhook_drain_interval_seconds > 0 and app.state.db_pool is not None:
+        from app.services.webhooks import drain_forever
+
+        drain = asyncio.create_task(
+            drain_forever(
+                app.state.db_pool, interval_seconds=settings.webhook_drain_interval_seconds
+            ),
+            name="webhook-drain",
+        )
+        logger.info("webhook_drain_started", interval_s=settings.webhook_drain_interval_seconds)
     logger.info("startup_complete")
 
     yield
 
+    if drain is not None:
+        drain.cancel()
+        with suppress(asyncio.CancelledError):
+            await drain
     registry = getattr(app.state, "voice_registry", None)
     if registry is not None:
         await registry.close_all()

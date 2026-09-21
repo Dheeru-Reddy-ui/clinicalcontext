@@ -15,7 +15,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -68,8 +68,13 @@ class Settings(BaseSettings):
 
     # -- Observability (Phase 13) ----------------------------------------------
     # The release stamped on every trace, error and log line: the deploy sets
-    # it to the git SHA; locally it stays "dev".
-    release: str = "dev"
+    # it to the git SHA; locally it stays "dev". Render exposes the deployed
+    # commit as RENDER_GIT_COMMIT, so a deploy there needs no extra step to
+    # stamp itself — and /health reports it, which is how the pipeline waits
+    # for the *new* release rather than the old one still answering.
+    release: str = Field(
+        default="dev", validation_alias=AliasChoices("RELEASE", "RENDER_GIT_COMMIT")
+    )
     # OpenTelemetry: traces go to an OTLP/HTTP endpoint when one is configured
     # (a collector, Jaeger, Honeycomb, …); "console" prints finished spans;
     # empty leaves the tracer provider installed but exporting nothing, so
@@ -88,6 +93,12 @@ class Settings(BaseSettings):
     smtp_password: SecretStr = SecretStr("")
     smtp_starttls: bool = False
     app_public_url: str = "http://localhost:3000"
+    # Webhook deliveries are queued by API requests, so the API is always
+    # awake when there is something to deliver. On a platform with a separate
+    # worker process this stays 0 and the worker drains the queue; on one
+    # without (a free tier that sleeps when idle), a positive interval runs
+    # the drain inside the API process instead.
+    webhook_drain_interval_seconds: int = 0
 
     # -- HTTP ------------------------------------------------------------------
     cors_origins: str = Field(

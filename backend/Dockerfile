@@ -1,12 +1,15 @@
 # The API and the worker ship as one image with two entrypoints (Phase 14.5).
 #
 # Built from the **repository root** as context (`docker build -f
-# backend/Dockerfile .`), which is what `fly deploy` does with a fly.toml at
-# the root. Multi-stage: dependencies resolve once against the committed
-# lockfile, and the runtime image carries no build tooling. The voice group is deliberately
-# left out — faster-whisper and its ONNX runtime add ~2 GB, and a deployment
-# uses Deepgram and ElevenLabs. Build with `--build-arg VOICE=1` for an image
-# that can run the offline voice stack.
+# backend/Dockerfile .`), which is what render.yaml's `dockerContext: .` and a
+# root fly.toml both do. Multi-stage: dependencies resolve once against the
+# committed lockfile, and the runtime image carries no build tooling. The
+# voice group is deliberately left out — faster-whisper and its ONNX runtime
+# add ~2 GB, and a deployment uses Deepgram and ElevenLabs. Build with
+# `--build-arg VOICE=1` for an image that can run the offline voice stack.
+#
+# Measured under a hard 512 MB limit (the free tier's size): 123 MB idle,
+# 214 MB after four uncached answers with the offline backend.
 
 FROM python:3.12-slim AS builder
 
@@ -58,14 +61,13 @@ EXPOSE 8000
 # The platform's own probe should use /ready (it checks Postgres and Redis);
 # this one only asks whether the process is alive.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD curl -fsS http://localhost:8000/health || exit 1
+    CMD curl -fsS "http://localhost:${PORT:-8000}/health" || exit 1
 
-# `--timeout-graceful-shutdown` is the drain window: on SIGTERM uvicorn stops
-# accepting connections and finishes the requests it has, which for a
-# streaming answer can be tens of seconds. The platform must allow at least
-# as long before SIGKILL.
-CMD ["uvicorn", "app.main:app", \
-     "--host", "0.0.0.0", \
-     "--port", "8000", \
-     "--timeout-graceful-shutdown", "60", \
-     "--no-access-log"]
+# PORT is whatever the platform hands the container (Render sets it; Fly and
+# a local run leave it unset and get 8000). GRACEFUL_SHUTDOWN_SECONDS is the
+# drain window: on SIGTERM uvicorn stops accepting connections and finishes
+# the requests it has, which for a streaming answer can be tens of seconds.
+# The platform must allow at least as long before SIGKILL (render.yaml's
+# maxShutdownDelaySeconds, fly.toml's kill_timeout). `exec` keeps uvicorn as
+# PID 1 so the signal reaches it directly, not a shell in front of it.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port \"${PORT:-8000}\" --timeout-graceful-shutdown \"${GRACEFUL_SHUTDOWN_SECONDS:-60}\" --no-access-log"]

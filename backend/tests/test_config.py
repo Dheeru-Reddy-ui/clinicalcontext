@@ -76,3 +76,20 @@ def test_transaction_pooler_is_detected_from_the_dsn(monkeypatch: pytest.MonkeyP
         db_disable_statement_cache=True,
     )
     assert forced.db_uses_transaction_pooler is True
+
+
+def test_release_falls_back_to_the_platform_commit_variable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Render stamps RENDER_GIT_COMMIT on every deploy; without a RELEASE of
+    its own the app adopts it, so traces, errors and /health name the real
+    revision. An explicit RELEASE still wins."""
+    monkeypatch.delenv("RELEASE", raising=False)
+    monkeypatch.delenv("RENDER_GIT_COMMIT", raising=False)
+    assert Settings(_env_file=None).release == "dev"
+
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "0123abcd0123abcd0123abcd0123abcd0123abcd")
+    assert Settings(_env_file=None).release == "0123abcd0123abcd0123abcd0123abcd0123abcd"
+
+    monkeypatch.setenv("RELEASE", "v9")
+    assert Settings(_env_file=None).release == "v9"
