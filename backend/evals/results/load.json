@@ -1,0 +1,285 @@
+{
+  "generated_at": "2026-09-20T13:51:35.069400+00:00",
+  "target": "http://127.0.0.1:8010",
+  "backend": {
+    "ai_backend": "offline",
+    "reasoner": "heuristic",
+    "embedder": "local",
+    "reranker": "local",
+    "platform": "win32"
+  },
+  "machine": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+    "cpu_count": 16,
+    "python": "3.12.5"
+  },
+  "questions": 155,
+  "criteria": {
+    "max_error_rate": 0.05,
+    "p95_limit_ms": 30000.0
+  },
+  "sustained": {
+    "users": 50,
+    "seconds": 60.0,
+    "total": {
+      "requests": 285,
+      "failures": 0,
+      "error_rate": 0.0,
+      "p50_ms": 8900.0,
+      "p95_ms": 16000.0,
+      "p99_ms": 19000.0,
+      "avg_ms": 8401.6,
+      "max_ms": 20587.6,
+      "rps": 4.771
+    },
+    "asks": 211,
+    "cache_hit_rate": 0.3839,
+    "first_event": {
+      "count": 211,
+      "p50_ms": 2146.3,
+      "p95_ms": 2997.5,
+      "p99_ms": 3263.7
+    },
+    "by_endpoint": {
+      "history": {
+        "method": "GET",
+        "requests": 74,
+        "failures": 0,
+        "error_rate": 0.0,
+        "p50_ms": 2300.0,
+        "p95_ms": 3000.0,
+        "p99_ms": 3300.0,
+        "avg_ms": 2319.6,
+        "max_ms": 3296.3,
+        "rps": 1.239
+      },
+      "ask (pipeline)": {
+        "method": "POST",
+        "requests": 130,
+        "failures": 0,
+        "error_rate": 0.0,
+        "p50_ms": 12000.0,
+        "p95_ms": 17000.0,
+        "p99_ms": 19000.0,
+        "avg_ms": 11988.4,
+        "max_ms": 20587.6,
+        "rps": 2.176
+      },
+      "ask (cache)": {
+        "method": "POST",
+        "requests": 81,
+        "failures": 0,
+        "error_rate": 0.0,
+        "p50_ms": 8400.0,
+        "p95_ms": 11000.0,
+        "p99_ms": 12000.0,
+        "avg_ms": 8201.5,
+        "max_ms": 11871.4,
+        "rps": 1.356
+      }
+    },
+    "failures": []
+  },
+  "ramp": [
+    {
+      "users": 25,
+      "seconds": 30.0,
+      "total": {
+        "requests": 115,
+        "failures": 0,
+        "error_rate": 0.0,
+        "p50_ms": 5500.0,
+        "p95_ms": 15000.0,
+        "p99_ms": 17000.0,
+        "avg_ms": 5789.9,
+        "max_ms": 18570.8,
+        "rps": 3.847
+      },
+      "asks": 87,
+      "cache_hit_rate": 0.7011,
+      "first_event": {
+        "count": 87,
+        "p50_ms": 1036.5,
+        "p95_ms": 3505.9,
+        "p99_ms": 4732.9
+      },
+      "by_endpoint": {
+        "history": {
+          "method": "GET",
+          "requests": 28,
+          "failures": 0,
+          "error_rate": 0.0,
+          "p50_ms": 1000.0,
+          "p95_ms": 2000.0,
+          "p99_ms": 2100.0,
+          "avg_ms": 1060.1,
+          "max_ms": 2088.9,
+          "rps": 0.937
+        },
+        "ask (pipeline)": {
+          "method": "POST",
+          "requests": 26,
+          "failures": 0,
+          "error_rate": 0.0,
+          "p50_ms": 8600.0,
+          "p95_ms": 17000.0,
+          "p99_ms": 19000.0,
+          "avg_ms": 10145.0,
+          "max_ms": 18570.8,
+          "rps": 0.87
+        },
+        "ask (cache)": {
+          "method": "POST",
+          "requests": 61,
+          "failures": 0,
+          "error_rate": 0.0,
+          "p50_ms": 5500.0,
+          "p95_ms": 12000.0,
+          "p99_ms": 15000.0,
+          "avg_ms": 6104.6,
+          "max_ms": 14997.5,
+          "rps": 2.04
+        }
+      },
+      "failures": [],
+      "broke": null
+    },
+    {
+      "users": 50,
+      "seconds": 30.0,
+      "total": {
+        "requests": 109,
+        "failures": 0,
+        "error_rate": 0.0,
+        "p50_ms": 11000.0,
+        "p95_ms": 20000.0,
+        "p99_ms": 25000.0,
+        "avg_ms": 10502.8,
+        "max_ms": 27693.7,
+        "rps": 3.651
+      },
+      "asks": 85,
+      "cache_hit_rate": 0.7529,
+      "first_event": {
+        "count": 85,
+        "p50_ms": 2234.9,
+        "p95_ms": 4557.5,
+        "p99_ms": 5250.1
+      },
+      "by_endpoint": {
+        "history": {
+          "method": "GET",
+          "requests": 24,
+          "failures": 0,
+          "error_rate": 0.0,
+          "p50_ms": 3300.0,
+          "p95_ms": 4700.0,
+          "p99_ms": 5000.0,
+          "avg_ms": 3100.6,
+          "max_ms": 5037.4,
+          "rps": 0.804
+        },
+        "ask (pipeline)": {
+          "method": "POST",
+          "requests": 21,
+          "failures": 0,
+          "error_rate": 0.0,
+          "p50_ms": 17000.0,
+          "p95_ms": 25000.0,
+          "p99_ms": 28000.0,
+          "avg_ms": 17034.1,
+          "max_ms": 27693.7,
+          "rps": 0.703
+        },
+        "ask (cache)": {
+          "method": "POST",
+          "requests": 64,
+          "failures": 0,
+          "error_rate": 0.0,
+          "p50_ms": 11000.0,
+          "p95_ms": 16000.0,
+          "p99_ms": 16000.0,
+          "avg_ms": 11135.6,
+          "max_ms": 16414.3,
+          "rps": 2.144
+        }
+      },
+      "failures": [],
+      "broke": null
+    },
+    {
+      "users": 100,
+      "seconds": 30.0,
+      "total": {
+        "requests": 122,
+        "failures": 0,
+        "error_rate": 0.0,
+        "p50_ms": 15000.0,
+        "p95_ms": 25000.0,
+        "p99_ms": 30000.0,
+        "avg_ms": 15438.6,
+        "max_ms": 31842.5,
+        "rps": 4.161
+      },
+      "asks": 82,
+      "cache_hit_rate": 0.8659,
+      "first_event": {
+        "count": 82,
+        "p50_ms": 5206.4,
+        "p95_ms": 7781.6,
+        "p99_ms": 9907.6
+      },
+      "by_endpoint": {
+        "history": {
+          "method": "GET",
+          "requests": 40,
+          "failures": 0,
+          "error_rate": 0.0,
+          "p50_ms": 6800.0,
+          "p95_ms": 11000.0,
+          "p99_ms": 11000.0,
+          "avg_ms": 7758.8,
+          "max_ms": 11279.3,
+          "rps": 1.364
+        },
+        "ask (pipeline)": {
+          "method": "POST",
+          "requests": 11,
+          "failures": 0,
+          "error_rate": 0.0,
+          "p50_ms": 25000.0,
+          "p95_ms": 32000.0,
+          "p99_ms": 32000.0,
+          "avg_ms": 25723.1,
+          "max_ms": 31842.5,
+          "rps": 0.375
+        },
+        "ask (cache)": {
+          "method": "POST",
+          "requests": 71,
+          "failures": 0,
+          "error_rate": 0.0,
+          "p50_ms": 18000.0,
+          "p95_ms": 25000.0,
+          "p99_ms": 26000.0,
+          "avg_ms": 18171.9,
+          "max_ms": 25782.3,
+          "rps": 2.421
+        }
+      },
+      "failures": [],
+      "broke": "ask p95 32000 ms > 30000 ms"
+    }
+  ],
+  "breaking_point": {
+    "users": 100,
+    "reason": "ask p95 32000 ms > 30000 ms"
+  },
+  "capacity_users": 50,
+  "notes": [
+    "Latency is time to the SSE `result` event (the answer), per simulated user; `first_event` is time to the first stream event of successful asks.",
+    "Cache hits are recorded separately from pipeline answers; the same question asked again by any user of the tenant is a semantic-cache hit.",
+    "The tenant is on the enterprise plan (API-key limit 3000/min); any 429 is recorded as a failure."
+  ]
+}

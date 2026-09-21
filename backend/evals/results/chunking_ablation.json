@@ -1,0 +1,50 @@
+{
+  "ablation": "chunking_strategies",
+  "generated_at": "2026-07-17T05:39:32.216491+00:00",
+  "embedder": "hashing-lexical",
+  "embedding_dimension": 1024,
+  "sample_size": 200,
+  "corpus_documents": 9996,
+  "strategies": [
+    {
+      "strategy": "fixed",
+      "documents": 200,
+      "total_chunks": 271,
+      "mean_chunk_tokens": 360.8,
+      "median_chunk_tokens": 424.0,
+      "recall_at_5": 0.97,
+      "recall_at_10": 0.985,
+      "mrr_at_10": 0.9333
+    },
+    {
+      "strategy": "recursive",
+      "documents": 200,
+      "total_chunks": 367,
+      "mean_chunk_tokens": 258.1,
+      "median_chunk_tokens": 292.0,
+      "recall_at_5": 0.95,
+      "recall_at_10": 0.975,
+      "mrr_at_10": 0.8974
+    },
+    {
+      "strategy": "semantic",
+      "documents": 200,
+      "total_chunks": 460,
+      "mean_chunk_tokens": 205.9,
+      "median_chunk_tokens": 181.0,
+      "recall_at_5": 0.95,
+      "recall_at_10": 0.96,
+      "mrr_at_10": 0.8879
+    },
+    {
+      "strategy": "structural",
+      "documents": 200,
+      "total_chunks": 622,
+      "mean_chunk_tokens": 154.2,
+      "median_chunk_tokens": 117.0,
+      "recall_at_5": 1.0,
+      "recall_at_10": 1.0,
+      "mrr_at_10": 0.99
+    }
+  ]
+}

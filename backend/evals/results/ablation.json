@@ -1,0 +1,464 @@
+{
+  "generated_at": "2026-09-20T18:35:39.906541+00:00",
+  "duration_s": 1638.9,
+  "backend": {
+    "ai_backend": "offline",
+    "reasoner": "heuristic",
+    "embedder": "local",
+    "reranker": "local",
+    "platform": "win32"
+  },
+  "corpus": {
+    "documents": 9996,
+    "chunks": 30724,
+    "labelable_documents": 5641,
+    "signature": "9996:2026-07-17 05:18:05.33749+00",
+    "fixed_chunks": 13416
+  },
+  "golden": {
+    "set": "set.jsonl",
+    "items": 165,
+    "pico_eligible": 7,
+    "by_category": {
+      "abstain": 10,
+      "comparison": 7,
+      "diagnosis": 18,
+      "first_line": 20,
+      "guideline": 12,
+      "harm": 16,
+      "prognosis": 22,
+      "therapy": 60
+    }
+  },
+  "rows": [
+    {
+      "config": 1,
+      "description": "Fixed chunking, dense-only, no rerank",
+      "subset": "all",
+      "items": 165,
+      "settings": {
+        "label": "1",
+        "strategy": "fixed",
+        "lexical": false,
+        "rerank": false,
+        "boosts": false,
+        "decompose": false,
+        "grade_and_rewrite": false,
+        "contradiction": false,
+        "grounding": false,
+        "pico": false
+      },
+      "recall_at_10": 0.0835,
+      "recall_at_10_documents": 0.0957,
+      "mrr": 0.1014,
+      "ndcg_at_10": 0.0659,
+      "faithfulness": 1.0,
+      "faithfulness_source": "lexical grounding support",
+      "abstained_when_answerable": 0.0,
+      "cited_gold_rate": 0.1742,
+      "contradiction": {
+        "expected": 42,
+        "detected": 0,
+        "precision": null,
+        "recall": 0.0
+      },
+      "retrieval_ms_p50": 419.6,
+      "graph_ms_p50": 424.8,
+      "errors": [],
+      "judge": {
+        "ran": false,
+        "reason": "ANTHROPIC_API_KEY is a placeholder \u2014 RAGAS and the rubric need a real key"
+      }
+    },
+    {
+      "config": 2,
+      "description": "+ structural chunking",
+      "subset": "all",
+      "items": 165,
+      "settings": {
+        "label": "2",
+        "strategy": "structural",
+        "lexical": false,
+        "rerank": false,
+        "boosts": false,
+        "decompose": false,
+        "grade_and_rewrite": false,
+        "contradiction": false,
+        "grounding": false,
+        "pico": false
+      },
+      "recall_at_10": 0.0245,
+      "recall_at_10_documents": 0.1151,
+      "mrr": 0.0398,
+      "ndcg_at_10": 0.0198,
+      "faithfulness": 1.0,
+      "faithfulness_source": "lexical grounding support",
+      "abstained_when_answerable": 0.0,
+      "cited_gold_rate": 0.2323,
+      "contradiction": {
+        "expected": 42,
+        "detected": 0,
+        "precision": null,
+        "recall": 0.0
+      },
+      "retrieval_ms_p50": 425.6,
+      "graph_ms_p50": 440.4,
+      "errors": [],
+      "judge": {
+        "ran": false,
+        "reason": "ANTHROPIC_API_KEY is a placeholder \u2014 RAGAS and the rubric need a real key"
+      }
+    },
+    {
+      "config": 3,
+      "description": "+ hybrid (BM25 + RRF)",
+      "subset": "all",
+      "items": 165,
+      "settings": {
+        "label": "3",
+        "strategy": "structural",
+        "lexical": true,
+        "rerank": false,
+        "boosts": false,
+        "decompose": false,
+        "grade_and_rewrite": false,
+        "contradiction": false,
+        "grounding": false,
+        "pico": false
+      },
+      "recall_at_10": 0.0672,
+      "recall_at_10_documents": 0.1499,
+      "mrr": 0.1288,
+      "ndcg_at_10": 0.065,
+      "faithfulness": 1.0,
+      "faithfulness_source": "lexical grounding support",
+      "abstained_when_answerable": 0.0,
+      "cited_gold_rate": 0.2839,
+      "contradiction": {
+        "expected": 42,
+        "detected": 0,
+        "precision": null,
+        "recall": 0.0
+      },
+      "retrieval_ms_p50": 483.7,
+      "graph_ms_p50": 495.5,
+      "errors": [],
+      "judge": {
+        "ran": false,
+        "reason": "ANTHROPIC_API_KEY is a placeholder \u2014 RAGAS and the rubric need a real key"
+      }
+    },
+    {
+      "config": 4,
+      "description": "+ rerank",
+      "subset": "all",
+      "items": 165,
+      "settings": {
+        "label": "4",
+        "strategy": "structural",
+        "lexical": true,
+        "rerank": true,
+        "boosts": false,
+        "decompose": false,
+        "grade_and_rewrite": false,
+        "contradiction": false,
+        "grounding": false,
+        "pico": false
+      },
+      "recall_at_10": 0.086,
+      "recall_at_10_documents": 0.2014,
+      "mrr": 0.1226,
+      "ndcg_at_10": 0.0694,
+      "faithfulness": 1.0,
+      "faithfulness_source": "lexical grounding support",
+      "abstained_when_answerable": 0.0,
+      "cited_gold_rate": 0.3613,
+      "contradiction": {
+        "expected": 42,
+        "detected": 0,
+        "precision": null,
+        "recall": 0.0
+      },
+      "retrieval_ms_p50": 482.7,
+      "graph_ms_p50": 514.4,
+      "errors": [],
+      "judge": {
+        "ran": false,
+        "reason": "ANTHROPIC_API_KEY is a placeholder \u2014 RAGAS and the rubric need a real key"
+      }
+    },
+    {
+      "config": 5,
+      "description": "+ recency & evidence boosts",
+      "subset": "all",
+      "items": 165,
+      "settings": {
+        "label": "5",
+        "strategy": "structural",
+        "lexical": true,
+        "rerank": true,
+        "boosts": true,
+        "decompose": false,
+        "grade_and_rewrite": false,
+        "contradiction": false,
+        "grounding": false,
+        "pico": false
+      },
+      "recall_at_10": 0.0847,
+      "recall_at_10_documents": 0.1993,
+      "mrr": 0.1176,
+      "ndcg_at_10": 0.0677,
+      "faithfulness": 1.0,
+      "faithfulness_source": "lexical grounding support",
+      "abstained_when_answerable": 0.0,
+      "cited_gold_rate": 0.3806,
+      "contradiction": {
+        "expected": 42,
+        "detected": 0,
+        "precision": null,
+        "recall": 0.0
+      },
+      "retrieval_ms_p50": 461.3,
+      "graph_ms_p50": 478.3,
+      "errors": [],
+      "judge": {
+        "ran": false,
+        "reason": "ANTHROPIC_API_KEY is a placeholder \u2014 RAGAS and the rubric need a real key"
+      }
+    },
+    {
+      "config": 6,
+      "description": "+ query decomposition",
+      "subset": "all",
+      "items": 165,
+      "settings": {
+        "label": "6",
+        "strategy": "structural",
+        "lexical": true,
+        "rerank": true,
+        "boosts": true,
+        "decompose": true,
+        "grade_and_rewrite": false,
+        "contradiction": false,
+        "grounding": false,
+        "pico": false
+      },
+      "recall_at_10": 0.0847,
+      "recall_at_10_documents": 0.1993,
+      "mrr": 0.1176,
+      "ndcg_at_10": 0.0677,
+      "faithfulness": 1.0,
+      "faithfulness_source": "lexical grounding support",
+      "abstained_when_answerable": 0.0,
+      "cited_gold_rate": 0.3806,
+      "contradiction": {
+        "expected": 42,
+        "detected": 0,
+        "precision": null,
+        "recall": 0.0
+      },
+      "retrieval_ms_p50": 402.0,
+      "graph_ms_p50": 420.4,
+      "errors": [],
+      "judge": {
+        "ran": false,
+        "reason": "ANTHROPIC_API_KEY is a placeholder \u2014 RAGAS and the rubric need a real key"
+      }
+    },
+    {
+      "config": 7,
+      "description": "+ retrieval grading & rewrite",
+      "subset": "all",
+      "items": 165,
+      "settings": {
+        "label": "7",
+        "strategy": "structural",
+        "lexical": true,
+        "rerank": true,
+        "boosts": true,
+        "decompose": true,
+        "grade_and_rewrite": true,
+        "contradiction": false,
+        "grounding": false,
+        "pico": false
+      },
+      "recall_at_10": 0.0847,
+      "recall_at_10_documents": 0.1993,
+      "mrr": 0.1176,
+      "ndcg_at_10": 0.0677,
+      "faithfulness": 1.0,
+      "faithfulness_source": "lexical grounding support",
+      "abstained_when_answerable": 0.0968,
+      "cited_gold_rate": 0.3484,
+      "contradiction": {
+        "expected": 42,
+        "detected": 0,
+        "precision": null,
+        "recall": 0.0
+      },
+      "retrieval_ms_p50": 430.5,
+      "graph_ms_p50": 482.9,
+      "errors": [],
+      "judge": {
+        "ran": false,
+        "reason": "ANTHROPIC_API_KEY is a placeholder \u2014 RAGAS and the rubric need a real key"
+      }
+    },
+    {
+      "config": 8,
+      "description": "+ contradiction detection",
+      "subset": "all",
+      "items": 165,
+      "settings": {
+        "label": "8",
+        "strategy": "structural",
+        "lexical": true,
+        "rerank": true,
+        "boosts": true,
+        "decompose": true,
+        "grade_and_rewrite": true,
+        "contradiction": true,
+        "grounding": false,
+        "pico": false
+      },
+      "recall_at_10": 0.0847,
+      "recall_at_10_documents": 0.1993,
+      "mrr": 0.1176,
+      "ndcg_at_10": 0.0677,
+      "faithfulness": 0.8571,
+      "faithfulness_source": "lexical grounding support",
+      "abstained_when_answerable": 0.0968,
+      "cited_gold_rate": 0.3484,
+      "contradiction": {
+        "expected": 42,
+        "detected": 42,
+        "precision": 0.3095,
+        "recall": 0.3095
+      },
+      "retrieval_ms_p50": 433.3,
+      "graph_ms_p50": 502.5,
+      "errors": [],
+      "judge": {
+        "ran": false,
+        "reason": "ANTHROPIC_API_KEY is a placeholder \u2014 RAGAS and the rubric need a real key"
+      }
+    },
+    {
+      "config": 9,
+      "description": "+ grounding verification",
+      "subset": "all",
+      "items": 165,
+      "settings": {
+        "label": "9",
+        "strategy": "structural",
+        "lexical": true,
+        "rerank": true,
+        "boosts": true,
+        "decompose": true,
+        "grade_and_rewrite": true,
+        "contradiction": true,
+        "grounding": true,
+        "pico": false
+      },
+      "recall_at_10": 0.0847,
+      "recall_at_10_documents": 0.1993,
+      "mrr": 0.1176,
+      "ndcg_at_10": 0.0677,
+      "faithfulness": 0.8571,
+      "faithfulness_source": "lexical grounding support",
+      "abstained_when_answerable": 0.0968,
+      "cited_gold_rate": 0.3484,
+      "contradiction": {
+        "expected": 42,
+        "detected": 42,
+        "precision": 0.3095,
+        "recall": 0.3095
+      },
+      "retrieval_ms_p50": 438.6,
+      "graph_ms_p50": 505.2,
+      "errors": [],
+      "judge": {
+        "ran": false,
+        "reason": "ANTHROPIC_API_KEY is a placeholder \u2014 RAGAS and the rubric need a real key"
+      }
+    },
+    {
+      "config": 10,
+      "description": "+ PICO-structured decomposition (PICO-eligible subset)",
+      "subset": "pico",
+      "items": 7,
+      "settings": {
+        "label": "10",
+        "strategy": "structural",
+        "lexical": true,
+        "rerank": true,
+        "boosts": true,
+        "decompose": true,
+        "grade_and_rewrite": true,
+        "contradiction": true,
+        "grounding": true,
+        "pico": true
+      },
+      "recall_at_10": 0.1595,
+      "recall_at_10_documents": 0.4238,
+      "mrr": 0.3061,
+      "ndcg_at_10": 0.1426,
+      "faithfulness": 0.75,
+      "faithfulness_source": "lexical grounding support",
+      "abstained_when_answerable": 0.4286,
+      "cited_gold_rate": 0.0,
+      "contradiction": {
+        "expected": 1,
+        "detected": 2,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "retrieval_ms_p50": 390.6,
+      "graph_ms_p50": 1854.0,
+      "errors": [],
+      "judge": {
+        "ran": false,
+        "reason": "ANTHROPIC_API_KEY is a placeholder \u2014 RAGAS and the rubric need a real key"
+      }
+    },
+    {
+      "config": 9,
+      "description": "+ grounding verification",
+      "subset": "pico",
+      "items": 7,
+      "settings": {
+        "label": "9",
+        "strategy": "structural",
+        "lexical": true,
+        "rerank": true,
+        "boosts": true,
+        "decompose": true,
+        "grade_and_rewrite": true,
+        "contradiction": true,
+        "grounding": true,
+        "pico": false
+      },
+      "recall_at_10": 0.1595,
+      "recall_at_10_documents": 0.4238,
+      "mrr": 0.3061,
+      "ndcg_at_10": 0.1426,
+      "faithfulness": 0.75,
+      "faithfulness_source": "lexical grounding support",
+      "abstained_when_answerable": 0.4286,
+      "cited_gold_rate": 0.1429,
+      "contradiction": {
+        "expected": 1,
+        "detected": 2,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "retrieval_ms_p50": 395.3,
+      "graph_ms_p50": 439.1,
+      "errors": [],
+      "judge": {
+        "ran": false,
+        "reason": "ANTHROPIC_API_KEY is a placeholder \u2014 RAGAS and the rubric need a real key"
+      }
+    }
+  ]
+}
