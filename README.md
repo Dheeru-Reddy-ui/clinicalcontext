@@ -63,7 +63,8 @@ no key in this environment. Nothing here is estimated.
 
 **Live demo:** not yet — deploying needs accounts (Fly, Vercel, Supabase
 cloud, a domain). Everything for it is written and tested:
-[docs/DEPLOY.md](docs/DEPLOY.md), `fly.toml`,
+[docs/FIRST-DEPLOY.md](docs/FIRST-DEPLOY.md) is the runbook,
+[docs/DEPLOY.md](docs/DEPLOY.md) the reference, plus `fly.toml` and
 `.github/workflows/deploy.yml`. Run it locally in about ten minutes with the
 setup below, or watch [the recorded demo](docs/demo/) — real footage of the
 product, re-recordable with one command.
@@ -684,6 +685,7 @@ including one where the sources disagree.
 │   ├── EVAL.md               # methodology + results, regenerated from the runners
 │   ├── OBSERVABILITY.md      # traces, Sentry, LangSmith, the cost ledger, load
 │   ├── DEPLOY.md             # how it ships, drains, backs up, and restores
+│   ├── FIRST-DEPLOY.md       # the runbook: every command, and what it should print
 │   ├── VERIFICATION.md       # every phase gate, re-checked, with evidence
 │   └── SAFETY.md
 ├── docker/                   # local-dev container init scripts

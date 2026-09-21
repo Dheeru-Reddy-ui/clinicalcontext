@@ -68,104 +68,42 @@ what to do when something goes wrong.
 
 ## First deploy, step by step
 
-You create the accounts and set the secrets — I never see their values, and
-nothing below asks you to paste one into a chat. Each step says what to
-check before moving on.
+The runbook is its own document: **[FIRST-DEPLOY.md](FIRST-DEPLOY.md)** — the
+commands in order, what each should print, and what to do when it prints
+something else. It covers the two decisions that shape everything after them
+(offline or cloud answers; what the free tiers actually cost), the accounts to
+create, migrations, loading a corpus, Fly, Vercel, and joining the two ends.
 
-### 1. Accounts (about 20 minutes)
-
-| Service | What to create | What you need from it |
-|---|---|---|
-| [Supabase](https://supabase.com) | Two projects: `clinicalcontext-staging`, `clinicalcontext` | Project URL, anon key, service-role key, and **both** database URLs (direct :5432 for migrations, pooler :6543 for the app) |
-| [Fly.io](https://fly.io) | An account (a card is required even on the free allowance) | `flyctl` logged in |
-| [Vercel](https://vercel.com) | Import the repo, root directory `frontend` | Project ID, org ID, a token |
-| [Upstash](https://upstash.com) | Two Redis databases, staging and production | `rediss://` URLs |
-| A registrar | A domain, or use the free `.fly.dev` and `.vercel.app` hosts to start | — |
-
-Vendor keys, all optional to start — without them the deployment runs the
-offline backend and the numbers stay the ones in this repository:
-[Cohere](https://dashboard.cohere.com/api-keys),
-[Anthropic](https://console.anthropic.com),
-[Deepgram](https://console.deepgram.com),
-[ElevenLabs](https://elevenlabs.io),
-[Sentry](https://sentry.io), [LangSmith](https://smith.langchain.com).
-
-### 2. Database
+The short version, for someone who has done this before:
 
 ```bash
-# Direct connection (port 5432), not the pooler — migrations need it.
-export DATABASE_URL='postgresql://postgres:...@db.<ref>.supabase.co:5432/postgres'
-uv --directory backend run python -m scripts.migrate
-```
-
-Check: it prints `applied: 001_extensions.sql` … `023_per_tenant_document_dedup.sql`
-and nothing else. Re-running prints only `skipped (already applied)`.
-
-Then load a corpus — without one the app answers nothing:
-
-```bash
-# The demo corpus, straight from PubMed (respects NCBI rate limits).
-uv --directory backend run python -m app.ingestion.seed --per-query 600
-
-# Or the CI-sized snapshot, if you want something small and deterministic.
-uv --directory backend run python -m evals.golden.snapshot load --embedder local
-```
-
-### 3. Secrets
-
-```bash
+uv --directory backend run python -m scripts.migrate --url "$DIRECT_URL"   # 5432, not the pooler
+DATABASE_URL="$DIRECT_URL" uv --directory backend run python -m evals.golden.snapshot load --embedder local
 fly launch --no-deploy --copy-config --name clinicalcontext-api
-fly secrets set \
-  DATABASE_URL='postgresql://postgres:...@...pooler.supabase.com:6543/postgres' \
-  REDIS_URL='rediss://...' \
-  SUPABASE_URL='https://<ref>.supabase.co' \
-  SUPABASE_ANON_KEY='...' \
-  SUPABASE_SERVICE_ROLE_KEY='...' \
-  RELEASE="$(git rev-parse --short HEAD)"
+fly secrets set DATABASE_URL="$POOLED_URL" REDIS_URL=... SUPABASE_URL=...                 SUPABASE_ANON_KEY=... SUPABASE_SERVICE_ROLE_KEY=...                 COHERE_API_KEY=... ANTHROPIC_API_KEY=... LANGSMITH_API_KEY=...                 DEEPGRAM_API_KEY=... ELEVENLABS_API_KEY=...
+fly config validate && fly deploy && fly scale count api=1 worker=1
+cd frontend && vercel link && vercel env add NEXT_PUBLIC_API_URL production && vercel --prod
 ```
 
-Note the **pooler** URL here and the **direct** URL in step 2 — the app
-detects the pooler from the DSN and turns off asyncpg's statement cache.
+Three things that are not obvious and cost an hour each when missed:
 
-In Vercel's project settings: `NEXT_PUBLIC_API_URL`,
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-`NEXT_PUBLIC_RELEASE`.
+- **All ten of those secrets are required at boot**, including the provider
+  keys an offline deployment never calls. The configuration validates as a
+  whole on start rather than failing on the first request that needed a
+  missing value; `placeholder` is a fine value for a key you are not using.
+- **The corpus is tied to `AI_BACKEND`.** Offline embeds with the local
+  hashing embedder, cloud with Cohere, both into 1536 dimensions — so
+  embedding a corpus with one and querying it with the other returns noise
+  rather than an error.
+- **Set the Vercel environment variables before the first production build.**
+  The Content-Security-Policy is derived from `NEXT_PUBLIC_API_URL`; the build
+  fails without it, which is much better than shipping a policy that blocks
+  every call to your own API.
 
-In the GitHub repository's secrets (for the pipeline): `FLY_API_TOKEN`,
-`FLY_API_TOKEN_STAGING`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`,
-`VERCEL_PROJECT_ID`, `STAGING_DATABASE_URL`, `PRODUCTION_DATABASE_URL`,
-`STAGING_SUPABASE_URL`, `STAGING_SUPABASE_ANON_KEY`,
-`STAGING_SUPABASE_SERVICE_ROLE_KEY`.
-
-### 4. Deploy
-
-```bash
-fly config validate             # the one check that needs your login
-fly deploy                      # API + worker
-```
-
-The image itself has already been built and run against a real Postgres and
-Redis (see Status above), so a failure here is about the account, the
-secrets or the region — not the Dockerfile.
-
-Then in Supabase → Authentication → URL configuration, set the site URL to
-the Vercel domain and add it to the redirect allow-list, or magic links will
-bounce.
-
-### 5. Tell me it is up
-
-Give me the two URLs and I will verify the deployment rather than assume it:
-
-- `/ready` returns ok and names Postgres and Redis
-- the security headers are present, including HSTS (which is off locally by
-  design)
-- the public demo answers a real question, with citations
-- `/methodology` serves the eval numbers from the deployed files
-- the end-to-end suite runs against the deployment
-  (`E2E_BASE_URL=… E2E_API_URL=… DATABASE_URL=… pnpm exec playwright test --project=app`)
-- one query produces one trace, end to end, if you have added an OTLP endpoint
-
-If something fails I will tell you what failed and what it means, not that it
+Give me the two URLs afterwards and I will verify the deployment rather than
+assume it: readiness, the security headers including HSTS, a real demo answer
+with citations, the live eval numbers, and the end-to-end suite against it. If
+something fails I will tell you what failed and what it means, not that it
 went fine.
 
 ## The pipeline
