@@ -1,0 +1,59 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "-C",
+        "frontend",
+        "dev",
+        "--port",
+        "3005"
+      ],
+      "port": 3005,
+      "autoPort": false
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "--directory",
+        "backend",
+        "run",
+        "uvicorn",
+        "app.main:app",
+        "--port",
+        "8010"
+      ],
+      "port": 8010,
+      "autoPort": false
+    },
+    {
+      "name": "frontend-prod",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "-C",
+        "frontend",
+        "start",
+        "--port",
+        "3005"
+      ],
+      "port": 3005,
+      "autoPort": false
+    },
+    {
+      "name": "frontend-debug",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "-C",
+        "frontend",
+        "dev",
+        "--port",
+        "3006"
+      ],
+      "port": 3006,
+      "autoPort": false
+    }
+  ]
+}
