@@ -1,0 +1,194 @@
+name: Deploy
+
+# Merge to main → CI must be green → deploy to staging → smoke test staging →
+# a human promotes to production (Phase 14.5).
+#
+# The promote step is a GitHub Environment with a required reviewer, so the
+# production deploy waits for a person. Nothing here holds a secret: every
+# token comes from the repository's secret store, and the application's own
+# secrets live in Fly and Vercel, never in this file or in a .env on a server.
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  staging:
+    name: Deploy to staging
+    # A deploy only ever follows a green CI run — including the golden-set
+    # eval gate, which fails the build on a >2% retrieval or faithfulness
+    # regression and unconditionally on a PHI or diagnosis miss.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.clinicalcontext.app
+    outputs:
+      api: ${{ steps.urls.outputs.api }}
+      web: ${{ steps.urls.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Apply migrations to staging
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: |
+          pipx install uv
+          uv --directory backend run python -m scripts.migrate
+
+      - name: Deploy the API and worker
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_STAGING }}
+        run: flyctl deploy --config fly.toml --app clinicalcontext-api-staging --remote-only
+
+      - name: Deploy the frontend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npx --yes vercel@latest pull --yes --environment=preview --token="$VERCEL_TOKEN"
+          npx --yes vercel@latest build --token="$VERCEL_TOKEN"
+          npx --yes vercel@latest deploy --prebuilt --token="$VERCEL_TOKEN" > .vercel-url
+
+      - id: urls
+        run: |
+          echo "api=https://clinicalcontext-api-staging.fly.dev" >> "$GITHUB_OUTPUT"
+          echo "web=$(cat .vercel-url)" >> "$GITHUB_OUTPUT"
+
+  smoke:
+    name: Smoke test staging
+    needs: staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The smoke test is the product's own promises, asked of the deployment:
+      # it is ready, it answers with citations, it refuses PHI, and it
+      # publishes the numbers it was measured on.
+      - name: Probe the deployment
+        env:
+          API: ${{ needs.staging.outputs.api }}
+          WEB: ${{ needs.staging.outputs.web }}
+          DEMO_QUESTION: aspirin-primary-prevention
+        run: |
+          set -euo pipefail
+
+          echo "readiness"
+          curl -fsS --retry 10 --retry-delay 6 --retry-all-errors "$API/ready" | tee /tmp/ready.json
+          grep -q '"status":"ok"' /tmp/ready.json
+
+          echo "security headers"
+          headers=$(curl -fsSI "$API/health")
+          echo "$headers" | grep -qi 'strict-transport-security'
+          echo "$headers" | grep -qi 'x-content-type-options: nosniff'
+
+          echo "the public demo answers, with citations"
+          curl -fsS -X POST "$API/api/public/demo" \
+            -H 'content-type: application/json' \
+            -d "{\"question_id\":\"$DEMO_QUESTION\"}" | tee /tmp/demo.json
+          python -c 'import json,sys; a=json.load(open("/tmp/demo.json")); assert a["blocked"] is None, a["blocked"]; assert a["answer"], "no answer"; assert a["citations"], "no citations"; print("ok:", len(a["citations"]), "citations,", a["latency_ms"], "ms")'
+
+          echo "the methodology page serves live eval numbers"
+          curl -fsS "$API/api/public/evals/golden" | python -c "import json,sys; d=json.load(sys.stdin); print(d['retrieval']['documents']['recall_at_10'])"
+
+          echo "the frontend renders"
+          curl -fsS --retry 5 --retry-delay 5 "$WEB/methodology" | grep -qi 'methodology'
+
+      # The same nineteen journeys the verification suite proves locally, run
+      # against the deployed staging system: sign-up, invites, streaming and
+      # citations, contradictions, abstentions, the guardrails, tenant
+      # isolation (asserted at the API *and* the database), binders,
+      # permalinks, API keys, idempotency and keyboard-only navigation.
+      # Voice is excluded here: it needs a microphone device the runner does
+      # not have, and the voice harness covers that path against staging in
+      # its own CI job.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        working-directory: frontend
+        run: pnpm exec playwright install --with-deps chromium
+      - name: End-to-end suite against staging
+        working-directory: frontend
+        env:
+          E2E_BASE_URL: ${{ needs.staging.outputs.web }}
+          E2E_API_URL: ${{ needs.staging.outputs.api }}
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+        run: pnpm exec playwright test --project=app
+      - name: Upload the E2E report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-staging
+          path: frontend/e2e/.report/results.json
+
+  production:
+    name: Promote to production
+    needs: [staging, smoke]
+    runs-on: ubuntu-latest
+    # A protected environment with a required reviewer: the promote waits for
+    # a person, which is the only gate a clinical deployment should have that
+    # a machine cannot pass on its own.
+    environment:
+      name: production
+      url: https://clinicalcontext.app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Apply migrations to production
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: |
+          pipx install uv
+          uv --directory backend run python -m scripts.migrate
+
+      - name: Deploy the API and worker
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --config fly.toml --app clinicalcontext-api --remote-only
+
+      - name: Deploy the frontend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npx --yes vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+          npx --yes vercel@latest build --prod --token="$VERCEL_TOKEN"
+          npx --yes vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+
+      - name: Smoke test production
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 10 --retry-delay 6 --retry-all-errors https://api.clinicalcontext.app/ready
+          curl -fsS https://clinicalcontext.app/methodology | grep -qi 'methodology'

@@ -1,0 +1,268 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Pipeline per the engineering brief: lint -> typecheck -> unit -> integration
+# -> eval gate -> build. The eval gate is added in the evaluation phase.
+jobs:
+  backend:
+    name: Backend (lint, typecheck, test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U ci -d ci"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      # The Phase 9 API suites need Redis (rate limits, semantic cache,
+      # idempotency). Without it they would silently skip rather than fail.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - "6379:6379"
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+      - name: Format check (ruff)
+        run: uv run ruff format --check .
+
+      - name: Typecheck (mypy --strict)
+        run: uv run mypy --strict app scripts evals
+
+      - name: OpenAPI schema is current
+        run: uv run python -m scripts.export_openapi --check
+
+      - name: Tests (pytest, incl. RLS isolation suite)
+        run: uv run pytest -q
+        env:
+          # The RLS suite applies the local shim + migrations itself.
+          TEST_DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          TEST_REDIS_URL: redis://localhost:6379/0
+
+      - name: Adversarial guardrail gate (PHI + diagnosis must be 100%)
+        run: uv run python -m evals.adversarial.run
+
+      # Phase 11: the spoken adversarial set through the real WebSocket
+      # pipeline on the offline engines. CI has no corpus, so only the safety
+      # gate (PHI/diagnosis parity, LASA) is enforced here; the latency and
+      # quality targets are gated against staging (voice-staging job).
+      - name: Voice — offline engines (faster-whisper + espeak-ng)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq espeak-ng
+          uv sync --frozen --group voice
+
+      - name: Cache the whisper model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: whisper-tiny-en-v1
+
+      - name: Voice guardrail parity gate (spoken PHI + diagnosis must be 100%)
+        run: >-
+          uv run python -m evals.voice.run --in-process --gate safety --no-judge
+          --out /tmp/voice-ci.json
+        env:
+          ENVIRONMENT: local
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          REDIS_URL: redis://localhost:6379/0
+          SUPABASE_URL: https://example.supabase.co
+          SUPABASE_ANON_KEY: ci
+          SUPABASE_SERVICE_ROLE_KEY: ci
+          COHERE_API_KEY: ci
+          ANTHROPIC_API_KEY: ci
+          LANGSMITH_API_KEY: ci
+          DEEPGRAM_API_KEY: ci
+          ELEVENLABS_API_KEY: ci
+          VOICE_BACKEND: offline
+          VOICE_WHISPER_MODEL: tiny.en
+          VOICE_OFFLINE_VOICE: en-gb
+
+  secrets-scan:
+    # Phase 14.3: no credentials in the tree. `--no-git` scans the working
+    # copy (this repository's history is short); `.gitleaks.toml` excludes
+    # vendored code and allows the .env.example placeholders by pattern, so a
+    # real key pasted into the template still fails.
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan the working tree
+        run: |
+          docker run --rm -v "$PWD:/repo:ro" zricethezav/gitleaks:latest             detect --source=/repo --no-git --config=/repo/.gitleaks.toml             --redact --exit-code=1
+
+  golden-gate:
+    # Phase 12: the golden set on every PR. A corpus snapshot (the golden
+    # set's relevant documents plus deterministic distractors) is loaded into
+    # the job's Postgres and embedded locally, so the gate needs no key and no
+    # network. recall@10 or faithfulness more than 2 points below the committed
+    # baseline (evals/results/golden_ci.json, produced the same way on main)
+    # fails the build; a PHI or diagnosis-refusal miss fails it unconditionally.
+    name: Golden-set eval gate (retrieval + faithfulness regression, safety)
+    runs-on: ubuntu-latest
+    needs: backend
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U ci -d ci"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - "6379:6379"
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      ENVIRONMENT: local
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      REDIS_URL: redis://localhost:6379/0
+      SUPABASE_URL: https://example.supabase.co
+      SUPABASE_ANON_KEY: ci
+      SUPABASE_SERVICE_ROLE_KEY: ci
+      COHERE_API_KEY: ci
+      ANTHROPIC_API_KEY: ci
+      LANGSMITH_API_KEY: ci
+      DEEPGRAM_API_KEY: ci
+      ELEVENLABS_API_KEY: ci
+      AI_BACKEND: offline
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Migrate (local Supabase shim)
+        run: uv run python -m scripts.migrate --local-shim
+      - name: Load the corpus snapshot and embed it locally
+        run: uv run python -m evals.golden.snapshot load --embedder local
+      - name: Golden set — retrieval, generation, calibration, safety (gate against main)
+        run: >-
+          uv run python -m evals.golden.run --gate all --no-judge --voice skip
+          --baseline evals/results/golden_ci.json --out /tmp/golden-ci.json
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-ci
+          path: /tmp/golden-ci.json
+
+  voice-staging:
+    name: Voice eval against staging (latency + quality gate)
+    runs-on: ubuntu-latest
+    needs: backend
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      VOICE_STAGING_URL: ${{ secrets.VOICE_STAGING_URL }}
+      VOICE_EVAL_TOKEN: ${{ secrets.VOICE_EVAL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Run the harness against staging (p95 first-audio regression > 15% vs main fails)
+        run: |
+          if [ -z "$VOICE_STAGING_URL" ]; then
+            echo "VOICE_STAGING_URL is not configured: staging gate not run (deploy phase wires it)."
+            exit 0
+          fi
+          uv run python -m evals.voice.run --url "$VOICE_STAGING_URL" --token "$VOICE_EVAL_TOKEN"             --gate all --baseline evals/results/voice.json --out /tmp/voice-staging.json
+        env:
+          ENVIRONMENT: local
+          DATABASE_URL: postgresql://unused:unused@localhost:5432/unused
+          REDIS_URL: redis://localhost:6379/0
+          SUPABASE_URL: https://example.supabase.co
+          SUPABASE_ANON_KEY: ci
+          SUPABASE_SERVICE_ROLE_KEY: ci
+          COHERE_API_KEY: ci
+          ANTHROPIC_API_KEY: ci
+          LANGSMITH_API_KEY: ci
+          DEEPGRAM_API_KEY: ci
+          ELEVENLABS_API_KEY: ci
+
+  frontend:
+    name: Frontend (lint, typecheck, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (eslint)
+        run: pnpm lint
+
+      - name: Typecheck (tsc --noEmit)
+        run: pnpm exec tsc --noEmit
+
+      - name: Build (next build)
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
