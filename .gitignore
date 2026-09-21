@@ -1,0 +1,40 @@
+# Environment — never commit real secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Node (frontend/.gitignore also covers these; root safety net)
+node_modules/
+
+# Derived eval caches (re-fetched from source; results/ JSON stays tracked)
+backend/evals/ablation/cache/
+
+# Verification and test run artifacts (regenerate with scripts/verify.py)
+backend/.verify/
+frontend/e2e/.artifacts/
+frontend/e2e/.report/
+frontend/test-results/
+frontend/playwright-report/
+
+# Database dumps from scripts/maintenance.py — real data, never in the repo
+backend/.backups/
+
+# Microphone files for the voice E2E specs: derived from the harness
+# fixtures, 6 MB, one command to rebuild
+#   uv --directory backend run python -m scripts.make_e2e_audio
+frontend/e2e/fixtures/audio/
+
+# Secret-scan reports
+gitleaks-report.json
+
+# OS / editor
+.DS_Store
+Thumbs.db

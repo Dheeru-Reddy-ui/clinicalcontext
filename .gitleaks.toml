@@ -1,0 +1,57 @@
+# gitleaks configuration (Phase 14.3).
+#
+# The default rule set, minus what is not ours to audit — vendored
+# dependencies, build output, and the local env files git already ignores —
+# plus two narrow allowlists for findings that are not secrets. Both are
+# scoped to a path *and* a content pattern, so a real key in either place
+# would still fail the scan.
+#
+#     docker run --rm -v "$PWD:/repo:ro" zricethezav/gitleaks:latest \
+#       detect --source=/repo --no-git --config=/repo/.gitleaks.toml --redact
+
+title = "ClinicalContext"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Vendored code, build output, and files git does not track"
+paths = [
+  '''(^|/)node_modules/''',
+  '''(^|/)\.venv/''',
+  '''(^|/)\.next/''',
+  '''(^|/)__pycache__/''',
+  '''(^|/)\.pytest_cache/''',
+  '''(^|/)\.ruff_cache/''',
+  '''(^|/)\.mypy_cache/''',
+  '''(^|/)e2e/\.artifacts/''',
+  '''(^|/)playwright-report/''',
+  '''pnpm-lock\.yaml$''',
+  '''uv\.lock$''',
+  '''\.jsonl\.gz$''',
+  '''(^|/)supabase/\.temp/''',
+  # Not repository content: .gitignore excludes these, and a working-tree
+  # scan (--no-git) would otherwise audit the developer's own machine.
+  # `.env.example` — the file that *is* committed — is still scanned.
+  '''(^|/)\.env$''',
+  '''(^|/)\.env\.(local|development|production|test)$''',
+]
+
+# The placeholders in .env.example are the point of the file: they show the
+# shape of a key without being one.
+[[allowlists]]
+description = ".env.example placeholders, and only those"
+condition = "AND"
+paths = ['''(^|/)\.env\.example$''']
+regexes = [
+  '''placeholder-until-phase-\d+''',
+  '''your-project-ref''',
+  '''<[a-z-]+>''',
+  '''^$''',
+]
+
+[[allowlists]]
+description = "a local variable named `key` holding the configured HS256 secret"
+condition = "AND"
+paths = ['''backend/app/core/security\.py$''']
+regexes = ['''self\._hs256_secret''']

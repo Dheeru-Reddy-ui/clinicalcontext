@@ -1,0 +1,84 @@
+# Fly.io deployment for the API and the worker (Phase 14.5).
+#
+#   fly launch --no-deploy --copy-config      # once, to create the app
+#   fly secrets set DATABASE_URL=... REDIS_URL=... SUPABASE_URL=... \
+#                   SUPABASE_ANON_KEY=... SUPABASE_SERVICE_ROLE_KEY=... \
+#                   COHERE_API_KEY=... ANTHROPIC_API_KEY=... \
+#                   DEEPGRAM_API_KEY=... ELEVENLABS_API_KEY=... \
+#                   SENTRY_DSN=... LANGSMITH_API_KEY=...
+#   fly deploy
+#
+# Secrets live in Fly's secret store, never in this file and never in a .env
+# on the machine: `fly secrets set` writes them encrypted and injects them as
+# environment variables at boot. Everything below is non-secret configuration.
+
+app = "clinicalcontext-api"
+primary_region = "lhr"
+
+# SIGTERM, then a wait longer than uvicorn's 60-second drain, so an
+# in-flight answer finishes rather than being cut off.
+kill_signal = "SIGTERM"
+kill_timeout = "90s"
+
+[build]
+  dockerfile = "backend/Dockerfile"
+
+[env]
+  ENVIRONMENT = "production"
+  LOG_LEVEL = "INFO"
+  PORT = "8000"
+  AI_BACKEND = "cloud"
+  VOICE_BACKEND = "cloud"
+  OTEL_SERVICE_NAME = "clinicalcontext-api"
+  # The frontend's origin. CORS is an allow-list, so this is the only origin
+  # that may call the API from a browser.
+  CORS_ORIGINS = "https://clinicalcontext.app"
+  APP_PUBLIC_URL = "https://clinicalcontext.app"
+  # Supabase's transaction pooler shares server connections, so asyncpg's
+  # prepared-statement cache is disabled when the DSN points at :6543 — see
+  # app/config.py. Keep the pool small per machine and scale machines.
+  DB_POOL_MIN_SIZE = "2"
+  DB_POOL_MAX_SIZE = "10"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["api"]
+
+  # A streamed answer holds the connection open; the proxy must not cut it.
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 40
+    hard_limit = 60
+
+[[http_service.checks]]
+  grace_period = "20s"
+  interval = "15s"
+  method = "GET"
+  timeout = "5s"
+  # /ready probes Postgres and Redis; /health only says the process is up.
+  path = "/ready"
+
+[processes]
+  api = "uvicorn app.main:app --host 0.0.0.0 --port 8000 --timeout-graceful-shutdown 60 --no-access-log"
+  worker = "sh backend/worker-entrypoint.sh"
+
+# The API is IO-bound (Postgres, Cohere, Anthropic); the worker is the same
+# image doing batch work. Both start small — the load test says where the
+# ceiling is on a given size, and that number is on the methodology page.
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "1gb"
+  processes = ["api"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  processes = ["worker"]
+
+[deploy]
+  strategy = "rolling"
+  wait_timeout = "5m"

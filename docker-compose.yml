@@ -1,0 +1,61 @@
+name: clinicalcontext
+
+# Local dev parity only. The deployed database is Supabase Postgres; deployed
+# Redis is Upstash. Images and extensions here mirror those environments.
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: clinicalcontext-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-clinicalcontext}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-clinicalcontext}
+      POSTGRES_DB: ${POSTGRES_DB:-clinicalcontext}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-clinicalcontext} -d ${POSTGRES_DB:-clinicalcontext}",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: clinicalcontext-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Traces, locally (Phase 13): Jaeger takes OTLP/HTTP from the API and from
+  # the browser SDK (CORS opened for the dev origins) and shows one trace from
+  # the click to the provider calls at http://localhost:16686. Optional —
+  # `docker compose --profile observability up -d`.
+  jaeger:
+    image: jaegertracing/all-in-one:1.65.0
+    container_name: clinicalcontext-jaeger
+    profiles: ["observability"]
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    command:
+      - "--collector.otlp.http.cors.allowed-origins=http://localhost:3000,http://localhost:3005,http://127.0.0.1:3005"
+      - "--collector.otlp.http.cors.allowed-headers=*"
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686"
+      - "${OTLP_HTTP_PORT:-4318}:4318"
+
+volumes:
+  pgdata:
+  redisdata:
