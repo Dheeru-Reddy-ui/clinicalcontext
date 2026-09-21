@@ -64,7 +64,7 @@ kill_timeout = "90s"
 
 [processes]
   api = "uvicorn app.main:app --host 0.0.0.0 --port 8000 --timeout-graceful-shutdown 60 --no-access-log"
-  worker = "sh backend/worker-entrypoint.sh"
+  worker = "sh worker-entrypoint.sh"
 
 # The API is IO-bound (Postgres, Cohere, Anthropic); the worker is the same
 # image doing batch work. Both start small — the load test says where the

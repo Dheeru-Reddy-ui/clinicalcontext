@@ -1,7 +1,9 @@
 # The API and the worker ship as one image with two entrypoints (Phase 14.5).
 #
-# Multi-stage: dependencies resolve once against the committed lockfile, and
-# the runtime image carries no build tooling. The voice group is deliberately
+# Built from the **repository root** as context (`docker build -f
+# backend/Dockerfile .`), which is what `fly deploy` does with a fly.toml at
+# the root. Multi-stage: dependencies resolve once against the committed
+# lockfile, and the runtime image carries no build tooling. The voice group is deliberately
 # left out — faster-whisper and its ONNX runtime add ~2 GB, and a deployment
 # uses Deepgram and ElevenLabs. Build with `--build-arg VOICE=1` for an image
 # that can run the offline voice stack.
@@ -18,7 +20,7 @@ WORKDIR /app
 
 # Dependencies first, as their own layer: application code changes far more
 # often than the lockfile does.
-COPY pyproject.toml uv.lock ./
+COPY backend/pyproject.toml backend/uv.lock ./
 ARG VOICE=0
 RUN --mount=type=cache,target=/root/.cache/uv \
     if [ "$VOICE" = "1" ]; then \
@@ -27,7 +29,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
         uv sync --locked --no-dev --no-install-project; \
     fi
 
-COPY . .
+COPY backend/ .
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev --no-editable
 
 

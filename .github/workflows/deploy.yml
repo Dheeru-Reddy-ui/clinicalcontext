@@ -92,7 +92,9 @@ jobs:
           grep -q '"status":"ok"' /tmp/ready.json
 
           echo "security headers"
-          headers=$(curl -fsSI "$API/health")
+          # GET with the headers dumped, not HEAD: -I would also pass on a
+          # 405, and the point is to read the headers of a real response.
+          headers=$(curl -fsS -D - -o /dev/null "$API/health")
           echo "$headers" | grep -qi 'strict-transport-security'
           echo "$headers" | grep -qi 'x-content-type-options: nosniff'
 

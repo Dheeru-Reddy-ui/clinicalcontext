@@ -38,3 +38,4 @@ gitleaks-report.json
 # OS / editor
 .DS_Store
 Thumbs.db
+.smoke/

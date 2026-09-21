@@ -20,6 +20,17 @@ const withSerwist = withSerwistInit({
 // scripts get a strict policy with `'unsafe-eval'` only in development,
 // which is what React Refresh needs.
 function contentSecurityPolicy(): string {
+  // In a deployed build this must be the real API origin: the CSP's
+  // connect-src is built from it, so falling back to localhost would ship a
+  // policy that blocks every request to the actual API — a blank app with
+  // console errors, from one missing environment variable. Fail the build
+  // instead.
+  if (process.env.NODE_ENV === "production" && !process.env.NEXT_PUBLIC_API_URL) {
+    throw new Error(
+      "NEXT_PUBLIC_API_URL must be set for a production build: the Content-Security-Policy " +
+        "is derived from it, and without it the app cannot reach its own API.",
+    );
+  }
   const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
   const websocket = api.replace(/^http/, "ws");
   const connect = [
@@ -30,6 +41,19 @@ function contentSecurityPolicy(): string {
     process.env.NEXT_PUBLIC_OTEL_EXPORTER_URL ?? "",
     process.env.NEXT_PUBLIC_SENTRY_DSN ? "https://*.ingest.sentry.io" : "",
   ].filter(Boolean);
+  // A localhost origin in a deployed CSP is always a stale environment
+  // variable, and the symptom — requests blocked in the browser, nothing in
+  // the server logs — is miserable to debug. Catch it at build time.
+  if (process.env.NODE_ENV === "production") {
+    const local = connect.filter((origin) => /localhost|127\.0\.0\.1/.test(origin));
+    if (local.length > 0) {
+      throw new Error(
+        `Production build has localhost origins in its Content-Security-Policy: ${local.join(", ")}. ` +
+          "Set NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_OTEL_EXPORTER_URL to their deployed values, " +
+          "or leave them unset.",
+      );
+    }
+  }
   const scripts = process.env.NODE_ENV === "development" ? "'self' 'unsafe-eval' 'unsafe-inline'" : "'self'";
   return [
     "default-src 'self'",

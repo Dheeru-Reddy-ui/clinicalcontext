@@ -84,3 +84,16 @@ async def test_ready_503_when_nothing_initialized(client: AsyncClient) -> None:
     body = response.json()
     assert body["checks"]["database"]["detail"] == "database pool is not initialized"
     assert body["checks"]["redis"]["detail"] == "redis client is not initialized"
+
+
+async def test_probes_answer_HEAD_as_well_as_GET(client: AsyncClient) -> None:
+    """Load balancers and uptime monitors commonly probe with HEAD.
+
+    A probe endpoint that answers 405 to HEAD reads as an outage to whatever
+    is watching it, which is the opposite of the endpoint's job.
+    """
+    for path in ("/health", "/ready"):
+        head = await client.head(path)
+        get = await client.get(path)
+        assert head.status_code == get.status_code, path
+        assert head.status_code != 405, path

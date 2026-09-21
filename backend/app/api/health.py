@@ -23,7 +23,7 @@ router = APIRouter(tags=["health"])
 _CHECK_TIMEOUT_S = 3.0
 
 
-@router.get("/health")
+@router.api_route("/health", methods=["GET", "HEAD"])
 async def health() -> HealthResponse:
     return HealthResponse(version=__version__)
 
@@ -52,7 +52,7 @@ async def _check_redis(client: RedisClient | None) -> ReadinessCheck:
     return ReadinessCheck(status="ok", latency_ms=round((time.perf_counter() - start) * 1000, 2))
 
 
-@router.get("/ready")
+@router.api_route("/ready", methods=["GET", "HEAD"])
 async def ready(request: Request, response: Response) -> ReadinessResponse:
     database_check, redis_check = await asyncio.gather(
         _check_database(get_db_pool(request)),
