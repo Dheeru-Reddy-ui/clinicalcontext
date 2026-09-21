@@ -1,0 +1,95 @@
+name: Scheduled jobs
+
+# The worker process, for a platform that has none (Phase 14.5, free tier).
+#
+# The API drains its own webhook queue while it is awake — deliveries are
+# only ever queued by requests, so that covers them. What is left is the
+# batch work that should run on a clock regardless of traffic: the nightly
+# Living Answers sweep and the weekly digest and corpus-freshness check. A
+# GitHub Actions runner is a fine worker for that: it costs nothing at this
+# cadence (about 35 short runs a month), and the jobs are idempotent, so a
+# skipped or doubled tick costs a repeat, never a corruption.
+#
+# The jobs open their own connection to the database, so they need the
+# application's configuration — the same values Render holds, entered once
+# more as repository secrets. Use the DIRECT database URL (port 5432): the
+# jobs' pool is not the API's, and it is not configured for the transaction
+# pooler.
+
+on:
+  schedule:
+    # Nightly, 03:17 UTC: re-check followed answers against today's corpus.
+    - cron: "17 3 * * *"
+    # Weekly, Monday 06:23 UTC: the opt-in evidence digest, then a freshness
+    # pass over the corpus (needs PubMed; NCBI's rate limit is respected).
+    - cron: "23 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Which job to run now
+        type: choice
+        required: true
+        options:
+          - living-answers
+          - weekly-digest
+          - corpus-freshness
+          - deliver-webhooks
+          - rebuild-mesh
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    name: ${{ github.event.inputs.job || github.event.schedule }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      REDIS_URL: ${{ secrets.REDIS_URL }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Offline unless real keys are set: the same choice the API makes.
+      AI_BACKEND: ${{ vars.AI_BACKEND || 'offline' }}
+      COHERE_API_KEY: ${{ secrets.COHERE_API_KEY || 'placeholder' }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || 'placeholder' }}
+      LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY || 'placeholder' }}
+      DEEPGRAM_API_KEY: placeholder
+      ELEVENLABS_API_KEY: placeholder
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        run: pipx install uv
+
+      - name: Install dependencies
+        working-directory: backend
+        run: uv sync --locked --no-dev
+
+      - name: Living answers (nightly)
+        if: github.event.schedule == '17 3 * * *' || github.event.inputs.job == 'living-answers'
+        working-directory: backend
+        run: uv run python -m scripts.jobs living-answers --limit 500
+
+      - name: Weekly digest
+        if: github.event.schedule == '23 6 * * 1' || github.event.inputs.job == 'weekly-digest'
+        working-directory: backend
+        run: uv run python -m scripts.jobs weekly-digest
+
+      - name: Corpus freshness (weekly)
+        if: github.event.schedule == '23 6 * * 1' || github.event.inputs.job == 'corpus-freshness'
+        working-directory: backend
+        run: uv run python -m scripts.jobs corpus-freshness
+
+      - name: Deliver webhooks (on demand)
+        if: github.event.inputs.job == 'deliver-webhooks'
+        working-directory: backend
+        run: uv run python -m scripts.jobs deliver-webhooks --limit 500
+
+      - name: Rebuild MeSH index (after an ingest)
+        if: github.event.inputs.job == 'rebuild-mesh'
+        working-directory: backend
+        run: uv run python -m scripts.jobs rebuild-mesh

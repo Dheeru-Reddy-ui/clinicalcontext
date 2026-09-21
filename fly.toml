@@ -1,4 +1,10 @@
-# Fly.io deployment for the API and the worker (Phase 14.5).
+# Fly.io deployment for the API and the worker (Phase 14.5) — the PAID path.
+#
+# Fly bills from the first second and needs a card (about $6/month for the
+# API machine below, plus the worker). The free path is render.yaml, which the
+# pipeline in .github/workflows/deploy.yml targets; this file stays for a
+# deployment that wants a real worker process, always-on machines and
+# regions. Deploy it by hand:
 #
 #   fly launch --no-deploy --copy-config      # once, to create the app
 #   fly secrets set DATABASE_URL=... REDIS_URL=... SUPABASE_URL=... \

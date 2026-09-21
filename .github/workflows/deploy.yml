@@ -1,12 +1,25 @@
 name: Deploy
 
-# Merge to main → CI must be green → deploy to staging → smoke test staging →
-# a human promotes to production (Phase 14.5).
+# Merge to main → CI must be green → a human approves → migrations → the API
+# (Render, through its deploy hook) → wait for the new release to answer →
+# the frontend (Vercel) → smoke test → optionally the end-to-end suite
+# against the deployment (Phase 14.5).
 #
-# The promote step is a GitHub Environment with a required reviewer, so the
-# production deploy waits for a person. Nothing here holds a secret: every
-# token comes from the repository's secret store, and the application's own
-# secrets live in Fly and Vercel, never in this file or in a .env on a server.
+# One environment, because this is the free-tier pipeline: a second Render
+# service and Supabase project for staging would also be free, but Upstash
+# gives one free Redis and the point of this path is zero accounts you pay
+# for. The manual gate survives — `production` is a GitHub Environment with a
+# required reviewer, so nothing reaches the deployment without a person.
+#
+# Nothing here holds a secret: tokens come from the repository's secret
+# store, and the application's own secrets live in Render and Vercel.
+#
+# Repository secrets:  RENDER_DEPLOY_HOOK_URL, PRODUCTION_DATABASE_URL (the
+#   direct 5432 URL — migrations cannot run through the transaction pooler),
+#   VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID; for the E2E job also
+#   REDIS_URL, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY.
+# Repository variables: API_URL and WEB_URL if the defaults below are not
+#   your hostnames; E2E_AFTER_DEPLOY=true to run the browser suite.
 
 on:
   workflow_run:
@@ -22,37 +35,68 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  API_URL: ${{ vars.API_URL || 'https://clinicalcontext-api.onrender.com' }}
+  WEB_URL: ${{ vars.WEB_URL || 'https://clinicalcontext.vercel.app' }}
+
 jobs:
-  staging:
-    name: Deploy to staging
+  production:
+    name: Deploy
     # A deploy only ever follows a green CI run — including the golden-set
     # eval gate, which fails the build on a >2% retrieval or faithfulness
     # regression and unconditionally on a PHI or diagnosis miss.
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    # A protected environment with a required reviewer: the deploy waits for
+    # a person, which is the only gate a clinical deployment should have that
+    # a machine cannot pass on its own.
     environment:
-      name: staging
-      url: https://staging.clinicalcontext.app
-    outputs:
-      api: ${{ steps.urls.outputs.api }}
-      web: ${{ steps.urls.outputs.web }}
+      name: production
+      url: ${{ vars.WEB_URL || 'https://clinicalcontext.vercel.app' }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Install uv
+        run: pipx install uv
 
-      - name: Apply migrations to staging
+      # Forward-only and checksummed; an edited migration that has already
+      # been applied fails the run rather than silently diverging. Runs
+      # before the code that needs it: the previous release keeps serving on
+      # the new schema, which additive migrations guarantee is safe.
+      - name: Apply migrations
         env:
-          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: uv --directory backend run python -m scripts.migrate --url "$DATABASE_URL"
+
+      # Render builds backend/Dockerfile from the repository root and rolls
+      # the new instance in behind /ready (render.yaml). The hook returns
+      # immediately; the next step waits for the result.
+      - name: Deploy the API
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: curl -fsS -X POST "$HOOK" -o /dev/null
+
+      # /health reports the deployed commit (RENDER_GIT_COMMIT → RELEASE), so
+      # this waits for the *new* code to answer, not the old process still
+      # draining. A sleeping free instance takes about a minute to wake, a
+      # build about five; fifteen minutes is the ceiling.
+      - name: Wait for the new release to answer
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
-          pipx install uv
-          uv --directory backend run python -m scripts.migrate
-
-      - name: Deploy the API and worker
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_STAGING }}
-        run: flyctl deploy --config fly.toml --app clinicalcontext-api-staging --remote-only
+          set -u
+          for attempt in $(seq 1 60); do
+            release=$(curl -fsS --max-time 20 "$API_URL/health" \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin).get("release",""))' 2>/dev/null || true)
+            if [ "$release" = "$SHA" ]; then
+              echo "release $SHA is answering (attempt $attempt)"
+              exit 0
+            fi
+            echo "attempt $attempt: live release is '${release:-none}', waiting for $SHA"
+            sleep 15
+          done
+          echo "timed out: $SHA never answered on $API_URL"
+          exit 1
 
       - name: Deploy the frontend
         env:
@@ -60,64 +104,54 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          npx --yes vercel@latest pull --yes --environment=preview --token="$VERCEL_TOKEN"
-          npx --yes vercel@latest build --token="$VERCEL_TOKEN"
-          npx --yes vercel@latest deploy --prebuilt --token="$VERCEL_TOKEN" > .vercel-url
+          npx --yes vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+          npx --yes vercel@latest build --prod --token="$VERCEL_TOKEN"
+          npx --yes vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"
 
-      - id: urls
-        run: |
-          echo "api=https://clinicalcontext-api-staging.fly.dev" >> "$GITHUB_OUTPUT"
-          echo "web=$(cat .vercel-url)" >> "$GITHUB_OUTPUT"
-
-  smoke:
-    name: Smoke test staging
-    needs: staging
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      # The smoke test is the product's own promises, asked of the deployment:
-      # it is ready, it answers with citations, it refuses PHI, and it
-      # publishes the numbers it was measured on.
-      - name: Probe the deployment
+      # The smoke test is the product's own promises, asked of the
+      # deployment: it is ready, it answers with citations, it carries the
+      # security headers, and it publishes the numbers it was measured on.
+      - name: Smoke test
         env:
-          API: ${{ needs.staging.outputs.api }}
-          WEB: ${{ needs.staging.outputs.web }}
           DEMO_QUESTION: aspirin-primary-prevention
         run: |
           set -euo pipefail
 
           echo "readiness"
-          curl -fsS --retry 10 --retry-delay 6 --retry-all-errors "$API/ready" | tee /tmp/ready.json
+          curl -fsS --retry 10 --retry-delay 6 --retry-all-errors "$API_URL/ready" | tee /tmp/ready.json
           grep -q '"status":"ok"' /tmp/ready.json
 
           echo "security headers"
           # GET with the headers dumped, not HEAD: -I would also pass on a
           # 405, and the point is to read the headers of a real response.
-          headers=$(curl -fsS -D - -o /dev/null "$API/health")
+          headers=$(curl -fsS -D - -o /dev/null "$API_URL/health")
           echo "$headers" | grep -qi 'strict-transport-security'
           echo "$headers" | grep -qi 'x-content-type-options: nosniff'
 
           echo "the public demo answers, with citations"
-          curl -fsS -X POST "$API/api/public/demo" \
+          curl -fsS -X POST "$API_URL/api/public/demo" \
             -H 'content-type: application/json' \
             -d "{\"question_id\":\"$DEMO_QUESTION\"}" | tee /tmp/demo.json
-          python -c 'import json,sys; a=json.load(open("/tmp/demo.json")); assert a["blocked"] is None, a["blocked"]; assert a["answer"], "no answer"; assert a["citations"], "no citations"; print("ok:", len(a["citations"]), "citations,", a["latency_ms"], "ms")'
+          python3 -c 'import json,sys; a=json.load(open("/tmp/demo.json")); assert a["blocked"] is None, a["blocked"]; assert a["answer"], "no answer"; assert a["citations"], "no citations"; print("ok:", len(a["citations"]), "citations,", a["latency_ms"], "ms")'
 
           echo "the methodology page serves live eval numbers"
-          curl -fsS "$API/api/public/evals/golden" | python -c "import json,sys; d=json.load(sys.stdin); print(d['retrieval']['documents']['recall_at_10'])"
+          curl -fsS "$API_URL/api/public/evals/golden" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['retrieval']['documents']['recall_at_10'])"
 
           echo "the frontend renders"
-          curl -fsS --retry 5 --retry-delay 5 "$WEB/methodology" | grep -qi 'methodology'
+          curl -fsS --retry 5 --retry-delay 5 "$WEB_URL/methodology" | grep -qi 'methodology'
 
-      # The same nineteen journeys the verification suite proves locally, run
-      # against the deployed staging system: sign-up, invites, streaming and
-      # citations, contradictions, abstentions, the guardrails, tenant
-      # isolation (asserted at the API *and* the database), binders,
-      # permalinks, API keys, idempotency and keyboard-only navigation.
-      # Voice is excluded here: it needs a microphone device the runner does
-      # not have, and the voice harness covers that path against staging in
-      # its own CI job.
+  e2e:
+    name: End-to-end suite against the deployment
+    needs: production
+    # Opt in with the repository variable E2E_AFTER_DEPLOY=true. The suite
+    # creates its own throwaway tenants and removes them, and asserts tenant
+    # isolation at the API *and* the database — but it runs against the one
+    # live environment, so it is a choice rather than a default. Voice is
+    # excluded: it needs a microphone device the runner does not have.
+    if: vars.E2E_AFTER_DEPLOY == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -134,63 +168,19 @@ jobs:
       - name: Install Chromium
         working-directory: frontend
         run: pnpm exec playwright install --with-deps chromium
-      - name: End-to-end suite against staging
+      - name: Run the suite
         working-directory: frontend
         env:
-          E2E_BASE_URL: ${{ needs.staging.outputs.web }}
-          E2E_API_URL: ${{ needs.staging.outputs.api }}
-          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+          E2E_BASE_URL: ${{ env.WEB_URL }}
+          E2E_API_URL: ${{ env.API_URL }}
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: pnpm exec playwright test --project=app
-      - name: Upload the E2E report
+      - name: Upload the report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-staging
+          name: e2e-deployment
           path: frontend/e2e/.report/results.json
-
-  production:
-    name: Promote to production
-    needs: [staging, smoke]
-    runs-on: ubuntu-latest
-    # A protected environment with a required reviewer: the promote waits for
-    # a person, which is the only gate a clinical deployment should have that
-    # a machine cannot pass on its own.
-    environment:
-      name: production
-      url: https://clinicalcontext.app
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Apply migrations to production
-        env:
-          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
-        run: |
-          pipx install uv
-          uv --directory backend run python -m scripts.migrate
-
-      - name: Deploy the API and worker
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: flyctl deploy --config fly.toml --app clinicalcontext-api --remote-only
-
-      - name: Deploy the frontend
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          npx --yes vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
-          npx --yes vercel@latest build --prod --token="$VERCEL_TOKEN"
-          npx --yes vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"
-
-      - name: Smoke test production
-        run: |
-          set -euo pipefail
-          curl -fsS --retry 10 --retry-delay 6 --retry-all-errors https://api.clinicalcontext.app/ready
-          curl -fsS https://clinicalcontext.app/methodology | grep -qi 'methodology'

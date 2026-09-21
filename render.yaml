@@ -1,0 +1,94 @@
+# Render deployment for the API (Phase 14.5, the free-tier path).
+#
+# Render Dashboard → New → Blueprint → this repository. Render creates the
+# service from this file and asks for the values marked `sync: false`, which
+# are the secrets: they live in Render's environment store, never here and
+# never in a .env on a server.
+#
+# What this costs: nothing. The `free` plan is a 512 MB instance that sleeps
+# after fifteen idle minutes and takes about a minute to wake (Render shows a
+# loading page while it does). The API was measured under a hard 512 MB limit
+# before this file was written: 123 MB idle, 214 MB after four uncached
+# answers — see backend/Dockerfile. There is no free worker process, so the
+# API drains its own webhook queue (WEBHOOK_DRAIN_INTERVAL_SECONDS) and the
+# nightly and weekly jobs run from GitHub Actions (.github/workflows/jobs.yml).
+#
+# Deploys are triggered by the pipeline (.github/workflows/deploy.yml) through
+# a deploy hook, after CI is green and migrations have run — not on every
+# push. For the very first deploy, Dashboard → Manual Deploy works too.
+
+services:
+  - type: web
+    name: clinicalcontext-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /ready
+    autoDeployTrigger: "off"
+    # Longer than the 60-second uvicorn drain, so an in-flight streamed
+    # answer finishes before SIGKILL. Render's default is 30.
+    maxShutdownDelaySeconds: 90
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      # Offline is the free tier: the local embedder and reranker and the
+      # deterministic reasoner, no paid model calls. Cloud needs Cohere and
+      # Anthropic keys and a corpus re-embedded with Cohere (docs/FIRST-DEPLOY.md).
+      - key: AI_BACKEND
+        value: offline
+      # Voice in the cloud needs Deepgram + ElevenLabs; the image carries no
+      # offline speech stack. Leave "offline" and the voice page reports that.
+      - key: VOICE_BACKEND
+        value: offline
+      - key: OTEL_SERVICE_NAME
+        value: clinicalcontext-api
+      # The frontend's origin — the only origin a browser may call this API
+      # from. Exact scheme and host, no trailing slash.
+      - key: CORS_ORIGINS
+        value: https://clinicalcontext.vercel.app
+      - key: APP_PUBLIC_URL
+        value: https://clinicalcontext.vercel.app
+      # Small pool per instance; the free tier is one instance.
+      - key: DB_POOL_MIN_SIZE
+        value: "1"
+      - key: DB_POOL_MAX_SIZE
+        value: "5"
+      - key: GRACEFUL_SHUTDOWN_SECONDS
+        value: "60"
+      # No worker process on the free tier: the API drains webhooks itself.
+      - key: WEBHOOK_DRAIN_INTERVAL_SECONDS
+        value: "60"
+
+      # ---- Secrets: entered in the Render dashboard, never in this file ----
+      # The transaction-pooler URL (port 6543); the app detects it and turns
+      # off asyncpg's statement cache. Migrations use the direct URL and run
+      # from the pipeline, not from here.
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # Required at boot even when AI_BACKEND / VOICE_BACKEND are offline:
+      # the configuration validates as a whole. "placeholder" is a fine value
+      # for a key that is never called.
+      - key: COHERE_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: LANGSMITH_API_KEY
+        sync: false
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      # Optional and off when absent — add SENTRY_DSN, LANGSMITH_API_KEY (a
+      # real one) or OTEL_EXPORTER_OTLP_ENDPOINT in the dashboard when wanted.

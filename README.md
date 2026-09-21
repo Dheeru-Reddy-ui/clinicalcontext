@@ -61,11 +61,11 @@ vendor keys. The same harness pointed at Cohere and Anthropic is the number
 that would matter for a deployment, and it has not been run, because there is
 no key in this environment. Nothing here is estimated.
 
-**Live demo:** not yet — deploying needs accounts (Fly, Vercel, Supabase
-cloud, a domain). Everything for it is written and tested:
-[docs/FIRST-DEPLOY.md](docs/FIRST-DEPLOY.md) is the runbook,
-[docs/DEPLOY.md](docs/DEPLOY.md) the reference, plus `fly.toml` and
-`.github/workflows/deploy.yml`. Run it locally in about ten minutes with the
+**Live demo:** not yet — deploying needs accounts (Render, Vercel, Supabase,
+Upstash, GitHub; all free, no card). Everything for it is written and tested:
+[docs/FIRST-DEPLOY.md](docs/FIRST-DEPLOY.md) is the runbook for a $0
+deployment, [docs/DEPLOY.md](docs/DEPLOY.md) the reference, plus
+`render.yaml` and `.github/workflows/deploy.yml`. Run it locally in about ten minutes with the
 setup below, or watch [the recorded demo](docs/demo/) — real footage of the
 product, re-recordable with one command.
 
@@ -80,7 +80,7 @@ product, re-recordable with one command.
 | Voice     | Deepgram nova-3-medical STT, ElevenLabs Flash TTS (cascaded pipeline) |
 | Frontend  | Next.js 15 (App Router), TypeScript strict, Tailwind, shadcn/ui |
 | Observability | OpenTelemetry (OTLP → Jaeger locally), Sentry, LangSmith, a per-tenant cost ledger |
-| Infra     | Docker Compose (local), GitHub Actions CI, Railway/Fly.io + Vercel |
+| Infra     | Docker Compose (local), GitHub Actions CI + jobs, Render (free) or Fly.io + Vercel |
 
 ## Local setup
 
@@ -709,4 +709,4 @@ including one where the sources disagree.
 | 12 | The evaluation harness: the golden set (165 items, expert-derived ground truth), retrieval metrics scored apart from generation, RAGAS + clinical rubric behind an LLM-judge protocol, the ten-configuration ablation, confidence calibration with a documented retuning loop, the adversarial and voice suites as siblings, the feedback → golden-set loop, and the CI gate on a corpus snapshot | ✅ |
 | 13 | Observability and the public surface: OpenTelemetry traces browser→API→graph→retrieval→providers, Sentry and LangSmith wiring, the per-tenant cost ledger with explicit cache savings, the Locust load test, the public methodology page (architecture diagram, live eval tables, load results, honest limitations), the no-login demo query, and the opt-in weekly evidence digest | ✅ |
 | 14 | Verification and hardening: every phase gate re-proven by a runner (`scripts/verify.py` → [docs/VERIFICATION.md](docs/VERIFICATION.md)), 30 Playwright end-to-end specs including voice with a real microphone, adversarial tenant-isolation tests, security headers and CSP, pgbouncer-safe pooling, a tuned HNSW search path, a tested backup/restore drill, and the deploy pipeline | ✅ |
-| 14.5 | Ship it: Fly + Vercel + Supabase cloud, a domain, a status page | ⏸ needs accounts |
+| 14.5 | Ship it: Render + Vercel + Supabase + Upstash, all free tier; a status page | ⏸ needs accounts (free, no card) |
