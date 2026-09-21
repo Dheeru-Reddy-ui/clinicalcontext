@@ -3,12 +3,22 @@
 What has to be true before this serves a clinician, how to put it there, and
 what to do when something goes wrong.
 
-> **Status.** Everything in this document is written and tested as far as a
-> machine without vendor accounts can test it: the image builds, the
-> migrations apply to an empty database, the restore drill restores, the
-> pipeline is wired. Nothing has been deployed — Fly, Vercel, Supabase cloud,
-> the domain and the provider keys all need accounts, which is the one thing
-> this build stops and asks for rather than inventing.
+> **Status.** Nothing is deployed: Fly, Vercel, Supabase cloud, the domain
+> and the provider keys need accounts, which is the one thing this build stops
+> and asks for rather than inventing. Everything up to that point has been
+> *run*, not just written:
+>
+> | Checked | Result |
+> |---|---|
+> | `docker build -f backend/Dockerfile .` | builds, 1.36 GB |
+> | The image against real Postgres and Redis | `/ready` ok, both dependencies healthy |
+> | Security headers in `ENVIRONMENT=production` | all six, including HSTS |
+> | The pipeline's smoke test, verbatim | passes — demo answered with 6 citations, live evals served |
+> | The worker process in the image | all three jobs ran on their schedules |
+> | SIGTERM with a request in flight | answer finished with 200, then exit 0 |
+> | Every migration against an empty database | 23 applied, 34 tables, 83 policies, none without RLS |
+> | `scripts.maintenance restore-drill` | 34.7 MB dump restored and verified |
+> | `flyctl config validate` | **not run — needs your login** (do this first) |
 
 ## The shape of it
 
@@ -130,8 +140,13 @@ In the GitHub repository's secrets (for the pipeline): `FLY_API_TOKEN`,
 ### 4. Deploy
 
 ```bash
+fly config validate             # the one check that needs your login
 fly deploy                      # API + worker
 ```
+
+The image itself has already been built and run against a real Postgres and
+Redis (see Status above), so a failure here is about the account, the
+secrets or the region — not the Dockerfile.
 
 Then in Supabase → Authentication → URL configuration, set the site URL to
 the Vercel domain and add it to the redirect allow-list, or magic links will
