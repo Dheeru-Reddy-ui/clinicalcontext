@@ -71,12 +71,25 @@ SEED_PLAN: list[SeedQuery] = [
 ]
 
 
+def _default_embedder() -> str:
+    """The embedder that matches the configured backend.
+
+    Documents and queries must be embedded in the same space. The API picks
+    its query embedder from ``AI_BACKEND`` (``app/services/ask.py``), so the
+    corpus backfill follows the same setting rather than a fixed default:
+    embedding the corpus with one and querying with the other returns
+    plausible-looking nonsense instead of an error.
+    """
+    return "cohere" if get_settings().ai_backend == "cloud" else "local"
+
+
 async def run_seed(
     pool: DbPool,
     *,
     per_query: int,
     embed: bool,
     allow_llm: bool,
+    embedder_name: str,
 ) -> dict[str, IngestStats]:
     """Ingest the whole plan through one shared, rate-limited NCBI client."""
     client = NcbiClient()
@@ -109,7 +122,7 @@ async def run_seed(
         from app.retrieval.embed import backfill_pending_chunks
 
         try:
-            await backfill_pending_chunks(pool)
+            await backfill_pending_chunks(pool, embedder_name=embedder_name)
         except Exception as exc:
             logger.warning("seed_embedding_deferred", error=f"{type(exc).__name__}: {exc}")
 
@@ -139,6 +152,7 @@ async def _main(args: argparse.Namespace) -> int:
             per_query=args.per_query,
             embed=not args.no_embed,
             allow_llm=not args.no_llm,
+            embedder_name=args.embedder or _default_embedder(),
         )
         async with pool.acquire() as conn:
             stats = await CorpusRepository().corpus_stats(conn)
@@ -159,6 +173,16 @@ async def _main(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.ingestion.seed", description=__doc__)
     parser.add_argument("--per-query", type=int, default=600)
+    parser.add_argument(
+        "--embedder",
+        choices=("local", "cohere"),
+        default=None,
+        help=(
+            "Embedder for the backfill. Defaults to the one AI_BACKEND implies "
+            "(cloud -> cohere, offline -> local). Corpus and query embeddings "
+            "must come from the same embedder or dense search returns noise."
+        ),
+    )
     parser.add_argument("--no-embed", action="store_true")
     parser.add_argument("--no-llm", action="store_true")
     parser.add_argument("--dry-run", action="store_true", help="print the plan and exit")

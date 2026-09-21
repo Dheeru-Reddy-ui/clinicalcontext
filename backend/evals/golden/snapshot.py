@@ -179,7 +179,15 @@ async def load(pool: DbPool, *, embedder_name: str) -> dict[str, int]:
 
 
 async def _main(args: argparse.Namespace) -> int:
-    pool = await asyncpg.create_pool(get_settings().database_url, min_size=1, max_size=2)
+    pool = await asyncpg.create_pool(
+        get_settings().database_url,
+        min_size=1,
+        max_size=2,
+        # Supabase keeps extensions in their own schema, so `vector` is only
+        # resolvable with it on the path — this loader is what a first deploy
+        # runs to get a corpus into a fresh Supabase project.
+        server_settings={"search_path": "public, extensions"},
+    )
     try:
         if args.command == "export":
             stats = await export(pool, args.set)
