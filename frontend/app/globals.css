@@ -1,0 +1,346 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * ClinicalContext design system.
+ *
+ * Restraint over flourish: one cool accent for actions, neutral everything
+ * else, no gradients. Meaning is carried by a small set of *semantic* scales
+ * used identically everywhere — a Grade B badge is the same colour on the
+ * answer, in the library, on the timeline, and in a binder. Colour is never
+ * the only signal: every badge also carries its label, so the palette is a
+ * reinforcement, not a requirement (WCAG 1.4.1).
+ *
+ * All pairs below are tuned to >= 4.5:1 text contrast in both themes.
+ */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-geist-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* -- semantic scales (bg / fg pairs + a solid for marks and chart points) -- */
+  --color-conf-high: var(--conf-high);
+  --color-conf-high-bg: var(--conf-high-bg);
+  --color-conf-high-fg: var(--conf-high-fg);
+  --color-conf-moderate: var(--conf-moderate);
+  --color-conf-moderate-bg: var(--conf-moderate-bg);
+  --color-conf-moderate-fg: var(--conf-moderate-fg);
+  --color-conf-low: var(--conf-low);
+  --color-conf-low-bg: var(--conf-low-bg);
+  --color-conf-low-fg: var(--conf-low-fg);
+
+  --color-grade-a: var(--grade-a);
+  --color-grade-a-bg: var(--grade-a-bg);
+  --color-grade-a-fg: var(--grade-a-fg);
+  --color-grade-b: var(--grade-b);
+  --color-grade-b-bg: var(--grade-b-bg);
+  --color-grade-b-fg: var(--grade-b-fg);
+  --color-grade-c: var(--grade-c);
+  --color-grade-c-bg: var(--grade-c-bg);
+  --color-grade-c-fg: var(--grade-c-fg);
+  --color-grade-d: var(--grade-d);
+  --color-grade-d-bg: var(--grade-d-bg);
+  --color-grade-d-fg: var(--grade-d-fg);
+  --color-grade-none: var(--grade-none);
+  --color-grade-none-bg: var(--grade-none-bg);
+  --color-grade-none-fg: var(--grade-none-fg);
+
+  --color-stance-supports: var(--stance-supports);
+  --color-stance-opposes: var(--stance-opposes);
+  --color-stance-neutral: var(--stance-neutral);
+
+  --color-conflict: var(--conflict);
+  --color-conflict-bg: var(--conflict-bg);
+  --color-conflict-fg: var(--conflict-fg);
+
+  --color-guard-calm-bg: var(--guard-calm-bg);
+  --color-guard-calm-fg: var(--guard-calm-fg);
+  --color-guard-calm-border: var(--guard-calm-border);
+  --color-redflag: var(--redflag);
+  --color-redflag-bg: var(--redflag-bg);
+  --color-redflag-fg: var(--redflag-fg);
+
+  --color-cached-bg: var(--cached-bg);
+  --color-cached-fg: var(--cached-fg);
+  --color-citation: var(--citation);
+  --color-citation-bg: var(--citation-bg);
+  --color-citation-fg: var(--citation-fg);
+  --color-highlight: var(--highlight);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  color-scheme: light;
+  /* Instrument-like: tight radii, cool neutrals, one accent. */
+  --radius: 0.375rem;
+
+  --background: oklch(0.995 0.002 250);
+  --foreground: oklch(0.17 0.015 255);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.17 0.015 255);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.17 0.015 255);
+  /* Accent: a desaturated clinical blue — legible, not playful. */
+  --primary: oklch(0.42 0.11 245);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.955 0.006 250);
+  --secondary-foreground: oklch(0.25 0.02 255);
+  --muted: oklch(0.955 0.006 250);
+  --muted-foreground: oklch(0.47 0.02 255);
+  --accent: oklch(0.945 0.012 245);
+  --accent-foreground: oklch(0.25 0.02 255);
+  --destructive: oklch(0.5 0.2 27);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.885 0.008 250);
+  --input: oklch(0.885 0.008 250);
+  --ring: oklch(0.55 0.1 245);
+  --chart-1: oklch(0.42 0.11 245);
+  --chart-2: oklch(0.55 0.13 160);
+  --chart-3: oklch(0.72 0.14 75);
+  --chart-4: oklch(0.58 0.18 27);
+  --chart-5: oklch(0.55 0.02 255);
+  --sidebar: oklch(0.975 0.004 250);
+  --sidebar-foreground: oklch(0.17 0.015 255);
+  --sidebar-primary: oklch(0.42 0.11 245);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.945 0.012 245);
+  --sidebar-accent-foreground: oklch(0.25 0.02 255);
+  --sidebar-border: oklch(0.885 0.008 250);
+  --sidebar-ring: oklch(0.55 0.1 245);
+
+  /* Confidence: how sure the system is. green / amber / grey-red. */
+  --conf-high: oklch(0.52 0.15 155);
+  --conf-high-bg: oklch(0.95 0.045 155);
+  --conf-high-fg: oklch(0.3 0.09 155);
+  --conf-moderate: oklch(0.68 0.15 75);
+  --conf-moderate-bg: oklch(0.96 0.06 85);
+  --conf-moderate-fg: oklch(0.38 0.1 65);
+  --conf-low: oklch(0.55 0.13 30);
+  --conf-low-bg: oklch(0.955 0.03 30);
+  --conf-low-fg: oklch(0.36 0.11 30);
+
+  /* Evidence grade A–D: the quality of the underlying studies. */
+  --grade-a: oklch(0.5 0.15 155);
+  --grade-a-bg: oklch(0.95 0.045 155);
+  --grade-a-fg: oklch(0.29 0.09 155);
+  --grade-b: oklch(0.5 0.12 235);
+  --grade-b-bg: oklch(0.945 0.03 235);
+  --grade-b-fg: oklch(0.3 0.09 235);
+  --grade-c: oklch(0.7 0.15 75);
+  --grade-c-bg: oklch(0.96 0.06 85);
+  --grade-c-fg: oklch(0.38 0.1 65);
+  --grade-d: oklch(0.58 0.17 30);
+  --grade-d-bg: oklch(0.955 0.035 30);
+  --grade-d-fg: oklch(0.37 0.12 30);
+  --grade-none: oklch(0.6 0.01 255);
+  --grade-none-bg: oklch(0.95 0.005 250);
+  --grade-none-fg: oklch(0.4 0.015 255);
+
+  /* Stance on the evidence timeline. */
+  --stance-supports: oklch(0.52 0.15 155);
+  --stance-opposes: oklch(0.56 0.19 27);
+  --stance-neutral: oklch(0.6 0.015 255);
+
+  /* A surfaced disagreement — amber, never alarm-red: it is information. */
+  --conflict: oklch(0.68 0.15 75);
+  --conflict-bg: oklch(0.965 0.05 85);
+  --conflict-fg: oklch(0.36 0.1 65);
+
+  /* Guardrails: PHI and scope are calm; red-flag is unmissable. */
+  --guard-calm-bg: oklch(0.955 0.012 245);
+  --guard-calm-fg: oklch(0.3 0.04 250);
+  --guard-calm-border: oklch(0.85 0.03 245);
+  --redflag: oklch(0.5 0.2 27);
+  --redflag-bg: oklch(0.5 0.2 27);
+  --redflag-fg: oklch(0.99 0 0);
+
+  --cached-bg: oklch(0.95 0.01 250);
+  --cached-fg: oklch(0.42 0.02 255);
+  --citation: oklch(0.42 0.11 245);
+  --citation-bg: oklch(0.935 0.025 245);
+  --citation-fg: oklch(0.3 0.09 245);
+  --highlight: oklch(0.93 0.11 95);
+}
+
+.dark {
+  color-scheme: dark;
+  /* Night shift: true dark surfaces, slightly lifted cards, softened accents. */
+  --background: oklch(0.15 0.01 255);
+  --foreground: oklch(0.94 0.005 250);
+  --card: oklch(0.19 0.012 255);
+  --card-foreground: oklch(0.94 0.005 250);
+  --popover: oklch(0.2 0.012 255);
+  --popover-foreground: oklch(0.94 0.005 250);
+  --primary: oklch(0.74 0.1 240);
+  --primary-foreground: oklch(0.15 0.02 255);
+  --secondary: oklch(0.25 0.012 255);
+  --secondary-foreground: oklch(0.94 0.005 250);
+  --muted: oklch(0.25 0.012 255);
+  --muted-foreground: oklch(0.7 0.012 250);
+  --accent: oklch(0.27 0.02 250);
+  --accent-foreground: oklch(0.94 0.005 250);
+  --destructive: oklch(0.68 0.18 25);
+  --destructive-foreground: oklch(0.12 0 0);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.62 0.1 240);
+  --chart-1: oklch(0.74 0.1 240);
+  --chart-2: oklch(0.72 0.14 160);
+  --chart-3: oklch(0.8 0.14 80);
+  --chart-4: oklch(0.7 0.17 27);
+  --chart-5: oklch(0.7 0.012 250);
+  --sidebar: oklch(0.17 0.012 255);
+  --sidebar-foreground: oklch(0.94 0.005 250);
+  --sidebar-primary: oklch(0.74 0.1 240);
+  --sidebar-primary-foreground: oklch(0.15 0.02 255);
+  --sidebar-accent: oklch(0.27 0.02 250);
+  --sidebar-accent-foreground: oklch(0.94 0.005 250);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.62 0.1 240);
+
+  --conf-high: oklch(0.72 0.15 155);
+  --conf-high-bg: oklch(0.26 0.06 155);
+  --conf-high-fg: oklch(0.88 0.09 155);
+  --conf-moderate: oklch(0.8 0.14 80);
+  --conf-moderate-bg: oklch(0.29 0.07 75);
+  --conf-moderate-fg: oklch(0.9 0.1 85);
+  --conf-low: oklch(0.72 0.14 30);
+  --conf-low-bg: oklch(0.28 0.07 30);
+  --conf-low-fg: oklch(0.88 0.08 30);
+
+  --grade-a: oklch(0.72 0.15 155);
+  --grade-a-bg: oklch(0.26 0.06 155);
+  --grade-a-fg: oklch(0.88 0.09 155);
+  --grade-b: oklch(0.72 0.11 235);
+  --grade-b-bg: oklch(0.27 0.06 235);
+  --grade-b-fg: oklch(0.88 0.06 235);
+  --grade-c: oklch(0.8 0.14 80);
+  --grade-c-bg: oklch(0.29 0.07 75);
+  --grade-c-fg: oklch(0.9 0.1 85);
+  --grade-d: oklch(0.72 0.16 30);
+  --grade-d-bg: oklch(0.28 0.08 30);
+  --grade-d-fg: oklch(0.88 0.08 30);
+  --grade-none: oklch(0.6 0.01 255);
+  --grade-none-bg: oklch(0.26 0.01 255);
+  --grade-none-fg: oklch(0.8 0.01 250);
+
+  --stance-supports: oklch(0.72 0.15 155);
+  --stance-opposes: oklch(0.72 0.17 27);
+  --stance-neutral: oklch(0.65 0.015 255);
+
+  --conflict: oklch(0.8 0.14 80);
+  --conflict-bg: oklch(0.27 0.06 75);
+  --conflict-fg: oklch(0.9 0.1 85);
+
+  --guard-calm-bg: oklch(0.23 0.025 250);
+  --guard-calm-fg: oklch(0.88 0.03 245);
+  --guard-calm-border: oklch(0.38 0.05 245);
+  --redflag: oklch(0.65 0.2 25);
+  --redflag-bg: oklch(0.55 0.2 25);
+  --redflag-fg: oklch(0.99 0 0);
+
+  --cached-bg: oklch(0.25 0.01 250);
+  --cached-fg: oklch(0.78 0.012 250);
+  --citation: oklch(0.74 0.1 240);
+  --citation-bg: oklch(0.28 0.05 240);
+  --citation-fg: oklch(0.9 0.05 240);
+  --highlight: oklch(0.42 0.1 95);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    /* Numbers line up in tables, footers and charts. */
+    font-variant-numeric: tabular-nums;
+  }
+  body {
+    /* The Geist variables are set on <body> by next/font, so the family
+       must be applied here, not on <html>. */
+    @apply bg-background font-sans text-foreground;
+  }
+  /* Keyboard users always see where they are. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+  ::selection {
+    background: var(--citation-bg);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* Inline [n] citation chips inside answer prose. */
+  .cite-chip {
+    @apply inline-flex h-5 min-w-5 items-center justify-center rounded-sm border border-citation/40 bg-citation-bg px-1 align-baseline font-mono text-[11px] font-semibold leading-none text-citation-fg transition-colors hover:bg-citation hover:text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring;
+  }
+  .cite-chip[data-active="true"] {
+    @apply bg-citation text-primary-foreground;
+  }
+  /* The supporting sentence inside a source passage. */
+  .passage-highlight {
+    @apply rounded-sm bg-highlight px-0.5 box-decoration-clone;
+  }
+  .prose-answer {
+    @apply text-[15px] leading-7 text-foreground;
+  }
+  .prose-answer p + p {
+    @apply mt-3;
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+}
