@@ -49,10 +49,10 @@ jobs:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
       REDIS_URL: redis://localhost:6379/0
       SUPABASE_URL: https://example.supabase.co
-      SUPABASE_ANON_KEY: ci
-      SUPABASE_SERVICE_ROLE_KEY: ci
+      SUPABASE_ANON_KEY: ci-placeholder-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
       COHERE_API_KEY: ci
-      ANTHROPIC_API_KEY: ci
+      ANTHROPIC_API_KEY: ci-placeholder-anthropic-key
       LANGSMITH_API_KEY: ci
       DEEPGRAM_API_KEY: ci
       ELEVENLABS_API_KEY: ci
@@ -84,6 +84,19 @@ jobs:
 
       - name: OpenAPI schema is current
         run: uv run python -m scripts.export_openapi --check
+
+      # The integration suites answer real questions over the shared corpus:
+      # they assert citations, contradictions, cache hits and that dense
+      # search uses the HNSW index. A developer's database holds an ingested
+      # corpus, so they pass locally; the runner's is empty, so sixteen of
+      # them failed here on every run since this workflow reached GitHub.
+      # The same committed snapshot the golden gate uses fixes that — about
+      # two thousand documents, embedded locally, no key and no network.
+      - name: Migrate (local Supabase shim)
+        run: uv run python -m scripts.migrate --local-shim
+
+      - name: Load the corpus snapshot and embed it locally
+        run: uv run python -m evals.golden.snapshot load --embedder local
 
       - name: Tests (pytest, incl. RLS isolation suite)
         run: uv run pytest -q
@@ -119,10 +132,10 @@ jobs:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
           REDIS_URL: redis://localhost:6379/0
           SUPABASE_URL: https://example.supabase.co
-          SUPABASE_ANON_KEY: ci
-          SUPABASE_SERVICE_ROLE_KEY: ci
+          SUPABASE_ANON_KEY: ci-placeholder-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
           COHERE_API_KEY: ci
-          ANTHROPIC_API_KEY: ci
+          ANTHROPIC_API_KEY: ci-placeholder-anthropic-key
           LANGSMITH_API_KEY: ci
           DEEPGRAM_API_KEY: ci
           ELEVENLABS_API_KEY: ci
@@ -186,10 +199,10 @@ jobs:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
       REDIS_URL: redis://localhost:6379/0
       SUPABASE_URL: https://example.supabase.co
-      SUPABASE_ANON_KEY: ci
-      SUPABASE_SERVICE_ROLE_KEY: ci
+      SUPABASE_ANON_KEY: ci-placeholder-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
       COHERE_API_KEY: ci
-      ANTHROPIC_API_KEY: ci
+      ANTHROPIC_API_KEY: ci-placeholder-anthropic-key
       LANGSMITH_API_KEY: ci
       DEEPGRAM_API_KEY: ci
       ELEVENLABS_API_KEY: ci
@@ -247,10 +260,10 @@ jobs:
           DATABASE_URL: postgresql://unused:unused@localhost:5432/unused
           REDIS_URL: redis://localhost:6379/0
           SUPABASE_URL: https://example.supabase.co
-          SUPABASE_ANON_KEY: ci
-          SUPABASE_SERVICE_ROLE_KEY: ci
+          SUPABASE_ANON_KEY: ci-placeholder-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
           COHERE_API_KEY: ci
-          ANTHROPIC_API_KEY: ci
+          ANTHROPIC_API_KEY: ci-placeholder-anthropic-key
           LANGSMITH_API_KEY: ci
           DEEPGRAM_API_KEY: ci
           ELEVENLABS_API_KEY: ci

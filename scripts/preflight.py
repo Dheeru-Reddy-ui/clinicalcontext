@@ -13,6 +13,14 @@ order, and prints one table.
 The frontend build gets CI's placeholder origins because lib/csp.ts refuses
 to build a production bundle whose Content-Security-Policy points at
 localhost; a developer's .env.local usually does.
+
+One difference this cannot paper over: pytest here runs against your own
+database, which holds an ingested corpus, while the runner's starts empty.
+The integration suites assert citations, contradictions and index use, so
+they pass here and fail there. CI loads the committed snapshot
+(evals/golden/snapshot) before pytest for exactly that reason. To see what
+the runner sees, point TEST_DATABASE_URL at an empty database, migrate it,
+and load that snapshot into it first.
 """
 
 from __future__ import annotations
