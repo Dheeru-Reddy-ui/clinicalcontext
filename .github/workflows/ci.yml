@@ -39,6 +39,24 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
+    # The application validates its whole configuration at import, so every
+    # step that imports it — the OpenAPI export, the adversarial gate — needs
+    # the required variables present, not only the test suite (which sets
+    # its own defaults in conftest). A local checkout has a .env that hides
+    # this; a runner does not.
+    env:
+      ENVIRONMENT: local
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      REDIS_URL: redis://localhost:6379/0
+      SUPABASE_URL: https://example.supabase.co
+      SUPABASE_ANON_KEY: ci
+      SUPABASE_SERVICE_ROLE_KEY: ci
+      COHERE_API_KEY: ci
+      ANTHROPIC_API_KEY: ci
+      LANGSMITH_API_KEY: ci
+      DEEPGRAM_API_KEY: ci
+      ELEVENLABS_API_KEY: ci
+      AI_BACKEND: offline
     steps:
       - uses: actions/checkout@v4
 
@@ -268,10 +286,13 @@ jobs:
         run: pnpm exec tsc --noEmit
 
       # A production build refuses a localhost API origin on purpose (the
-      # CSP is derived from it — next.config.ts). This build is a compile
-      # check, not a deployment, so it gets a reserved name that can never
-      # be mistaken for a real host.
+      # CSP is derived from it — next.config.ts), and prerendering /login
+      # constructs a Supabase client, which refuses a missing URL or key.
+      # This build is a compile check, not a deployment, so it gets reserved
+      # names that can never be mistaken for a real host.
       - name: Build (next build)
         run: pnpm build
         env:
           NEXT_PUBLIC_API_URL: https://api.ci-build.invalid
+          NEXT_PUBLIC_SUPABASE_URL: https://ci-build.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-build-placeholder

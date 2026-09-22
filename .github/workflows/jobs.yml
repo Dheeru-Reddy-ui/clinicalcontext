@@ -60,36 +60,52 @@ jobs:
       ENVIRONMENT: production
       LOG_LEVEL: INFO
     steps:
+      # Until the repository secrets exist (docs/FIRST-DEPLOY.md, phase 7)
+      # there is nothing to connect to; say so and stop, rather than fail
+      # every night with a traceback about a missing variable.
+      - id: gate
+        name: Are the secrets configured?
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::notice::PRODUCTION_DATABASE_URL is not set; the jobs have nothing to run against yet."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.gate.outputs.configured == 'true'
 
       - name: Install uv
+        if: steps.gate.outputs.configured == 'true'
         run: pipx install uv
 
       - name: Install dependencies
+        if: steps.gate.outputs.configured == 'true'
         working-directory: backend
         run: uv sync --locked --no-dev
 
       - name: Living answers (nightly)
-        if: github.event.schedule == '17 3 * * *' || github.event.inputs.job == 'living-answers'
+        if: steps.gate.outputs.configured == 'true' && (github.event.schedule == '17 3 * * *' || github.event.inputs.job == 'living-answers')
         working-directory: backend
         run: uv run python -m scripts.jobs living-answers --limit 500
 
       - name: Weekly digest
-        if: github.event.schedule == '23 6 * * 1' || github.event.inputs.job == 'weekly-digest'
+        if: steps.gate.outputs.configured == 'true' && (github.event.schedule == '23 6 * * 1' || github.event.inputs.job == 'weekly-digest')
         working-directory: backend
         run: uv run python -m scripts.jobs weekly-digest
 
       - name: Corpus freshness (weekly)
-        if: github.event.schedule == '23 6 * * 1' || github.event.inputs.job == 'corpus-freshness'
+        if: steps.gate.outputs.configured == 'true' && (github.event.schedule == '23 6 * * 1' || github.event.inputs.job == 'corpus-freshness')
         working-directory: backend
         run: uv run python -m scripts.jobs corpus-freshness
 
       - name: Deliver webhooks (on demand)
-        if: github.event.inputs.job == 'deliver-webhooks'
+        if: steps.gate.outputs.configured == 'true' && (github.event.inputs.job == 'deliver-webhooks')
         working-directory: backend
         run: uv run python -m scripts.jobs deliver-webhooks --limit 500
 
       - name: Rebuild MeSH index (after an ingest)
-        if: github.event.inputs.job == 'rebuild-mesh'
+        if: steps.gate.outputs.configured == 'true' && (github.event.inputs.job == 'rebuild-mesh')
         working-directory: backend
         run: uv run python -m scripts.jobs rebuild-mesh
