@@ -34,7 +34,7 @@ paths = [
   # scan (--no-git) would otherwise audit the developer's own machine.
   # `.env.example` — the file that *is* committed — is still scanned.
   '''(^|/)\.env$''',
-  '''(^|/)\.env\.(local|development|production|test|staging|deploy)$''',
+  '''(^|/)\.env\.(local|development|production|test|staging|deploy|render)$''',
 ]
 
 # The placeholders in .env.example are the point of the file: they show the
