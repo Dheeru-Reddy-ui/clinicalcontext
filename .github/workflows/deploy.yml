@@ -63,6 +63,32 @@ jobs:
       # been applied fails the run rather than silently diverging. Runs
       # before the code that needs it: the previous release keeps serving on
       # the new schema, which additive migrations guarantee is safe.
+      # Each of these is a repository secret. An unset one arrives as an
+      # empty string, and every step below would then fail somewhere deep —
+      # migrate falls through to the application's own configuration and
+      # reports every missing API key instead of the one thing that is
+      # actually wrong. Say it plainly, once, before anything runs.
+      - name: Check the deploy secrets are present
+        env:
+          PRODUCTION_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          missing=""
+          for name in PRODUCTION_DATABASE_URL RENDER_DEPLOY_HOOK_URL VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            eval "value=\${$name}"
+            [ -n "$value" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing"
+            echo "Add them under Settings -> Secrets and variables -> Actions."
+            echo "docs/FIRST-DEPLOY.md lists where each value comes from."
+            exit 1
+          fi
+          echo "all five deploy secrets are present"
+
       - name: Apply migrations
         env:
           DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}

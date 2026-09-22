@@ -403,6 +403,23 @@ Then **Settings → Environments → New environment: `production`** → **Requi
 reviewers** → yourself. That is the manual gate: the deploy job waits for
 your approval every time.
 
+The first step of the deploy job checks all five secrets are present and
+stops with their names if any is missing, rather than failing later inside
+a migration.
+
+**Until those secrets exist**, the frontend still deploys on its own —
+Vercel's Git integration builds every push to `main` — but the API does
+not: `render.yaml` sets `autoDeployTrigger: "off"`, so Render only builds
+when the deploy hook is called. To ship the API by hand in the meantime:
+Render dashboard → the `clinicalcontext-api` service → **Manual Deploy →
+Deploy latest commit**. Watch `/health` until `release` matches the commit
+you pushed.
+
+A frontend that is newer than the API is the one state worth knowing about:
+the sign-up form says so plainly when it finds an API without
+`/api/public/signup`, rather than failing as though the account details
+were wrong.
+
 **Check:** Actions → **Scheduled jobs → Run workflow → `living-answers`**. It
 should finish green in a couple of minutes and print a tally. Then push a
 trivial commit and watch **Deploy** wait for your approval, deploy, wait for
