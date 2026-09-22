@@ -34,11 +34,16 @@ const CONTENTS: { href: string; label: string }[] = [
   { href: "#limitations", label: "Limitations" },
 ];
 
+// The page renders without a report (each section says so) rather than
+// waiting on a sleeping API — see app/page.tsx for why this is bounded.
+const SERVER_FETCH_DEADLINE_MS = 8_000;
+
 async function loadEval<T>(name: string): Promise<T | null> {
   try {
     const response = await fetch(apiUrl(`/api/public/evals/${name}`), {
       cache: "no-store",
       headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(SERVER_FETCH_DEADLINE_MS),
     });
     if (!response.ok) return null;
     return (await response.json()) as T;

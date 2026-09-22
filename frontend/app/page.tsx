@@ -11,11 +11,21 @@ import type { Schemas } from "@/lib/domain";
  * methodology page, system health.
  */
 
+/**
+ * Bounded: this page must never wait on the API. A sleeping free-tier
+ * instance takes up to two minutes to wake, and an unbounded await here
+ * held the whole response — no headers, no bytes — for that long, which
+ * looks like an outage. Past the deadline the panel takes over on the
+ * client: it wakes the API itself and says so.
+ */
+const SERVER_FETCH_DEADLINE_MS = 3_000;
+
 async function loadDemoQuestions(): Promise<Schemas["DemoQuestion"][]> {
   try {
     const response = await fetch(apiUrl("/api/public/demo/questions"), {
       cache: "no-store",
       headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(SERVER_FETCH_DEADLINE_MS),
     });
     if (!response.ok) return [];
     return ((await response.json()) as Schemas["DemoQuestionsOut"]).questions;
@@ -52,13 +62,7 @@ export default async function Home() {
         </div>
       </header>
 
-      {questions.length > 0 ? (
-        <DemoPanel questions={questions} />
-      ) : (
-        <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-          The live demo is unavailable — the API could not be reached from this page.
-        </p>
-      )}
+      <DemoPanel questions={questions} />
 
       <section className="grid gap-4 text-sm sm:grid-cols-3" aria-label="What makes it different">
         <div className="space-y-1">

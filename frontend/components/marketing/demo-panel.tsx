@@ -24,19 +24,39 @@ type DemoAnswer = Schemas["DemoAnswerOut"];
  * disagree. The endpoint is rate-limited per visitor; when the limit is hit
  * the page says so.
  */
-export function DemoPanel({ questions }: { questions: DemoQuestion[] }) {
-  const [picked, setPicked] = useState<DemoQuestion | null>(questions[0] ?? null);
+/**
+ * Waking a sleeping API. On a free tier the instance stops after fifteen
+ * quiet minutes and takes up to two minutes to start again; the visit that
+ * finds it asleep is the one that wakes it. The server render gives up
+ * quickly (app/page.tsx) and hands the panel an empty list; the panel then
+ * polls for the questions itself and says what it is waiting for, instead
+ * of the page hanging or claiming an outage. Give up after WAKE_DEADLINE_MS.
+ */
+const WAKE_POLL_MS = 5_000;
+const WAKE_ATTEMPT_TIMEOUT_MS = 25_000;
+const WAKE_DEADLINE_MS = 4 * 60_000;
+// A single answer normally takes about a second; past this the wait is the
+// instance starting, and the status line says so.
+const SLOW_ANSWER_MS = 8_000;
+
+export function DemoPanel({ questions: initial }: { questions: DemoQuestion[] }) {
+  const [questions, setQuestions] = useState<DemoQuestion[]>(initial);
+  const [picked, setPicked] = useState<DemoQuestion | null>(initial[0] ?? null);
   const [answer, setAnswer] = useState<DemoAnswer | null>(null);
   const [busy, setBusy] = useState(false);
+  const [slow, setSlow] = useState(false);
+  const [waking, setWaking] = useState(initial.length === 0);
   const [error, setError] = useState<string | null>(null);
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
   const sourcesRef = useRef<HTMLOListElement>(null);
 
   const run = useCallback(async (q: DemoQuestion) => {
     setBusy(true);
+    setSlow(false);
     setError(null);
     setAnswer(null);
     setActiveMarker(null);
+    const slowTimer = setTimeout(() => setSlow(true), SLOW_ANSWER_MS);
     try {
       const response = await fetch(apiUrl("/api/public/demo"), {
         method: "POST",
@@ -56,6 +76,8 @@ export function DemoPanel({ questions }: { questions: DemoQuestion[] }) {
     } catch {
       setError("The API is not reachable from this page.");
     } finally {
+      clearTimeout(slowTimer);
+      setSlow(false);
       setBusy(false);
     }
   }, []);
@@ -65,6 +87,45 @@ export function DemoPanel({ questions }: { questions: DemoQuestion[] }) {
     if (picked && !answer && !busy && !error) void run(picked);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    // No questions from the server: the API was asleep. Poll until it answers.
+    if (!waking) return;
+    let cancelled = false;
+    const started = Date.now();
+    const attempt = async (): Promise<void> => {
+      if (cancelled) return;
+      try {
+        const response = await fetch(apiUrl("/api/public/demo/questions"), {
+          headers: { Accept: "application/json" },
+          signal: AbortSignal.timeout(WAKE_ATTEMPT_TIMEOUT_MS),
+        });
+        if (response.ok) {
+          const loaded = ((await response.json()) as Schemas["DemoQuestionsOut"]).questions;
+          if (cancelled) return;
+          setQuestions(loaded);
+          setWaking(false);
+          const first = loaded[0] ?? null;
+          setPicked(first);
+          if (first) void run(first);
+          return;
+        }
+      } catch {
+        // Not up yet, or this attempt timed out — try again below.
+      }
+      if (cancelled) return;
+      if (Date.now() - started > WAKE_DEADLINE_MS) {
+        setWaking(false);
+        setError("The API did not wake up in time. Reload the page to try again.");
+        return;
+      }
+      setTimeout(() => void attempt(), WAKE_POLL_MS);
+    };
+    void attempt();
+    return () => {
+      cancelled = true;
+    };
+  }, [waking, run]);
 
   const citations: Citation[] = (answer?.citations ?? []).map((c) => ({
     marker: Number(c.marker),
@@ -120,10 +181,18 @@ export function DemoPanel({ questions }: { questions: DemoQuestion[] }) {
         ))}
       </div>
 
+      {waking && (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status" data-testid="demo-waking">
+          <Loader2 className="size-4 animate-spin" aria-hidden /> Waking the API — it sleeps after fifteen quiet minutes
+          and takes up to two minutes to start. Your visit is what wakes it.
+        </p>
+      )}
       {busy && (
         <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
-          <Loader2 className="size-4 animate-spin" aria-hidden /> Retrieving, grading, and checking the sources against
-          each other…
+          <Loader2 className="size-4 animate-spin" aria-hidden />{" "}
+          {slow
+            ? "Still working — the API is starting up, which takes up to two minutes on the free tier. The answer follows."
+            : "Retrieving, grading, and checking the sources against each other…"}
         </p>
       )}
       {error && (
