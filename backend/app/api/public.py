@@ -1,9 +1,14 @@
-"""Unauthenticated, read-only surface — deliberately outside ``/api/v1``.
+"""Unauthenticated surface — deliberately outside ``/api/v1``.
 
-Every ``/api/v1`` route requires a credential (enforced by a test sweep). The
-few things a logged-out reader may see live here, and each one enforces its
-own gates explicitly rather than relying on RLS, because there is no tenant
-context to run under.
+Every ``/api/v1`` route requires a credential. The few things someone with
+no session may reach live here, and each one enforces its own gates
+explicitly rather than relying on RLS, because there is no tenant context to
+run under.
+
+Mostly reading: a shared answer, the published eval results, the demo. The
+one exception is ``/signup``, which creates an account — the only way in for
+somebody who does not have one yet. It is rate limited per client address
+and per email, and it is the only route here that writes.
 """
 
 from __future__ import annotations
@@ -19,8 +24,10 @@ from app.core.errors import NotFoundError, RateLimitError
 from app.core.ratelimit import RateLimiter
 from app.schemas.demo import DemoAnswerOut, DemoQuestionsOut, DemoRequest
 from app.schemas.sharing import PublicAnswerOut
+from app.schemas.signup import SignupOut, SignupRequest
 from app.services.demo import DEMO_QUESTIONS, DemoService, demo_question
 from app.services.sharing import SharingService
+from app.services.signup import SignupService
 
 router = APIRouter(prefix="/api/public", tags=["public"])
 
@@ -32,6 +39,11 @@ _ANON_PER_MINUTE = 120
 # load the API.
 _DEMO_PER_MINUTE = 6
 _DEMO_GLOBAL_PER_MINUTE = 60
+# Creating accounts is rare for a person and attractive to a bot. The
+# per-address bucket also blunts the enumeration oracle that telling
+# somebody "this email already exists" necessarily opens.
+_SIGNUP_PER_MINUTE = 5
+_SIGNUP_PER_EMAIL_PER_MINUTE = 3
 
 
 async def _anon_rate_limit(
@@ -116,3 +128,32 @@ async def demo_ask(
     if question is None:
         raise NotFoundError(f"unknown demo question {body.question_id!r}")
     return await DemoService(pool, redis).ask(question)
+
+
+@router.post("/signup", dependencies=[Depends(_anon_rate_limit)])
+async def public_signup(
+    body: SignupRequest,
+    request: Request,
+    redis: Annotated[Any, Depends(get_redis_client)],
+) -> SignupOut:
+    """Create an account, without Supabase needing to send anything.
+
+    The browser signs in straight afterwards with the same password, so no
+    session is minted here. See ``app/services/signup.py`` for why sign-up
+    does not go directly from the browser to Supabase.
+    """
+    limiter = RateLimiter(redis)
+    client = request.client.host if request.client else "unknown"
+    email = body.email.strip().lower()
+    for key, limit in (
+        (f"rl:signup:{client}", _SIGNUP_PER_MINUTE),
+        (f"rl:signup:e:{email}", _SIGNUP_PER_EMAIL_PER_MINUTE),
+    ):
+        ok, retry_after = await limiter.hit(key, limit)
+        if not ok:
+            raise RateLimitError("too many sign-up attempts", retry_after=retry_after)
+
+    await SignupService().create_user(
+        email=email, password=body.password, full_name=body.full_name.strip()
+    )
+    return SignupOut(email=email)

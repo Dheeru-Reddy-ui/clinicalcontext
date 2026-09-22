@@ -45,6 +45,26 @@ class NotFoundError(ClinicalContextError):
     default_message = "The requested resource was not found."
 
 
+class InvalidRequestError(ClinicalContextError):
+    status_code = 400
+    error_code = "invalid_request"
+    default_message = "The request was not valid."
+
+
+class EmailExistsError(ClinicalContextError):
+    """Sign-up with an address that already has an account.
+
+    Deliberately distinguishable: the person typing their own email is told
+    plainly, rather than left to guess, which is the behaviour the product
+    asks for. It does mean the endpoint confirms whether an address is
+    registered, so it is rate limited per address as well as per client.
+    """
+
+    status_code = 409
+    error_code = "email_exists"
+    default_message = "An account with this email already exists."
+
+
 class AuthError(ClinicalContextError):
     status_code = 401
     error_code = "auth_error"

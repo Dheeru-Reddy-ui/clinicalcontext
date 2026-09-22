@@ -308,11 +308,26 @@ Configuration**. Set **Site URL** to your Vercel origin and add
 `https://<your-app>.vercel.app/**` to **Redirect URLs**. Without this, magic
 links bounce to localhost and sign-in silently fails for everyone but you.
 
-**An email provider — or nobody gets a sign-up email.** Supabase's built-in
-mailer only delivers to the email addresses of your own Supabase team, and
-only two messages an hour; every other recipient's confirmation, magic link
-and password reset are silently refused. That is Supabase's stated policy,
-not a bug you can fix in the app. The free way around it, no card:
+**Email is optional, and only these two things need it.** Sign-up and
+password sign-in work with no mail provider at all: the API creates the
+account itself with the service-role key (`backend/app/services/signup.py`),
+so Supabase never has to send a confirmation. What still needs email is the
+**magic link** and **forgot password** — a password reset cannot be done
+safely any other way. Both say plainly when delivery is not configured.
+
+The reason it works this way: Supabase's built-in mailer only delivers to
+the addresses of your own Supabase team, two messages an hour, and answers
+`500 Error sending confirmation email` for everyone else. That is Supabase's
+stated policy, not a bug in the app, and it made the deployment's first
+sign-up impossible.
+
+The trade-off is that an address is not proven to belong to whoever typed
+it — the same posture as Supabase's own "Confirm email" switch turned off.
+It is acceptable here because the product holds no patient data and a new
+account grants nothing but an empty organisation.
+
+**To turn email on anyway** (free, no card) — needed for magic links and
+password resets:
 
 1. [Brevo](https://www.brevo.com) → free account → **Senders & IP → Senders**
    → add and verify the address you will send from (they email you a link).
@@ -324,14 +339,19 @@ not a bug you can fix in the app. The free way around it, no card:
 4. Supabase → **Authentication → Rate Limits** → emails per hour: raise from
    the default 30 if you expect more sign-ups than that.
 
-Optional but worth it: **Authentication → Email Templates** — add the line
-`Your code: {{ .Token }}` to the *Confirm signup*, *Magic Link* and *Reset
-Password* templates. Every "check your email" screen in the app accepts that
-6-digit code as well as the link, which is the way through when a link is
-opened on a different device from the one that asked for it.
+Worth doing at the same time: **Authentication → Email Templates** — add the
+line `Your code: {{ .Token }}` to the *Magic Link* and *Reset Password*
+templates. Every "check your email" screen accepts that 6-digit code as well
+as the link, which is the way through when a link is opened on a different
+device from the one that asked for it.
 
-**Check:** sign in with a magic link, end to end, from the deployed frontend.
-That one flow exercises Supabase auth, the cookie flags, CORS, and the tenant
+**To require verified emails once SMTP works**, have the sign-up form call
+`supabase.auth.signUp` directly again (it is a few lines in
+`frontend/app/(auth)/signup/page.tsx`) and delete the `/api/public/signup`
+endpoint with its service.
+
+**Check:** sign up on the deployed frontend and land in the app. That
+exercises the API, Supabase auth, the cookie flags, CORS, and the tenant
 provisioning that runs on first sign-in.
 
 ---
@@ -405,7 +425,8 @@ the new release, and smoke-test it.
 | Blank frontend, `Refused to connect` in the console | `NEXT_PUBLIC_API_URL` disagrees with the deployed API origin. |
 | Browser calls fail with a CORS error | `CORS_ORIGINS` in `render.yaml` is not exactly the Vercel origin. |
 | Magic links go to localhost | Supabase redirect allow-list — step 6. |
-| Sign-up / magic link / reset email never arrives | Supabase's built-in mailer only sends to your own team's addresses, 2/hour. Custom SMTP — step 6. |
+| Magic link / reset email never arrives | Supabase's built-in mailer only sends to your own team's addresses, 2/hour. Custom SMTP — step 6. Sign-up itself does not need email. |
+| Sign-up hangs for a minute or two | The free-tier API had gone to sleep. The form wakes it when it loads; the wait is the instance starting. |
 | "That link was opened in a different browser" | The link was requested on one device and opened on another. Enter the 6-digit code from the email instead. |
 | Voice page fails immediately | Expected without Deepgram + ElevenLabs. |
 | Everything worked, now `/ready` fails on the database | Free Supabase project paused after 7 idle days. Restore it in the dashboard. |

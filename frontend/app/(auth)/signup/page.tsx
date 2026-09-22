@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,12 +14,16 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { OtpForm } from "@/components/auth/otp-form";
+import { createAccount, warmApi } from "@/lib/signup";
 import { createClient } from "@/lib/supabase/client";
 import { describeAuthError } from "@/lib/supabase/errors";
 
 const ALREADY_REGISTERED =
   "An account with this email already exists. Sign in instead, or reset your password if you have forgotten it.";
+
+// A sign-up normally takes well under a second; past this the wait is the
+// sleeping free-tier API starting up, and the form says so.
+const SLOW_MS = 8_000;
 
 function onboardingPathFor(inviteToken: string | null): string {
   return inviteToken ? `/onboarding?invite=${encodeURIComponent(inviteToken)}` : "/onboarding";
@@ -38,49 +42,49 @@ function SignupForm() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
-  const [confirmationSent, setConfirmationSent] = useState(false);
+  const [slow, setSlow] = useState(false);
+
+  // The API sleeps after fifteen quiet minutes and takes up to two to start.
+  // Waking it while the form is being filled in keeps that wait off the
+  // submit button.
+  useEffect(warmApi, []);
 
   async function signUp(event: FormEvent) {
     event.preventDefault();
     setPending(true);
     setError(null);
     setAlreadyRegistered(false);
+    setSlow(false);
+    // Past this the wait is the free-tier instance starting, not the work.
+    const slowTimer = setTimeout(() => setSlow(true), SLOW_MS);
 
-    const onboardingPath = onboardingPathFor(inviteToken);
-
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(onboardingPath)}`,
-      },
-    });
-    setPending(false);
-    if (signUpError) {
-      // With email confirmation off, a duplicate is a plain error.
-      if (/already registered/i.test(signUpError.message)) {
+    // Create the account through our API (no email involved), then sign in
+    // with the same password so Supabase mints the session into this browser.
+    const created = await createAccount({ email, password, fullName });
+    clearTimeout(slowTimer);
+    setSlow(false);
+    if (!created.ok) {
+      setPending(false);
+      if (created.kind === "exists") {
         setAlreadyRegistered(true);
         return;
       }
-      setError(describeAuthError(signUpError, "sign-up"));
+      setError(created.message);
       return;
     }
-    if (data.session) {
-      // Email confirmation disabled → straight to onboarding.
-      router.push(onboardingPath);
-      router.refresh();
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    setPending(false);
+    if (signInError) {
+      // The account exists now, so send them to sign in rather than leaving
+      // them on a form that would report the address as taken.
+      setError(
+        `${describeAuthError(signInError, "sign-in")} Your account was created — try signing in.`,
+      );
       return;
     }
-    // With email confirmation on, Supabase answers a duplicate with a
-    // success that carries a user with no identities, so that the response
-    // alone does not reveal who has an account. The person typing their own
-    // email deserves a straight answer, though.
-    if (data.user && (data.user.identities?.length ?? 0) === 0) {
-      setAlreadyRegistered(true);
-      return;
-    }
-    setConfirmationSent(true);
+    router.push(onboardingPathFor(inviteToken));
+    router.refresh();
   }
 
   return (
@@ -94,17 +98,7 @@ function SignupForm() {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {confirmationSent ? (
-          <div className="flex flex-col gap-4">
-            <p className="text-sm">
-              Confirmation email sent to{" "}
-              <span className="font-medium">{email}</span>. Follow the link to
-              continue. If it has not arrived in a few minutes, check the spam
-              folder.
-            </p>
-            <OtpForm email={email} kind="email" next={onboardingPathFor(inviteToken)} />
-          </div>
-        ) : alreadyRegistered ? (
+        {alreadyRegistered ? (
           <div className="flex flex-col gap-3" role="alert" data-testid="already-registered">
             <p className="text-sm">{ALREADY_REGISTERED}</p>
             <div className="flex flex-wrap gap-3 text-sm">
@@ -164,6 +158,12 @@ function SignupForm() {
                 required
               />
             </div>
+            {slow && (
+              <p className="text-sm text-muted-foreground" role="status">
+                Still working — the server sleeps after fifteen quiet minutes and takes up to
+                two to start. Your details are safe; this finishes on its own.
+              </p>
+            )}
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" disabled={pending}>
               {pending ? "Creating account…" : "Sign up"}
