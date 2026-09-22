@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
+import { describeAuthError } from "@/lib/supabase/errors";
 
 type OtpKind = "email" | "recovery";
 
@@ -38,7 +39,7 @@ export function OtpForm({ email, kind, next }: { email: string; kind: OtpKind; n
     });
     setPending(false);
     if (verifyError) {
-      setError(verifyError.message);
+      setError(describeAuthError(verifyError, "code"));
       return;
     }
     router.push(next);

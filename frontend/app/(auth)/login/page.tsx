@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { OtpForm } from "@/components/auth/otp-form";
 import { createClient } from "@/lib/supabase/client";
+import { describeAuthError } from "@/lib/supabase/errors";
 
 // What the auth callback says when a link did not work; shown here so a
 // failed link is a sentence, not a silent return to the form.
@@ -54,7 +55,7 @@ function LoginForm() {
     });
     setPending(false);
     if (signInError) {
-      setError(signInError.message);
+      setError(describeAuthError(signInError, "sign-in"));
       return;
     }
     router.push(next);
@@ -76,7 +77,7 @@ function LoginForm() {
     });
     setPending(false);
     if (otpError) {
-      setError(otpError.message);
+      setError(describeAuthError(otpError, "magic-link"));
       return;
     }
     setMagicLinkSent(true);

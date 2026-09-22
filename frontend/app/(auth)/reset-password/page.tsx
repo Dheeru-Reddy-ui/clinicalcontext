@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
+import { describeAuthError } from "@/lib/supabase/errors";
 
 /**
  * Forgot password, step two. Reachable only with the session a reset link
@@ -42,7 +43,7 @@ export default function ResetPasswordPage() {
     const { error: updateError } = await supabase.auth.updateUser({ password });
     setPending(false);
     if (updateError) {
-      setError(updateError.message);
+      setError(describeAuthError(updateError, "new-password"));
       return;
     }
     toast.success("Your password has been changed.");

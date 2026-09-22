@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { OtpForm } from "@/components/auth/otp-form";
 import { createClient } from "@/lib/supabase/client";
+import { describeAuthError } from "@/lib/supabase/errors";
 
 const ALREADY_REGISTERED =
   "An account with this email already exists. Sign in instead, or reset your password if you have forgotten it.";
@@ -62,7 +63,7 @@ function SignupForm() {
         setAlreadyRegistered(true);
         return;
       }
-      setError(signUpError.message);
+      setError(describeAuthError(signUpError, "sign-up"));
       return;
     }
     if (data.session) {

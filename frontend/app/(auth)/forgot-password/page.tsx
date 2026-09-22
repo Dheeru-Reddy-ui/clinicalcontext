@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
+import { describeAuthError } from "@/lib/supabase/errors";
 
 /**
  * Forgot password, step one: the email. Supabase sends a reset link (and a
@@ -41,7 +42,7 @@ function ForgotPasswordForm() {
     });
     setPending(false);
     if (resetError) {
-      setError(resetError.message);
+      setError(describeAuthError(resetError, "password-reset"));
       return;
     }
     setSent(true);
