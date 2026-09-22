@@ -4,7 +4,7 @@ import { cookieOptions } from "@/lib/supabase/cookies";
 import { supabaseUrl } from "@/lib/supabase/env";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_PREFIXES = ["/app", "/onboarding"];
+const PROTECTED_PREFIXES = ["/app", "/onboarding", "/reset-password"];
 const AUTH_PAGES = ["/login", "/signup"];
 
 /**
@@ -66,8 +66,15 @@ export async function updateSession(request: NextRequest, requestHeaders: Header
 
   if (needsAuth && !isAuthenticated) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
     url.search = "";
+    if (path.startsWith("/reset-password")) {
+      // Only a password-reset link can open this page; without a session
+      // the link has expired or was used, and a fresh one is the fix.
+      url.pathname = "/login";
+      url.searchParams.set("error", "password_reset_expired");
+      return NextResponse.redirect(url);
+    }
+    url.pathname = "/login";
     url.searchParams.set("next", path);
     return NextResponse.redirect(url);
   }

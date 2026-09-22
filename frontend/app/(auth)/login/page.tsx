@@ -14,18 +14,34 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { OtpForm } from "@/components/auth/otp-form";
 import { createClient } from "@/lib/supabase/client";
+
+// What the auth callback says when a link did not work; shown here so a
+// failed link is a sentence, not a silent return to the form.
+const CALLBACK_MESSAGES: Record<string, string> = {
+  auth_callback_failed:
+    "That sign-in link did not work. It may have expired or already been used — request a new one below.",
+  password_reset_expired:
+    "That password-reset link has expired or was already used. Request a new one.",
+  different_browser:
+    "That link was opened in a different browser than the one that requested it. Open it where you asked for it, or request a new one here and enter the 6-digit code from the email instead.",
+};
 
 function LoginForm() {
   const supabase = useMemo(createClient, []);
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/app";
+  const callbackError = searchParams.get("error");
+  const notice = searchParams.get("message");
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    callbackError ? (CALLBACK_MESSAGES[callbackError] ?? callbackError) : null,
+  );
   const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   async function signInWithPassword(event: FormEvent) {
@@ -75,11 +91,19 @@ function LoginForm() {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {magicLinkSent ? (
-          <p className="text-sm">
-            Magic link sent to <span className="font-medium">{email}</span>.
-            Check your inbox.
+        {notice && (
+          <p className="text-sm" role="status">
+            {notice}
           </p>
+        )}
+        {magicLinkSent ? (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm">
+              Magic link sent to <span className="font-medium">{email}</span>.
+              Check your inbox — and the spam folder if it takes a few minutes.
+            </p>
+            <OtpForm email={email} kind="email" next={next} />
+          </div>
         ) : (
           <form onSubmit={signInWithPassword} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
@@ -118,6 +142,14 @@ function LoginForm() {
             </Button>
           </form>
         )}
+        <p className="text-sm text-muted-foreground">
+          <Link
+            className="underline underline-offset-4"
+            href={email ? `/forgot-password?email=${encodeURIComponent(email)}` : "/forgot-password"}
+          >
+            Forgot your password?
+          </Link>
+        </p>
         <p className="text-sm text-muted-foreground">
           No account?{" "}
           <Link className="underline underline-offset-4" href="/signup">

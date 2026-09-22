@@ -304,9 +304,31 @@ API and any other website's JavaScript; it has to be the exact origin, scheme
 included, no trailing slash.
 
 **Supabase's redirect allow-list.** Dashboard → **Authentication → URL
-Configuration**. Set **Site URL** to your Vercel origin and add it to
-**Redirect URLs**. Without this, magic links bounce to localhost and sign-in
-silently fails for everyone but you.
+Configuration**. Set **Site URL** to your Vercel origin and add
+`https://<your-app>.vercel.app/**` to **Redirect URLs**. Without this, magic
+links bounce to localhost and sign-in silently fails for everyone but you.
+
+**An email provider — or nobody gets a sign-up email.** Supabase's built-in
+mailer only delivers to the email addresses of your own Supabase team, and
+only two messages an hour; every other recipient's confirmation, magic link
+and password reset are silently refused. That is Supabase's stated policy,
+not a bug you can fix in the app. The free way around it, no card:
+
+1. [Brevo](https://www.brevo.com) → free account → **Senders & IP → Senders**
+   → add and verify the address you will send from (they email you a link).
+2. Brevo → **SMTP & API → SMTP** → note the server (`smtp-relay.brevo.com`),
+   port `587`, your login, and generate an **SMTP key**.
+3. Supabase → **Project Settings → Authentication → SMTP Settings** → enable
+   **Custom SMTP** → host, port, username, the SMTP key as the password,
+   and the verified address as sender. Save.
+4. Supabase → **Authentication → Rate Limits** → emails per hour: raise from
+   the default 30 if you expect more sign-ups than that.
+
+Optional but worth it: **Authentication → Email Templates** — add the line
+`Your code: {{ .Token }}` to the *Confirm signup*, *Magic Link* and *Reset
+Password* templates. Every "check your email" screen in the app accepts that
+6-digit code as well as the link, which is the way through when a link is
+opened on a different device from the one that asked for it.
 
 **Check:** sign in with a magic link, end to end, from the deployed frontend.
 That one flow exercises Supabase auth, the cookie flags, CORS, and the tenant
@@ -383,6 +405,8 @@ the new release, and smoke-test it.
 | Blank frontend, `Refused to connect` in the console | `NEXT_PUBLIC_API_URL` disagrees with the deployed API origin. |
 | Browser calls fail with a CORS error | `CORS_ORIGINS` in `render.yaml` is not exactly the Vercel origin. |
 | Magic links go to localhost | Supabase redirect allow-list — step 6. |
+| Sign-up / magic link / reset email never arrives | Supabase's built-in mailer only sends to your own team's addresses, 2/hour. Custom SMTP — step 6. |
+| "That link was opened in a different browser" | The link was requested on one device and opened on another. Enter the 6-digit code from the email instead. |
 | Voice page fails immediately | Expected without Deepgram + ElevenLabs. |
 | Everything worked, now `/ready` fails on the database | Free Supabase project paused after 7 idle days. Restore it in the dashboard. |
 | Deploy job times out "waiting for release" | Render's build failed or is slow — the service's Events tab says which. |

@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { contentSecurityPolicy, mintNonce, readCspEnvironment } from "@/lib/csp";
 import { updateSession } from "@/lib/supabase/middleware";
 
-const SESSION_ROUTES = ["/app", "/onboarding", "/login", "/signup"];
+const SESSION_ROUTES = ["/app", "/onboarding", "/login", "/signup", "/forgot-password", "/reset-password"];
 
 /**
  * Two jobs on every page request. A per-request Content-Security-Policy
