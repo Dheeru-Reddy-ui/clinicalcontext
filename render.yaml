@@ -52,9 +52,9 @@ services:
       # The frontend's origin — the only origin a browser may call this API
       # from. Exact scheme and host, no trailing slash.
       - key: CORS_ORIGINS
-        value: https://clinicalcontext.vercel.app
+        value: https://clinicalcontext-euev.vercel.app
       - key: APP_PUBLIC_URL
-        value: https://clinicalcontext.vercel.app
+        value: https://clinicalcontext-euev.vercel.app
       # Small pool per instance; the free tier is one instance.
       - key: DB_POOL_MIN_SIZE
         value: "1"

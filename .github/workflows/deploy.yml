@@ -37,7 +37,7 @@ permissions:
 
 env:
   API_URL: ${{ vars.API_URL || 'https://clinicalcontext-api.onrender.com' }}
-  WEB_URL: ${{ vars.WEB_URL || 'https://clinicalcontext.vercel.app' }}
+  WEB_URL: ${{ vars.WEB_URL || 'https://clinicalcontext-euev.vercel.app' }}
 
 jobs:
   production:
@@ -52,7 +52,7 @@ jobs:
     # a machine cannot pass on its own.
     environment:
       name: production
-      url: ${{ vars.WEB_URL || 'https://clinicalcontext.vercel.app' }}
+      url: ${{ vars.WEB_URL || 'https://clinicalcontext-euev.vercel.app' }}
     steps:
       - uses: actions/checkout@v4
 
