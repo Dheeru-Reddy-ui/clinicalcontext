@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState, type FormEvent } from "react";
 
+import { FormAlert } from "@/components/auth/form-alert";
 import { OtpForm } from "@/components/auth/otp-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,59 +50,57 @@ function ForgotPasswordForm() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Reset your password</CardTitle>
-        <CardDescription>
-          Enter the email you signed up with and we will send a link to choose a new password.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {sent ? (
-          <div className="flex flex-col gap-4">
-            <p className="text-sm" role="status">
-              If an account exists for <span className="font-medium">{email}</span>, a
-              password-reset email is on its way. Follow the link to choose a new
-              password. If it has not arrived in a few minutes, check the spam folder.
-            </p>
-            <OtpForm email={email} kind="recovery" next="/reset-password" />
+  <Card className="w-full max-w-md">
+    <CardHeader>
+      <CardTitle>Reset your password</CardTitle>
+      <CardDescription>
+        Enter the email you signed up with and we will send a link to choose a new password.
+      </CardDescription>
+    </CardHeader>
+    <CardContent className="flex flex-col gap-4">
+      {sent ? (
+        <div className="flex flex-col gap-4">
+          <FormAlert kind="success">
+            If an account exists for <span className="font-medium">{email}</span>, a
+            password-reset email is on its way. Follow the link to choose a new password. If it
+            has not arrived in a few minutes, check the spam folder.
+          </FormAlert>
+          <OtpForm email={email} kind="recovery" next="/reset-password" />
+        </div>
+      ) : (
+        <form onSubmit={requestReset} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </div>
-        ) : (
-          <form onSubmit={requestReset} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" disabled={pending}>
-              {pending ? "Sending…" : "Send reset link"}
-            </Button>
-          </form>
-        )}
-        <p className="text-sm text-muted-foreground">
-          Remembered it?{" "}
-          <Link className="underline underline-offset-4" href="/login">
-            Sign in
-          </Link>
-        </p>
-      </CardContent>
-    </Card>
+          {error && <FormAlert kind="error">{error}</FormAlert>}
+          <Button type="submit" disabled={pending}>
+            {pending ? "Sending…" : "Send reset link"}
+          </Button>
+        </form>
+      )}
+      <p className="text-sm text-muted-foreground">
+        Remembered it?{" "}
+        <Link className="underline underline-offset-4" href="/login">
+          Sign in
+        </Link>
+      </p>
+    </CardContent>
+  </Card>
   );
 }
 
 export default function ForgotPasswordPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <Suspense>
-        <ForgotPasswordForm />
-      </Suspense>
-    </main>
+    <Suspense>
+      <ForgotPasswordForm />
+    </Suspense>
   );
 }

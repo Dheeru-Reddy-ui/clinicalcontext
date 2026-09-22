@@ -21,6 +21,8 @@ const eslintConfig = [
     ignores: [
       "node_modules/**",
       ".next/**",
+      // scripts/preflight.py builds here so it cannot disturb a running dev server
+      ".next-preflight/**",
       "out/**",
       "build/**",
       "next-env.d.ts",

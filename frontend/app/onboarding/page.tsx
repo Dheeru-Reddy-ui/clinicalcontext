@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 
+import { FormAlert } from "@/components/auth/form-alert";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -75,7 +76,7 @@ function OnboardingContent() {
         </p>
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <FormAlert kind="error">{error}</FormAlert>}
 
       <Card>
         <CardHeader>
@@ -131,7 +132,15 @@ function OnboardingContent() {
 
 export default function OnboardingPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-8 px-4 py-10 sm:px-6">
+      {/* The same mark the sign-up screen ended on, so this reads as the next
+          step rather than a different product. */}
+      <span className="inline-flex items-center gap-2.5">
+        <span className="grid size-7 place-items-center rounded-sm bg-primary font-mono text-xs font-bold text-primary-foreground">
+          CC
+        </span>
+        <span className="font-semibold tracking-tight">ClinicalContext</span>
+      </span>
       <Suspense>
         <OnboardingContent />
       </Suspense>

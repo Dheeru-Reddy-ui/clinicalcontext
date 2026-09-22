@@ -11,6 +11,7 @@ import { AnswerView } from "@/components/answer/answer-view";
 import { PhiBlockedView, RedFlagBanner, ScopeBlockedView } from "@/components/answer/guardrail-view";
 import { QueryComposer } from "@/components/ask/query-composer";
 import { ReasoningSteps } from "@/components/ask/reasoning-steps";
+import { PageBody, PageHeader } from "@/components/clinical/page";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useAsk } from "@/hooks/use-ask";
@@ -88,51 +89,57 @@ export default function AskPage() {
   );
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-4 p-4 md:p-6">
+    <PageBody>
       <Suspense fallback={null}>
         <PrefillFromUrl onPrefill={retryWith} onSession={setHandoffSession} />
       </Suspense>
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Ask</h1>
-          <p className="text-sm text-muted-foreground">
-            Every claim is cited. Click any <span className="cite-chip mx-0.5" aria-hidden>n</span> to read the source.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            nativeButton={false}
-            render={<Link href={threadId ? `/app/voice?session=${threadId}` : "/app/voice"} />}
-            data-testid="ask-to-voice"
-          >
-            <Mic /> Voice
-          </Button>
-          {threadId && (state.phase !== "idle" || handoffSession) && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                nativeButton={false}
-                render={<Link href={`/app/sessions/${threadId}`} />}
-              >
-                <MessagesSquare /> This thread
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setHandoffSession(null);
-                  startOver();
-                }}
-              >
-                <RotateCcw /> New thread
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Ask"
+        description={
+          <>
+            Every claim is cited. Click any{" "}
+            <span className="cite-chip mx-0.5" aria-hidden>
+              n
+            </span>{" "}
+            to read the source.
+          </>
+        }
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<Link href={threadId ? `/app/voice?session=${threadId}` : "/app/voice"} />}
+              data-testid="ask-to-voice"
+            >
+              <Mic /> Voice
+            </Button>
+            {threadId && (state.phase !== "idle" || handoffSession) && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  nativeButton={false}
+                  render={<Link href={`/app/sessions/${threadId}`} />}
+                >
+                  <MessagesSquare /> This thread
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setHandoffSession(null);
+                    startOver();
+                  }}
+                >
+                  <RotateCcw /> New thread
+                </Button>
+              </>
+            )}
+          </>
+        }
+      />
 
       {handoffSession && state.phase === "idle" && (
         <p className="text-sm text-muted-foreground">
@@ -257,7 +264,7 @@ export default function AskPage() {
           )}
         </div>
       )}
-    </div>
+    </PageBody>
   );
 }
 

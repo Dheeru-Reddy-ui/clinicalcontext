@@ -17,7 +17,7 @@ test("sign up, create an organisation, and land in the app", async ({ page }) =>
   await page.goto("/signup");
   await page.getByLabel("Full name").fill("Dr E2E Tester");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign up" }).click();
 
   // A new account belongs to no organisation, so onboarding comes first.

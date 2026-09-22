@@ -1,15 +1,18 @@
 "use client";
 
+import { BarChart3 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-import { ErrorState, PageBody, PageHeader } from "@/components/clinical/page";
-import { useAuth } from "@/components/providers/auth-provider";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { EmptyState, ErrorState, PageBody, PageHeader } from "@/components/clinical/page";
 import { CostCard } from "@/components/dashboard/cost-card";
 import { CalibrationCard } from "@/components/evals/calibration-card";
 import { ReviewQueue } from "@/components/evals/review-queue";
+import { useAuth } from "@/components/providers/auth-provider";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { VoiceAnalytics } from "@/components/voice/voice-analytics";
 import { useAnalytics } from "@/hooks/use-api";
 import { formatMs, formatUsd } from "@/lib/text";
@@ -32,6 +35,9 @@ export default function DashboardPage() {
 
   const o = overview.data;
   const q = quality.data;
+  // A dashboard of zeros teaches nothing, and it is the first thing a new
+  // organisation sees. Until something has been asked, say so instead.
+  const nothingYet = o !== undefined && o.total_queries === 0;
   const costPerQuery = o && o.total_queries > 0 ? o.total_cost_usd / o.total_queries : null;
   const feedbackTotal = q ? q.feedback_up + q.feedback_down : 0;
   const thumbsDown = q && feedbackTotal > 0 ? q.feedback_down / feedbackTotal : null;
@@ -52,6 +58,17 @@ export default function DashboardPage() {
 
       {overview.isError ? (
         <ErrorState error={overview.error} onRetry={() => void overview.refetch()} />
+      ) : nothingYet ? (
+        <EmptyState
+          icon={BarChart3}
+          title={`No queries in the last ${days} days`}
+          description="Once your organisation starts asking, this shows how much it asks, what it costs, how often it abstains, and how often sources disagreed — with the calibration behind every confidence label."
+          action={
+            <Button nativeButton={false} render={<Link href="/app" />}>
+              Ask the first question
+            </Button>
+          }
+        />
       ) : (
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Key metrics">
           <Stat label="Queries" value={o ? o.total_queries.toLocaleString() : null} hint={o ? `${o.answered} answered · ${o.abstained} abstained · ${o.blocked} blocked` : undefined} />
@@ -69,6 +86,7 @@ export default function DashboardPage() {
         </section>
       )}
 
+      {!nothingYet && (
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-lg border bg-card p-4" aria-labelledby="vol-heading">
           <h2 id="vol-heading" className="mb-3 text-sm font-medium">Query volume · daily</h2>
@@ -116,8 +134,9 @@ export default function DashboardPage() {
           )}
         </section>
       </div>
+      )}
 
-      {q && (
+      {q && !nothingYet && (
         <div className="grid gap-4 lg:grid-cols-3">
           <Distribution title="By confidence" data={q.by_confidence} order={["high", "moderate", "low"]} />
           <Distribution title="By evidence grade" data={q.by_evidence_grade} order={["A", "B", "C", "D", "none"]} />
@@ -125,13 +144,16 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <CostCard report={cost} />
+      {/* This organisation's own numbers; all zero before the first query.
+          The calibration card stays either way — it reports the published
+          eval, not this tenant, and it is the reason to trust a label. */}
+      {!nothingYet && <CostCard report={cost} />}
 
-      <VoiceAnalytics days={days} />
+      {!nothingYet && <VoiceAnalytics days={days} />}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <CalibrationCard />
-        <ReviewQueue enabled={role === "owner"} />
+        {!nothingYet && <ReviewQueue enabled={role === "owner"} />}
       </div>
 
       {q && q.top_queries.length > 0 && (

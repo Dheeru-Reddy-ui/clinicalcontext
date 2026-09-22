@@ -87,6 +87,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/signup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Public Signup
+         * @description Create an account, without Supabase needing to send anything.
+         *
+         *     The browser signs in straight afterwards with the same password, so no
+         *     session is minted here. See ``app/services/signup.py`` for why sign-up
+         *     does not go directly from the browser to Supabase.
+         */
+        post: operations["public_signup_api_public_signup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/cost": {
         parameters: {
             query?: never;
@@ -2256,6 +2280,38 @@ export interface components {
             /** Public Sharing Enabled */
             public_sharing_enabled: boolean;
         };
+        /**
+         * SignupOut
+         * @description The account exists and its password works.
+         *
+         *     No session is returned: the browser signs in immediately afterwards, so
+         *     the tokens are minted by Supabase directly into the client that will
+         *     hold them, and this endpoint never handles a session cookie.
+         */
+        SignupOut: {
+            /**
+             * Created
+             * @default true
+             */
+            created: boolean;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+        };
+        /** SignupRequest */
+        SignupRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Full Name */
+            full_name: string;
+            /** Password */
+            password: string;
+        };
         /** SuggestOut */
         SuggestOut: {
             /** Query */
@@ -2725,6 +2781,39 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_signup_api_public_signup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignupRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignupOut"];
                 };
             };
             /** @description Validation Error */

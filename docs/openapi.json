@@ -3307,6 +3307,54 @@
         "title": "SharingPolicyUpdate",
         "type": "object"
       },
+      "SignupOut": {
+        "description": "The account exists and its password works.\n\nNo session is returned: the browser signs in immediately afterwards, so\nthe tokens are minted by Supabase directly into the client that will\nhold them, and this endpoint never handles a session cookie.",
+        "properties": {
+          "created": {
+            "default": true,
+            "title": "Created",
+            "type": "boolean"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "SignupOut",
+        "type": "object"
+      },
+      "SignupRequest": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "full_name"
+        ],
+        "title": "SignupRequest",
+        "type": "object"
+      },
       "SuggestOut": {
         "properties": {
           "query": {
@@ -4353,6 +4401,48 @@
           }
         },
         "summary": "Public Eval",
+        "tags": [
+          "public"
+        ]
+      }
+    },
+    "/api/public/signup": {
+      "post": {
+        "description": "Create an account, without Supabase needing to send anything.\n\nThe browser signs in straight afterwards with the same password, so no\nsession is minted here. See ``app/services/signup.py`` for why sign-up\ndoes not go directly from the browser to Supabase.",
+        "operationId": "public_signup_api_public_signup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignupOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Public Signup",
         "tags": [
           "public"
         ]

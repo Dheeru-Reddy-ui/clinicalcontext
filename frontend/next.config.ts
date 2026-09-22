@@ -22,6 +22,11 @@ import { connectSources, readCspEnvironment } from "./lib/csp";
 connectSources(readCspEnvironment());
 
 const nextConfig: NextConfig = {
+  // A production build and `next dev` share .next, and the build deletes the
+  // manifests the running dev server is holding open — which leaves the dev
+  // server serving 500s until it is restarted. scripts/preflight.py sets this
+  // so a verification build never disturbs a dev server.
+  ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   async headers() {
     const security = [
       { key: "X-Content-Type-Options", value: "nosniff" },

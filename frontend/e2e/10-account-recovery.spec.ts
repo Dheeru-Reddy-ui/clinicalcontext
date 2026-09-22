@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { createAccount, newPassword } from "./fixtures/auth";
+import { createAccount, newEmail, newPassword } from "./fixtures/auth";
 
 /**
  * Account recovery, found missing on the first real deployment: a duplicate
@@ -44,13 +44,47 @@ async function latestLinkTo(address: string, subject: RegExp): Promise<string> {
   throw new Error(`no email matching ${subject} reached ${address}`);
 }
 
+/** How many messages the catcher holds right now. */
+async function mailCount(): Promise<number> {
+  const response = await fetch(`${MAILPIT}/api/v1/messages?limit=1`);
+  return ((await response.json()) as { total: number }).total;
+}
+
+test("signing up sends no email at all, and lands in the app", async ({ page }) => {
+  test.skip(!(await mailpitReachable()), "needs the local mail catcher");
+  // The deployment's first sign-up died on "Error sending confirmation
+  // email": Supabase's built-in mailer refuses every address outside the
+  // project team. Sign-up must therefore not need email at all.
+  const before = await mailCount();
+  const email = newEmail("no-mail");
+  const password = newPassword();
+
+  await page.goto("/signup");
+  await page.getByLabel("Full name").fill("Dr No Mail");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Sign up" }).click();
+
+  // Straight to onboarding — no "check your email" step in between.
+  await page.waitForURL(/\/onboarding/, { timeout: 60_000 });
+  expect(await mailCount(), "sign-up must not send an email").toBe(before);
+
+  // And the account is usable immediately: sign out, sign back in.
+  await page.context().clearCookies();
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByRole("button", { name: /^sign in$/i }).click();
+  await page.waitForURL(/\/(onboarding|app)(\/|$)/, { timeout: 30_000 });
+});
+
 test("signing up with an existing email says so, and offers the way in", async ({ page }) => {
   const account = await createAccount();
 
   await page.goto("/signup");
   await page.getByLabel("Full name").fill("Someone Again");
   await page.getByLabel("Email").fill(account.email);
-  await page.getByLabel("Password").fill(newPassword());
+  await page.getByLabel("Password", { exact: true }).fill(newPassword());
   await page.getByRole("button", { name: "Sign up" }).click();
 
   const alert = page.getByTestId("already-registered");
@@ -85,7 +119,7 @@ test("a forgotten password is recovered through the emailed link, and the old on
   await page.goto(link);
   await page.waitForURL(/\/reset-password/, { timeout: 30_000 });
   await page.getByLabel("New password", { exact: true }).fill(replacement);
-  await page.getByLabel("Confirm new password").fill(replacement);
+  await page.getByLabel("Confirm new password", { exact: true }).fill(replacement);
   await page.getByRole("button", { name: "Save new password" }).click();
   // A reset link's session is a real session: straight into the app.
   await page.waitForURL(/\/app(\/|$)/, { timeout: 30_000 });
@@ -94,10 +128,10 @@ test("a forgotten password is recovered through the emailed link, and the old on
   await page.context().clearCookies();
   await page.goto("/login");
   await page.getByLabel("Email").fill(account.email);
-  await page.getByLabel("Password").fill(account.password);
+  await page.getByLabel("Password", { exact: true }).fill(account.password);
   await page.getByRole("button", { name: /^sign in$/i }).click();
   await expect(page.getByText(/invalid login credentials/i)).toBeVisible();
-  await page.getByLabel("Password").fill(replacement);
+  await page.getByLabel("Password", { exact: true }).fill(replacement);
   await page.getByRole("button", { name: /^sign in$/i }).click();
   await page.waitForURL(/\/app(\/|$)/, { timeout: 30_000 });
 });

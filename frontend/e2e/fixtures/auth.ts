@@ -108,7 +108,7 @@ export async function newTenant(
 export async function signIn(page: Page, account: Account, expectPath = "/app"): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("Email").fill(account.email);
-  await page.getByLabel("Password").fill(account.password);
+  await page.getByLabel("Password", { exact: true }).fill(account.password);
   await page.getByRole("button", { name: /sign in/i }).click();
   await page.waitForURL((url) => url.pathname.startsWith(expectPath), { timeout: 30_000 });
 }

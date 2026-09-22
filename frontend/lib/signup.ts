@@ -63,6 +63,18 @@ export async function createAccount(input: {
   if (response.status === 503 || response.status === 502) {
     return { ok: false, kind: "message", message: WAKING };
   }
+  if (response.status === 404) {
+    // The frontend deploys on its own (Vercel git integration); the API is
+    // deployed deliberately. A 404 here means this build is newer than the
+    // API it is talking to, which is a deployment order problem and not
+    // anything the person filling in the form can fix.
+    return {
+      ok: false,
+      kind: "message",
+      message:
+        "Sign-up is not available on this server yet — it is running an older version than this page. Try again shortly.",
+    };
+  }
   return {
     ok: false,
     kind: "message",
