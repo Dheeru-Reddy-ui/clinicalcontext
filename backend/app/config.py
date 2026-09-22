@@ -15,7 +15,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import AliasChoices, Field, SecretStr
+from pydantic import AliasChoices, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -116,6 +116,22 @@ class Settings(BaseSettings):
 
     # -- Supabase (wired in Phase 2: auth, RLS, storage) -------------------------
     supabase_url: str
+
+    @field_validator("supabase_url")
+    @classmethod
+    def _normalise_supabase_url(cls, value: str) -> str:
+        """The project URL to the host, whatever box it was copied from.
+
+        The dashboard shows the REST endpoint (``…/rest/v1``) far more
+        prominently than the bare project URL. With the suffix left on, the
+        JWKS URL becomes ``…/rest/v1/auth/v1/.well-known/jwks.json`` and
+        every token fails verification — seen on the first deployment.
+        """
+        value = value.strip().rstrip("/")
+        for suffix in ("/rest/v1", "/auth/v1", "/storage/v1", "/realtime/v1", "/functions/v1"):
+            if value.endswith(suffix):
+                value = value[: -len(suffix)]
+        return value.rstrip("/")
     supabase_anon_key: SecretStr
     supabase_service_role_key: SecretStr
     # Optional: only for legacy Supabase projects that still sign JWTs with the

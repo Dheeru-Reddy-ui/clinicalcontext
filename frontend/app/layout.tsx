@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 
 import { AppProviders } from "@/components/providers/app-providers";
@@ -35,18 +36,24 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // The per-request CSP nonce the middleware minted (lib/csp.ts). Reading a
+  // request header here is also what makes every page render dynamically,
+  // which a nonce requires: a page prerendered at build time carries no
+  // nonce, so its scripts would not match the header and never run — the
+  // blank /login on the first deployment.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     // suppressHydrationWarning: next-themes sets the class on <html> before hydration.
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {/* Auth lives on the authenticated segments only (app/app, app/onboarding),
             so public pages never boot the Supabase client. */}
-        <AppProviders>{children}</AppProviders>
+        <AppProviders nonce={nonce}>{children}</AppProviders>
       </body>
     </html>
   );

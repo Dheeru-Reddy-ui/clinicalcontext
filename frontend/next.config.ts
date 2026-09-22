@@ -13,68 +13,17 @@ const withSerwist = withSerwistInit({
   reloadOnOnline: true,
 });
 
-// The app's own Content-Security-Policy (Phase 14.4). It has to allow:
-// the API origin (SSE + WebSocket for voice), Supabase auth, the OTLP
-// collector when one is configured, and Sentry's ingest when a DSN is set.
-// `'unsafe-inline'` for styles is Tailwind's runtime style injection;
-// scripts get a strict policy with `'unsafe-eval'` only in development,
-// which is what React Refresh needs.
-function contentSecurityPolicy(): string {
-  // In a deployed build this must be the real API origin: the CSP's
-  // connect-src is built from it, so falling back to localhost would ship a
-  // policy that blocks every request to the actual API — a blank app with
-  // console errors, from one missing environment variable. Fail the build
-  // instead.
-  if (process.env.NODE_ENV === "production" && !process.env.NEXT_PUBLIC_API_URL) {
-    throw new Error(
-      "NEXT_PUBLIC_API_URL must be set for a production build: the Content-Security-Policy " +
-        "is derived from it, and without it the app cannot reach its own API.",
-    );
-  }
-  const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
-  const websocket = api.replace(/^http/, "ws");
-  const connect = [
-    "'self'",
-    api,
-    websocket,
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-    process.env.NEXT_PUBLIC_OTEL_EXPORTER_URL ?? "",
-    process.env.NEXT_PUBLIC_SENTRY_DSN ? "https://*.ingest.sentry.io" : "",
-  ].filter(Boolean);
-  // A localhost origin in a deployed CSP is always a stale environment
-  // variable, and the symptom — requests blocked in the browser, nothing in
-  // the server logs — is miserable to debug. Catch it at build time.
-  if (process.env.NODE_ENV === "production") {
-    const local = connect.filter((origin) => /localhost|127\.0\.0\.1/.test(origin));
-    if (local.length > 0) {
-      throw new Error(
-        `Production build has localhost origins in its Content-Security-Policy: ${local.join(", ")}. ` +
-          "Set NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_OTEL_EXPORTER_URL to their deployed values, " +
-          "or leave them unset.",
-      );
-    }
-  }
-  const scripts = process.env.NODE_ENV === "development" ? "'self' 'unsafe-eval' 'unsafe-inline'" : "'self'";
-  return [
-    "default-src 'self'",
-    `script-src ${scripts}`,
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
-    "font-src 'self' data:",
-    `connect-src ${connect.join(" ")}`,
-    "media-src 'self' blob:",
-    "worker-src 'self' blob:",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "object-src 'none'",
-  ].join("; ");
-}
+import { connectSources, readCspEnvironment } from "./lib/csp";
+
+// The Content-Security-Policy itself is set per request by the middleware
+// (lib/csp.ts explains why: Next's inline bootstrap scripts need a nonce).
+// This runs at build time and keeps the two build-failing checks — a missing
+// or localhost API origin — where they belong: before anything ships.
+connectSources(readCspEnvironment());
 
 const nextConfig: NextConfig = {
   async headers() {
     const security = [
-      { key: "Content-Security-Policy", value: contentSecurityPolicy() },
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "X-Frame-Options", value: "DENY" },
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

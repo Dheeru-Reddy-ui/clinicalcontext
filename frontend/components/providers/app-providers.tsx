@@ -17,7 +17,7 @@ import { startBrowserTracing } from "@/lib/telemetry";
  * - Query cache: server state with sane defaults — no refetch storms on focus,
  *   short staleness so history/binders feel live without hammering the API.
  */
-export function AppProviders({ children }: { children: ReactNode }) {
+export function AppProviders({ children, nonce }: { children: ReactNode; nonce?: string }) {
   // Tracing starts at the click: the browser SDK (when an exporter is
   // configured) or, always, a traceparent the API continues.
   useEffect(() => {
@@ -45,7 +45,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
   );
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    // The nonce lets next-themes' no-flash inline script pass the CSP (lib/csp.ts).
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange nonce={nonce}>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delay={200}>{children}</TooltipProvider>
         <Toaster

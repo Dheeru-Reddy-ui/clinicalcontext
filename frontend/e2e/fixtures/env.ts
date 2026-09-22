@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { supabaseUrl } from "../../lib/supabase/env";
 import { resolve } from "node:path";
 
 /**
@@ -47,7 +48,7 @@ export const env = {
   baseUrl: process.env.E2E_BASE_URL ?? "http://localhost:3005",
   apiUrl: process.env.E2E_API_URL ?? frontendEnv.NEXT_PUBLIC_API_URL ?? "http://localhost:8010",
   databaseUrl: need("DATABASE_URL", process.env, backendEnv),
-  supabaseUrl: need("NEXT_PUBLIC_SUPABASE_URL", process.env, frontendEnv),
+  supabaseUrl: supabaseUrl(need("NEXT_PUBLIC_SUPABASE_URL", process.env, frontendEnv)),
   supabaseAnonKey: need("NEXT_PUBLIC_SUPABASE_ANON_KEY", process.env, frontendEnv),
   supabaseServiceKey: need("SUPABASE_SERVICE_ROLE_KEY", process.env, backendEnv),
   // Supabase's local mailpit; the digest and magic links land here.

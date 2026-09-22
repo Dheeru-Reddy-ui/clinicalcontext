@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 
 import { cookieOptions } from "@/lib/supabase/cookies";
+import { supabaseUrl } from "@/lib/supabase/env";
 import { cookies } from "next/headers";
 
 /** Supabase client for Server Components and Route Handlers. */
@@ -8,7 +9,7 @@ export async function createClient() {
   const cookieStore = await cookies();
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    supabaseUrl(),
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookieOptions,

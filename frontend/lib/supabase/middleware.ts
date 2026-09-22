@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 
 import { cookieOptions } from "@/lib/supabase/cookies";
+import { supabaseUrl } from "@/lib/supabase/env";
 import { NextResponse, type NextRequest } from "next/server";
 
 const PROTECTED_PREFIXES = ["/app", "/onboarding"];
@@ -11,11 +12,12 @@ const AUTH_PAGES = ["/login", "/signup"];
  * unauthenticated users cannot reach /app/* or /onboarding; authenticated
  * users are bounced from /login and /signup to /app.
  */
-export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+export async function updateSession(request: NextRequest, requestHeaders: Headers) {
+  // The headers the root middleware set (the CSP nonce) must reach the page.
+  let supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } });
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    supabaseUrl(),
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookieOptions,
@@ -27,7 +29,12 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
-          supabaseResponse = NextResponse.next({ request });
+          // request.cookies writes through to the request's Cookie header;
+          // carry the refreshed value into the headers the page will see,
+          // alongside the nonce the root middleware put there.
+          const cookie = request.headers.get("cookie");
+          if (cookie !== null) requestHeaders.set("cookie", cookie);
+          supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options),
           );

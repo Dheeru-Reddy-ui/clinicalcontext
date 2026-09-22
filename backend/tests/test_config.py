@@ -93,3 +93,20 @@ def test_release_falls_back_to_the_platform_commit_variable(
 
     monkeypatch.setenv("RELEASE", "v9")
     assert Settings(_env_file=None).release == "v9"
+
+
+def test_supabase_url_is_normalised_to_the_project_host() -> None:
+    """The dashboard's REST endpoint is what people copy; a trailing slash is
+    the other common slip. Both must yield the bare project URL, or the JWKS
+    endpoint is built on the wrong path and every token fails."""
+    for raw in (
+        "https://abc.supabase.co",
+        "https://abc.supabase.co/",
+        "https://abc.supabase.co/rest/v1",
+        "https://abc.supabase.co/rest/v1/",
+        " https://abc.supabase.co/auth/v1 ",
+    ):
+        settings = Settings(_env_file=None, supabase_url=raw)
+        assert settings.supabase_url == "https://abc.supabase.co", raw
+        assert settings.supabase_jwks_url == "https://abc.supabase.co/auth/v1/.well-known/jwks.json"
+
