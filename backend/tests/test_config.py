@@ -109,4 +109,3 @@ def test_supabase_url_is_normalised_to_the_project_host() -> None:
         settings = Settings(_env_file=None, supabase_url=raw)
         assert settings.supabase_url == "https://abc.supabase.co", raw
         assert settings.supabase_jwks_url == "https://abc.supabase.co/auth/v1/.well-known/jwks.json"
-

@@ -132,6 +132,7 @@ class Settings(BaseSettings):
             if value.endswith(suffix):
                 value = value[: -len(suffix)]
         return value.rstrip("/")
+
     supabase_anon_key: SecretStr
     supabase_service_role_key: SecretStr
     # Optional: only for legacy Supabase projects that still sign JWTs with the
