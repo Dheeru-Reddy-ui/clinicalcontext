@@ -56,8 +56,13 @@ jobs:
       - name: Format check (ruff)
         run: uv run ruff format --check .
 
-      - name: Typecheck (mypy --strict)
-        run: uv run mypy --strict app scripts evals
+      # Checked as Linux (this runner) and as Windows (where the voice
+      # fixtures are built): `sys.platform` narrows differently on each,
+      # and a branch that is fine on one can be unreachable on the other.
+      - name: Typecheck (mypy --strict, both platforms)
+        run: |
+          uv run mypy --strict app scripts evals
+          uv run mypy --strict --platform win32 app scripts evals
 
       - name: OpenAPI schema is current
         run: uv run python -m scripts.export_openapi --check
@@ -262,7 +267,11 @@ jobs:
       - name: Typecheck (tsc --noEmit)
         run: pnpm exec tsc --noEmit
 
+      # A production build refuses a localhost API origin on purpose (the
+      # CSP is derived from it — next.config.ts). This build is a compile
+      # check, not a deployment, so it gets a reserved name that can never
+      # be mistaken for a real host.
       - name: Build (next build)
         run: pnpm build
         env:
-          NEXT_PUBLIC_API_URL: http://localhost:8000
+          NEXT_PUBLIC_API_URL: https://api.ci-build.invalid

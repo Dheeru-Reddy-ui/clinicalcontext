@@ -23,6 +23,11 @@ from evals.voice.manifest import Fixture, build_manifest
 
 _HERE = Path(__file__).resolve().parent
 DEFAULT_OUT = _HERE / "fixtures"
+# A runtime value, not a literal `sys.platform` test at the raise site: mypy
+# narrows the literal per platform, so on Linux everything after the raise
+# became provably unreachable and `warn_unreachable` failed CI there while
+# Windows passed. The WinRT branch is still only entered on Windows.
+_IS_WINDOWS: bool = sys.platform.startswith("win")
 
 _SSML = (
     '<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="{lang}">'
@@ -36,7 +41,7 @@ async def _synthesize(fixture: Fixture) -> bytes:
     from app.voice.tts.local import synthesize_winrt
 
     if fixture.ssml is not None:
-        if sys.platform != "win32":
+        if not _IS_WINDOWS:
             raise RuntimeError("SSML fixtures need the WinRT synthesizer (Windows)")
         from winrt.windows.media.speechsynthesis import SpeechSynthesizer
         from winrt.windows.storage.streams import DataReader
