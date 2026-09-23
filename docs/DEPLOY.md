@@ -30,13 +30,13 @@ The app is a few services that work together. Most are already fine.
 | Piece | What it does | Where it lives | State |
 |---|---|---|---|
 | **Website** | The pages people see | Vercel — [clinicalcontext-euev.vercel.app](https://clinicalcontext-euev.vercel.app) | Up to date. Updates itself every time you push. |
-| **API** | The server behind the website. Answers questions, creates accounts. | Render — [clinicalcontext-api.onrender.com](https://clinicalcontext-api.onrender.com/health) | **Running an old version. Needs Part 1.** Sign-up does not work on the live site until then. |
+| **API** | The server behind the website. Answers questions, creates accounts. | Render — [clinicalcontext-api.onrender.com](https://clinicalcontext-api.onrender.com/health) | Up to date. Does **not** update itself — see Part 1, or set up Part 3. |
 | **Database and logins** | Stores documents, users and organisations | Supabase | Working. All 23 database updates are applied. |
 | **Cache** | Makes repeated questions fast; rate limits | Upstash | Working. |
-| **Automatic deploys** | Ships the API after every test passes | GitHub Actions | Not set up. Optional — Part 3. Until then you ship the API by hand (Part 1). |
+| **Automatic deploys** | Ships the API after every test passes | GitHub Actions | Secrets added; the API half works. The **frontend step still fails** — see Part 3a, rows 4 and 5. |
 | **Email** | Magic-link sign-in and forgot-password emails | Supabase + an email provider | Not set up. Optional — Part 2. Sign-up and password sign-in do **not** need it. |
 
-**Why is the website current but the API not?** Vercel rebuilds the website on its own every time you push to `main`. Render is deliberately set to wait until it is told (`autoDeployTrigger: "off"` in `render.yaml`), so a broken API can never go live on its own. Nothing has told it to update since commit `0c0e9f3`.
+**Why do the two move separately?** Vercel rebuilds the website on its own every time you push to `main`. Render is deliberately set to wait until it is told (`autoDeployTrigger: "off"` in `render.yaml`), so a broken API can never go live on its own — either the deploy pipeline tells it (Part 3) or you do (Part 1).
 
 ### The four websites you will use
 
@@ -51,7 +51,9 @@ The app is a few services that work together. Most are already fine.
 
 ## Part 1 — Put the newest API live
 
-**Do this first. About 5 minutes, mostly waiting. No passwords needed.**
+**About 5 minutes, mostly waiting. No passwords needed.** This is how the API
+ships by hand: after a backend change, or any time `/health` shows an older
+commit than GitHub. Part 3 does it for you.
 
 ### Steps
 
@@ -68,7 +70,7 @@ Open https://clinicalcontext-api.onrender.com/health. You will see one line like
 {"status":"ok","service":"clinicalcontext-backend","version":"0.1.0","release":"911987a98d45…"}
 ```
 
-The start of `release` is the commit the API is running. It should match the newest commit on https://github.com/Dheeru-Reddy-ui/clinicalcontext — the short code shown next to the latest commit message. If it still starts with `0c0e9f3`, the new version is not live yet: wait a minute and refresh.
+The start of `release` is the commit the API is running. It should match the newest commit on https://github.com/Dheeru-Reddy-ui/clinicalcontext — the short code shown next to the latest commit message. If it still shows the old one, the new version is not live yet: wait a minute and refresh.
 
 > **The API falls asleep.** On the free plan it sleeps after 15 minutes with no visitors. The first visit after that takes up to two minutes to wake it, and the site says so while it waits. This is normal.
 
