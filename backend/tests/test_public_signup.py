@@ -15,6 +15,7 @@ from collections.abc import AsyncIterator, Callable
 import httpx
 import pytest
 
+from app.config import get_settings
 from app.services.signup import SignupService
 from tests.conftest import ApiEnv
 
@@ -63,6 +64,7 @@ async def test_the_created_user_is_confirmed_and_carries_the_name() -> None:
         seen["url"] = str(request.url)
         seen["body"] = request.read().decode()
         seen["auth"] = request.headers.get("authorization", "")
+        seen["apikey"] = request.headers.get("apikey", "")
         return _ok(request)
 
     service = SignupService(httpx.AsyncClient(transport=httpx.MockTransport(handler)))
@@ -75,8 +77,11 @@ async def test_the_created_user_is_confirmed_and_carries_the_name() -> None:
     # Confirmed at creation: no email is sent, and the account can sign in.
     assert body["email_confirm"] is True
     assert body["user_metadata"]["full_name"] == "Dr New"
-    # The admin API is the whole point: it must be the service-role key.
-    assert str(seen["auth"]).startswith("Bearer ")
+    # The admin API is the whole point: it must be the service key, on the
+    # header its generation expects. The suite's key is not a JWT, so it is
+    # sent on apikey only — a non-JWT key as a bearer token is refused.
+    assert seen["apikey"] == get_settings().supabase_service_role_key.get_secret_value()
+    assert seen["auth"] == ""
 
 
 @pytest.mark.parametrize(

@@ -28,6 +28,7 @@ from app.core.errors import (
     PermissionDeniedError,
 )
 from app.core.security import CurrentUser
+from app.core.supabase_keys import service_headers
 from app.repositories.base import PgConnection, tenant_connection
 from app.repositories.tenancy import TenancyRepository
 from app.schemas.tenancy import (
@@ -312,12 +313,7 @@ class TenancyService:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 response = await client.put(
                     url,
-                    headers={
-                        "Authorization": (
-                            f"Bearer {settings.supabase_service_role_key.get_secret_value()}"
-                        ),
-                        "apikey": settings.supabase_anon_key.get_secret_value(),
-                    },
+                    headers=service_headers(settings),
                     json={"app_metadata": {"org_id": str(org_id)}},
                 )
                 response.raise_for_status()

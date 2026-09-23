@@ -38,6 +38,17 @@ export function newPassword(): string {
   return `Pw-${randomBytes(12).toString("base64url")}`;
 }
 
+/**
+ * The service key on the header its generation expects — the same rule as
+ * backend/app/core/supabase_keys.py. A legacy key is a JWT and may also be
+ * a bearer token; a new `sb_secret_` key is not a JWT and is refused there,
+ * which is what the E2E suite would meet when pointed at a deployed project.
+ */
+function serviceHeaders(key: string): Record<string, string> {
+  const isJwt = key.split(".").length === 3;
+  return isJwt ? { apikey: key, Authorization: `Bearer ${key}` } : { apikey: key };
+}
+
 export async function createAccount(
   email = newEmail(),
   password = newPassword(),
@@ -45,11 +56,7 @@ export async function createAccount(
 ): Promise<Account> {
   const response = await fetch(`${env.supabaseUrl}/auth/v1/admin/users`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: env.supabaseServiceKey,
-      Authorization: `Bearer ${env.supabaseServiceKey}`,
-    },
+    headers: { "Content-Type": "application/json", ...serviceHeaders(env.supabaseServiceKey) },
     // full_name rides in user_metadata exactly as the sign-up form puts it
     // there, so the profile carries a name to attribute annotations to.
     body: JSON.stringify({ email, password, email_confirm: true, user_metadata: { full_name: fullName } }),

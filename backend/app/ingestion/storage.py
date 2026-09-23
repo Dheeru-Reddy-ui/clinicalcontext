@@ -13,6 +13,7 @@ import httpx
 import structlog
 
 from app.config import get_settings
+from app.core.supabase_keys import service_headers
 
 logger = structlog.stdlib.get_logger("app.ingestion.storage")
 
@@ -23,8 +24,7 @@ async def upload_guideline_pdf(pdf_path: Path) -> str | None:
     """Upload a PDF to the guidelines bucket; returns the storage path or None."""
     settings = get_settings()
     base = settings.supabase_url.rstrip("/")
-    service_key = settings.supabase_service_role_key.get_secret_value()
-    headers = {"Authorization": f"Bearer {service_key}", "apikey": service_key}
+    headers = service_headers(settings)
     object_path = f"{BUCKET}/{pdf_path.name}"
 
     try:

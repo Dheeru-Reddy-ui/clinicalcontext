@@ -28,6 +28,7 @@ import structlog
 
 from app.config import get_settings
 from app.core.errors import EmailExistsError, InvalidRequestError, ServiceUnavailableError
+from app.core.supabase_keys import service_headers
 
 logger = structlog.stdlib.get_logger("app.signup")
 
@@ -58,10 +59,9 @@ class SignupService:
             "email_confirm": True,
             "user_metadata": {"full_name": full_name},
         }
-        headers = {
-            "Authorization": f"Bearer {settings.supabase_service_role_key.get_secret_value()}",
-            "apikey": settings.supabase_anon_key.get_secret_value(),
-        }
+        # The admin API needs the secret key, in the header its generation
+        # expects (app/core/supabase_keys.py).
+        headers = service_headers(settings)
         try:
             if self._client is not None:
                 response = await self._client.post(url, json=payload, headers=headers)

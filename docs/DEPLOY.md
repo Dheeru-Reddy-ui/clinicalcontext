@@ -323,7 +323,9 @@ Everything below explains *why* it is built this way. None of it is needed to de
 
 8. **The corpus is tied to `AI_BACKEND`.** Offline embeds with the local hashing embedder, cloud with Cohere, both into 1536 dimensions — so embedding a corpus with one and querying it with the other returns noise rather than an error.
 
-9. **Set the Vercel environment variables before the first production build.** The Content-Security-Policy is derived from `NEXT_PUBLIC_API_URL`; the build fails without it, which is much better than shipping a policy that blocks every call to your own API.
+9. **Either generation of Supabase key works, and they are sent differently.** Legacy `anon`/`service_role` keys are JWTs (`eyJ…`); the new `sb_publishable_`/`sb_secret_` keys are not, and Supabase refuses them as `Authorization: Bearer` with *"invalid JWT … invalid number of segments"*. Every server-side call builds its headers through `app/core/supabase_keys.py`, which puts the secret key on `apikey` always and on `Authorization` only when it is a JWT. The local CLI issues both kinds, so both are tested against a real Supabase. Supabase retires the legacy keys at the end of 2026.
+
+10. **Set the Vercel environment variables before the first production build.** The Content-Security-Policy is derived from `NEXT_PUBLIC_API_URL`; the build fails without it, which is much better than shipping a policy that blocks every call to your own API.
 
 ### Rebuilding from nothing
 
