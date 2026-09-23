@@ -33,10 +33,13 @@ The app is a few services that work together. Most are already fine.
 | **API** | The server behind the website. Answers questions, creates accounts. | Render — [clinicalcontext-api.onrender.com](https://clinicalcontext-api.onrender.com/health) | Up to date. Does **not** update itself — see Part 1, or set up Part 3. |
 | **Database and logins** | Stores documents, users and organisations | Supabase | Working. All 23 database updates are applied. |
 | **Cache** | Makes repeated questions fast; rate limits | Upstash | Working. |
-| **Automatic deploys** | Ships the API after every test passes | GitHub Actions | Secrets added; the API half works. The **frontend step still fails** — see Part 3a, rows 4 and 5. |
+| **Automatic deploys** | Ships the API after every test passes | GitHub Actions | Secrets added. `RENDER_DEPLOY_HOOK_URL` needs re-copying — see Part 3a, row 2. |
+| **A stray Render service** | Nothing — created by mistake | Render — `clinicalcontext` (no `-api`) | **Delete it.** It tries to build a `Dockerfile` that doesn't exist on every push, fails, and emails you each time. See below. |
 | **Email** | Magic-link sign-in and forgot-password emails | Supabase + an email provider | Not set up. Optional — Part 2. Sign-up and password sign-in do **not** need it. |
 
 **Why do the two move separately?** Vercel rebuilds the website on its own every time you push to `main`. Render is deliberately set to wait until it is told (`autoDeployTrigger: "off"` in `render.yaml`), so a broken API can never go live on its own — either the deploy pipeline tells it (Part 3) or you do (Part 1).
+
+**Deleting the stray service.** Render → the service named **clinicalcontext** — *not* **clinicalcontext-api** → **Settings** → scroll to the bottom → **Delete Web Service** → type its name to confirm. Nothing uses it: the API is **clinicalcontext-api**, and the website is on Vercel.
 
 ### The four websites you will use
 
@@ -163,7 +166,7 @@ Open https://github.com/Dheeru-Reddy-ui/clinicalcontext/settings/secrets/actions
 | # | Name (type it exactly) | Where the value comes from |
 |---|---|---|
 | 1 | `PRODUCTION_DATABASE_URL` | Supabase → your project → the **Connect** button at the top of the page → choose **Session pooler** → copy the string. Replace `[YOUR-PASSWORD]` with your database password. It should look like `postgresql://postgres.hyqnrsqrldrdjmnaksjk:[YOUR-PASSWORD]@aws-0-eu-central-1.pooler.supabase.com:5432/postgres` — note **port 5432**. See the box below for why this one. |
-| 2 | `RENDER_DEPLOY_HOOK_URL` | Render → **clinicalcontext-api** → **Settings** → scroll to **Deploy Hook** → copy. Starts with `https://api.render.com/deploy/srv-`. Treat it like a password: anyone who has it can redeploy your API. |
+| 2 | `RENDER_DEPLOY_HOOK_URL` | Render → **clinicalcontext-api** (the one ending in `-api`) → **Settings** → scroll to **Deploy Hook** → copy. It must look like `https://api.render.com/deploy/srv-dap2mulg1s2s7396sveg?key=…` — that `srv-…` is the API's id. Not the page address in your browser bar, and not `clinicalcontext-api.onrender.com`. Treat it like a password: anyone who has it can redeploy your API. |
 | 3 | `VERCEL_TOKEN` | https://vercel.com/account/tokens → **Create** → name it `github-deploy` → **Create** → copy it (shown only once). |
 | 4 | `VERCEL_PROJECT_ID` | The project that serves your live site is **clinicalcontext-euev** — not the one called `clinicalcontext`, which exists too. Vercel → **clinicalcontext-euev** → **Settings** → **General** → **Project ID** (starts with `prj_`). |
 | 5 | `VERCEL_ORG_ID` | Vercel → your team's **Settings** (the team's, not the project's) → **General** → **Team ID** (starts with `team_`). |
@@ -254,7 +257,9 @@ Either way, the website updates a few minutes before the API does. During those 
 | A red ✗ next to **CI** on GitHub | A test failed | Click it; the red step shows the error. `python scripts/preflight.py` reproduces it on your machine. |
 | **Deploy** stops at *Check the deploy secrets are present* | A secret is missing or its name is misspelled | Add the secret it names ([Part 3a](#3a-add-the-five-deploy-secrets)) |
 | **Deploy** fails at *Apply migrations* with *network is unreachable* | `PRODUCTION_DATABASE_URL` is the *Direct connection* string | Replace it with the **Session pooler** string ([Part 3a](#3a-add-the-five-deploy-secrets), row 1) |
-| **Deploy** fails at *Deploy the API* | `RENDER_DEPLOY_HOOK_URL` is wrong | Copy it again from Render → Settings → Deploy Hook |
+| **Deploy** stops at *Check the deploy secrets are present* with *not a Render deploy hook* | `RENDER_DEPLOY_HOOK_URL` holds some other address — a dashboard page, the API's own URL | Copy the real hook ([Part 3a](#3a-add-the-five-deploy-secrets), row 2). The step prints which `srv-…` a hook targets; for the API it is `srv-dap2mulg1s2s7396sveg`. |
+| **Deploy** fails at *Deploy the API* with 401 or 404 | The hook was regenerated in Render, or points at a service that no longer exists | Copy it again from Render → **clinicalcontext-api** → Settings → Deploy Hook |
+| **Deploy** times out at *Wait for the new release to answer* | Render never built the commit — usually a hook for a different service | Check the service id the secrets step printed, then Render → **clinicalcontext-api** → **Events** |
 | **Deploy** fails at *Deploy the frontend* with *Could not retrieve Project Settings* | `VERCEL_PROJECT_ID` or `VERCEL_ORG_ID` doesn't match a project the token can see — often the ID of the other Vercel project | Re-copy both ([Part 3a](#3a-add-the-five-deploy-secrets), rows 4 and 5); the live site is **clinicalcontext-euev** |
 | Sign-up on the live site says *"could not be reached"* (503) | A secret in Render has a stray newline or space from being pasted | Render → **clinicalcontext-api** → **Environment**, re-paste the value, **Save**. Since the config now trims whitespace, this only bites a deployment older than that fix. |
 | `/health` still shows the old `release` after a deploy | Render is still building, or the build failed | Render → **clinicalcontext-api** → **Events**. A failed build shows its log. |
@@ -342,7 +347,7 @@ push to main → CI (lint, types, schema, tests over the seeded snapshot, secret
              → secrets check  (names any missing one, before anything runs)
              → a person approves   (only if the Production environment has a required reviewer)
              → migrations     (session pooler, forward-only, checksummed)
-             → the API        (Render's deploy hook; render.yaml has auto-deploy off)
+             → the API        (Render's deploy hook with ref=<the tested commit>; must return a deploy id)
              → wait           (until /health reports the new commit, not the old process)
              → the frontend   (Vercel)
              → smoke test     (ready, headers, a real demo answer, live evals, the page)
@@ -354,6 +359,8 @@ Vercel's Git integration also builds every push to `main`, so the website is nor
 CI's pytest step loads `evals/golden/snapshot` first, because the integration suites answer real questions and assert citations, contradictions, cache hits and HNSW index use; a runner's database starts empty. `scripts/preflight.py` runs the same set of checks locally, except that local pytest uses your own database's corpus.
 
 One environment, because this is the free-tier pipeline. A staging rung is the same job twice with a second set of accounts (Supabase allows two free projects; Upstash one free database, so staging would use Render's free Key Value store).
+
+Every step works on one commit, `DEPLOY_SHA`: the one CI tested when CI triggered the run, the branch head when a person ran it. The checkout, the migrations, the Render build (the hook's `ref` parameter) and the wait all use it, because the newest commit on `main` may have arrived after the one that passed. The deploy step also requires Render's own proof that a deploy started — a deploy id, or a 202 for one queued — rather than merely the absence of an HTTP error, since any URL that answers would satisfy the latter.
 
 `/health` reporting the deployed commit is what makes the wait step honest: Render stamps `RENDER_GIT_COMMIT` into the environment, the app adopts it as its `release` (the same value on every trace, error and log line), and the pipeline polls until the value it sees is the SHA it just merged.
 

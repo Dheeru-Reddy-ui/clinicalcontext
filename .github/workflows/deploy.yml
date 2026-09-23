@@ -43,6 +43,11 @@ permissions:
 env:
   API_URL: ${{ vars.API_URL || 'https://clinicalcontext-api.onrender.com' }}
   WEB_URL: ${{ vars.WEB_URL || 'https://clinicalcontext-euev.vercel.app' }}
+  # The commit this run deploys: the one CI tested when CI triggered it, the
+  # branch head when a person ran it by hand. Every step uses this — the
+  # checkout, the migrations, the API build, the wait — because the latest
+  # commit on main may be newer than the one that passed.
+  DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
   production:
@@ -59,7 +64,11 @@ jobs:
       name: production
       url: ${{ vars.WEB_URL || 'https://clinicalcontext-euev.vercel.app' }}
     steps:
+      # On a workflow_run trigger, checkout's default is the newest commit on
+      # main, which may not be the one CI just passed.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
 
       - name: Install uv
         run: pipx install uv
@@ -94,18 +103,54 @@ jobs:
           fi
           echo "all five deploy secrets are present"
 
+          # Any URL that answers would have passed the old deploy step, which
+          # only failed on 4xx/5xx: a pasted service or dashboard address
+          # "deployed" nothing, and the run waited fifteen minutes to notice.
+          case "$RENDER_DEPLOY_HOOK_URL" in
+            https://api.render.com/deploy/srv-*\?key=*) ;;
+            *)
+              echo "::error::RENDER_DEPLOY_HOOK_URL is not a Render deploy hook."
+              echo "It must start with https://api.render.com/deploy/srv- and carry ?key=."
+              echo "Render -> clinicalcontext-api -> Settings -> Deploy Hook. docs/DEPLOY.md, Part 3a."
+              exit 1 ;;
+          esac
+          # The service id is not the secret part (the key is), and naming it
+          # is what tells you which service a hook will deploy.
+          service="${RENDER_DEPLOY_HOOK_URL#https://api.render.com/deploy/}"
+          echo "the deploy hook targets Render service ${service%%\?*}"
+
       - name: Apply migrations
         env:
           DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
         run: uv --directory backend run python -m scripts.migrate --url "$DATABASE_URL"
 
       # Render builds backend/Dockerfile from the repository root and rolls
-      # the new instance in behind /ready (render.yaml). The hook returns
+      # the new instance in behind /ready (render.yaml). `ref` pins the build
+      # to DEPLOY_SHA rather than the newest commit on main. The hook returns
       # immediately; the next step waits for the result.
+      #
+      # Success is Render's own answer, not the absence of an error: 200 with
+      # the new deploy's id, or 202 when one is already building and this one
+      # is queued behind it (https://render.com/docs/deploy-hooks).
       - name: Deploy the API
         env:
           HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-        run: curl -fsS -X POST "$HOOK" -o /dev/null
+        run: |
+          set -u
+          code=$(curl -sS -o /tmp/hook.json -w '%{http_code}' -X POST "$HOOK&ref=$DEPLOY_SHA")
+          case "$code" in
+            200)
+              deploy=$(python3 -c 'import json; print(json.load(open("/tmp/hook.json"))["deploy"]["id"])' 2>/dev/null || true)
+              if [ -z "$deploy" ]; then
+                echo "::error::The hook answered 200 without a deploy id — it is not a Render deploy hook."
+                exit 1
+              fi
+              echo "Render started deploy $deploy of $DEPLOY_SHA" ;;
+            202) echo "Render queued a deploy of $DEPLOY_SHA behind one already building" ;;
+            401) echo "::error::Render rejected the hook's key (401). Copy the Deploy Hook again: it may have been regenerated."; exit 1 ;;
+            404) echo "::error::Render found no such service, or not commit $DEPLOY_SHA in its repository (404)."; exit 1 ;;
+            *)   echo "::error::Render answered $code:"; cat /tmp/hook.json; exit 1 ;;
+          esac
 
       # /health reports the deployed commit (RENDER_GIT_COMMIT → RELEASE), so
       # this waits for the *new* code to answer, not the old process still
@@ -113,7 +158,7 @@ jobs:
       # build about five; fifteen minutes is the ceiling.
       - name: Wait for the new release to answer
         env:
-          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          SHA: ${{ env.DEPLOY_SHA }}
         run: |
           set -u
           for attempt in $(seq 1 60); do
@@ -182,7 +227,11 @@ jobs:
     if: vars.E2E_AFTER_DEPLOY == 'true'
     runs-on: ubuntu-latest
     steps:
+      # On a workflow_run trigger, checkout's default is the newest commit on
+      # main, which may not be the one CI just passed.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
