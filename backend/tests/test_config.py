@@ -54,12 +54,14 @@ def test_a_pasted_newline_does_not_reach_an_http_header(monkeypatch: pytest.Monk
     sending the request, so every attempt answered 503 with nothing to
     show for it upstream.
     """
-    monkeypatch.setenv("SUPABASE_ANON_KEY", "sb_publishable_abc123\n")
+    # Any value with a trailing newline will do; a key-shaped one would
+    # rightly trip the secret scanner.
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "placeholder-anon\n")
     monkeypatch.setenv("SUPABASE_URL", "  https://example.supabase.co\n")
     settings = Settings(_env_file=None)
 
     key = settings.supabase_anon_key.get_secret_value()
-    assert key == "sb_publishable_abc123"
+    assert key == "placeholder-anon"
     assert settings.supabase_url == "https://example.supabase.co"
 
     # The failure was in httpx, so prove it there rather than on the string.

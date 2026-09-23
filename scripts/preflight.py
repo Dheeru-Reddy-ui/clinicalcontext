@@ -14,6 +14,12 @@ The frontend build gets CI's placeholder origins because lib/csp.ts refuses
 to build a production bundle whose Content-Security-Policy points at
 localhost; a developer's .env.local usually does.
 
+The secret scan is CI's gitleaks run, over exactly the files git would
+commit — tracked plus new, minus ignored — copied to a scratch directory.
+Scanning the working folder itself would also read node_modules and .venv
+and take ten minutes; CI scans a checkout, which has neither. It needs
+Docker, and says so rather than silently passing when Docker is absent.
+
 One difference this cannot paper over: pytest here runs against your own
 database, which holds an ingested corpus, while the runner's starts empty.
 The integration suites assert citations, contradictions and index use, so
@@ -30,7 +36,9 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -57,6 +65,39 @@ class Step:
     cwd: Path
     slow: bool = False
     env: dict[str, str] | None = None
+    # Instead of argv: a check that needs setup a single command cannot do.
+    fn: Callable[[], tuple[bool, str]] | None = None
+
+
+GITLEAKS_IMAGE = "zricethezav/gitleaks:latest"
+
+
+def scan_secrets() -> tuple[bool, str]:
+    """CI's gitleaks step, over the files a commit would contain."""
+    if not shutil.which("docker"):
+        return False, "docker is not on PATH; the secret scan needs it (CI runs gitleaks in Docker)"
+    listed = subprocess.run(
+        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+        cwd=ROOT, capture_output=True, check=True,
+    ).stdout.decode("utf-8").split("\0")
+    with tempfile.TemporaryDirectory(prefix="preflight-gitleaks-") as scratch:
+        root = Path(scratch)
+        for rel in filter(None, listed):
+            source = ROOT / rel
+            if source.is_file():  # a tracked file deleted in the working tree is skipped
+                target = root / rel
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, target)
+        proc = subprocess.run(
+            [
+                "docker", "run", "--rm", "-v", f"{root}:/repo:ro", GITLEAKS_IMAGE,
+                "detect", "--source=/repo", "--no-git", "--config=/repo/.gitleaks.toml",
+                "--redact", "--verbose", "--exit-code=1",
+            ],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+        )
+    output = ((proc.stdout or "") + (proc.stderr or "")).strip()
+    return proc.returncode == 0, output
 
 
 def python_for_backend() -> list[str]:
@@ -102,7 +143,15 @@ def frontend_steps(fast: bool) -> list[Step]:
     return steps
 
 
+def repo_steps() -> list[Step]:
+    return [Step("secret scan (gitleaks)", [], ROOT, fn=scan_secrets)]
+
+
 def run(step: Step) -> tuple[bool, float, str]:
+    if step.fn is not None:
+        started = time.monotonic()
+        ok, output = step.fn()
+        return ok, time.monotonic() - started, output
     env = {**os.environ, **(step.env or {})}
     started = time.monotonic()
     proc = subprocess.run(
@@ -121,6 +170,8 @@ def main() -> int:
     args = parser.parse_args()
 
     steps: list[Step] = []
+    if not (args.backend or args.frontend):
+        steps += repo_steps()
     if not args.frontend:
         steps += backend_steps(args.fast)
     if not args.backend:
@@ -140,7 +191,7 @@ def main() -> int:
     for step, ok, elapsed, _ in results:
         status = "PASS" if ok else "FAIL"
         failures += 0 if ok else 1
-        print(f"{status:5} {step.name:24} {elapsed:6.1f}s")
+        print(f"{status:5} {step.name:26} {elapsed:6.1f}s")
     print("=" * 60)
     if failures:
         print(f"{failures} step(s) failed — CI would fail too.")
