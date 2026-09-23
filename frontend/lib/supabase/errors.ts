@@ -36,5 +36,11 @@ export function describeAuthError(error: AuthError, step: AuthStep): string {
   if ((typeof status === "number" && status >= 500) || opaque) {
     return SERVER_FAILURE[step];
   }
+  // Supabase's wording names the mechanism, not the way out. The commonest
+  // cause is an account made earlier with a password nobody remembers — a
+  // second sign-up does not change it — so say where to go next.
+  if (step === "sign-in" && /invalid login credentials/i.test(message)) {
+    return "That email and password don't match. If you signed up before and aren't sure of the password, use “Forgot your password?” below to set a new one.";
+  }
   return message;
 }

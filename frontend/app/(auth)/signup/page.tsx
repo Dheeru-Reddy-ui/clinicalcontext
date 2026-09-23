@@ -6,7 +6,7 @@ import { Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { FormAlert } from "@/components/auth/form-alert";
 import { PasswordField } from "@/components/auth/password-field";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -20,8 +20,11 @@ import { createAccount, warmApi } from "@/lib/signup";
 import { createClient } from "@/lib/supabase/client";
 import { describeAuthError } from "@/lib/supabase/errors";
 
+// Said plainly because the natural reading of a second sign-up is "that set
+// my new password" — and then the next sign-in fails with the password just
+// typed. It happened on the live site.
 const ALREADY_REGISTERED =
-  "An account with this email already exists. Sign in instead, or reset your password if you have forgotten it.";
+  "An account with this email already exists, so nothing was created — and the password you just typed was not saved. The account still has its original password.";
 
 // A sign-up normally takes well under a second; past this the wait is the
 // sleeping free-tier API starting up, and the form says so.
@@ -101,29 +104,32 @@ function SignupForm() {
     </CardHeader>
     <CardContent className="flex flex-col gap-4">
       {alreadyRegistered ? (
-        <div className="flex flex-col gap-3" role="alert" data-testid="already-registered">
-          <p className="text-sm">{ALREADY_REGISTERED}</p>
-          <div className="flex flex-wrap gap-3 text-sm">
-            <Link
-              className="underline underline-offset-4"
-              href={`/login?email=${encodeURIComponent(email)}`}
-            >
-              Sign in
-            </Link>
-            <Link
-              className="underline underline-offset-4"
-              href={`/forgot-password?email=${encodeURIComponent(email)}`}
-            >
-              Reset password
-            </Link>
-            <button
-              type="button"
-              className="underline underline-offset-4"
-              onClick={() => setAlreadyRegistered(false)}
-            >
-              Use a different email
-            </button>
-          </div>
+        <div className="flex flex-col gap-3" data-testid="already-registered">
+          <FormAlert kind="info">{ALREADY_REGISTERED}</FormAlert>
+          <p className="text-sm text-muted-foreground">
+            Don&apos;t remember that password? Reset it and choose a new one.
+          </p>
+          {/* Links styled as buttons, not buttons: they navigate, and a
+              screen reader should announce them as links. */}
+          <Link
+            className={buttonVariants()}
+            href={`/forgot-password?email=${encodeURIComponent(email)}`}
+          >
+            Reset password
+          </Link>
+          <Link
+            className={buttonVariants({ variant: "outline" })}
+            href={`/login?email=${encodeURIComponent(email)}`}
+          >
+            Sign in
+          </Link>
+          <button
+            type="button"
+            className="self-start text-sm underline underline-offset-4"
+            onClick={() => setAlreadyRegistered(false)}
+          >
+            Use a different email
+          </button>
         </div>
       ) : (
         <form onSubmit={signUp} className="flex flex-col gap-4">

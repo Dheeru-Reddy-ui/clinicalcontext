@@ -89,6 +89,9 @@ test("signing up with an existing email says so, and offers the way in", async (
 
   const alert = page.getByTestId("already-registered");
   await expect(alert).toContainText(/already exists/i);
+  // The trap this closes: a second sign-up reads like "set my new password",
+  // and the next sign-in then fails with the password just typed.
+  await expect(alert).toContainText(/password you just typed was not saved/i);
   await expect(alert.getByRole("link", { name: "Sign in" })).toHaveAttribute(
     "href",
     `/login?email=${encodeURIComponent(account.email)}`,
@@ -130,7 +133,8 @@ test("a forgotten password is recovered through the emailed link, and the old on
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password", { exact: true }).fill(account.password);
   await page.getByRole("button", { name: /^sign in$/i }).click();
-  await expect(page.getByText(/invalid login credentials/i)).toBeVisible();
+  // A wrong password says where to go next, not just that it was wrong.
+  await expect(page.getByText(/don't match.*forgot your password/i)).toBeVisible();
   await page.getByLabel("Password", { exact: true }).fill(replacement);
   await page.getByRole("button", { name: /^sign in$/i }).click();
   await page.waitForURL(/\/app(\/|$)/, { timeout: 30_000 });
