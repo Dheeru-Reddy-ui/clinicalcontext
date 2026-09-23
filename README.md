@@ -61,13 +61,14 @@ vendor keys. The same harness pointed at Cohere and Anthropic is the number
 that would matter for a deployment, and it has not been run, because there is
 no key in this environment. Nothing here is estimated.
 
-**Live demo:** not yet — deploying needs accounts (Render, Vercel, Supabase,
-Upstash, GitHub; all free, no card). Everything for it is written and tested:
-[docs/FIRST-DEPLOY.md](docs/FIRST-DEPLOY.md) is the runbook for a $0
-deployment, [docs/DEPLOY.md](docs/DEPLOY.md) the reference, plus
-`render.yaml` and `.github/workflows/deploy.yml`. Run it locally in about ten minutes with the
-setup below, or watch [the recorded demo](docs/demo/) — real footage of the
-product, re-recordable with one command.
+**Live demo:** [clinicalcontext-euev.vercel.app](https://clinicalcontext-euev.vercel.app)
+— free tier, so the API sleeps after fifteen quiet minutes and the first
+visit wakes it. **To deploy a change, start at
+[docs/DEPLOY.md](docs/DEPLOY.md)**: where everything runs, what state it is
+in, and each step in order. [docs/FIRST-DEPLOY.md](docs/FIRST-DEPLOY.md) is
+how it was first built from empty accounts. Run it locally in about ten
+minutes with the setup below, or watch [the recorded demo](docs/demo/) — real
+footage of the product, re-recordable with one command.
 
 ## Stack
 
@@ -684,8 +685,8 @@ including one where the sources disagree.
 │   ├── ARCHITECTURE.md       # decisions taken — and the ones rejected, with why
 │   ├── EVAL.md               # methodology + results, regenerated from the runners
 │   ├── OBSERVABILITY.md      # traces, Sentry, LangSmith, the cost ledger, load
-│   ├── DEPLOY.md             # how it ships, drains, backs up, and restores
-│   ├── FIRST-DEPLOY.md       # the runbook: every command, and what it should print
+│   ├── DEPLOY.md             # start here to deploy; then how it ships, drains, backs up
+│   ├── FIRST-DEPLOY.md       # building it from empty accounts (already done)
 │   ├── VERIFICATION.md       # every phase gate, re-checked, with evidence
 │   └── SAFETY.md
 ├── docker/                   # local-dev container init scripts

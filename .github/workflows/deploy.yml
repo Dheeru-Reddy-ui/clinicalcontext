@@ -8,16 +8,21 @@ name: Deploy
 # One environment, because this is the free-tier pipeline: a second Render
 # service and Supabase project for staging would also be free, but Upstash
 # gives one free Redis and the point of this path is zero accounts you pay
-# for. The manual gate survives — `production` is a GitHub Environment with a
-# required reviewer, so nothing reaches the deployment without a person.
+# for. The manual gate is one setting away: give the `production` GitHub
+# Environment a required reviewer and every deploy waits for a person
+# (docs/DEPLOY.md, Part 3c). Without one, a green CI run deploys directly.
 #
 # Nothing here holds a secret: tokens come from the repository's secret
 # store, and the application's own secrets live in Render and Vercel.
 #
-# Repository secrets:  RENDER_DEPLOY_HOOK_URL, PRODUCTION_DATABASE_URL (the
-#   direct 5432 URL — migrations cannot run through the transaction pooler),
-#   VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID; for the E2E job also
-#   REDIS_URL, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY.
+# Repository secrets (docs/DEPLOY.md, Part 3, says where each comes from):
+#   RENDER_DEPLOY_HOOK_URL, PRODUCTION_DATABASE_URL, VERCEL_TOKEN,
+#   VERCEL_ORG_ID, VERCEL_PROJECT_ID; for the E2E job also REDIS_URL,
+#   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY.
+#   PRODUCTION_DATABASE_URL is Supabase's *session pooler* string (port 5432
+#   on the pooler host): migrations cannot run through the transaction
+#   pooler (6543), and the direct connection is IPv6-only on the free plan,
+#   which GitHub's runners cannot reach.
 # Repository variables: API_URL and WEB_URL if the defaults below are not
 #   your hostnames; E2E_AFTER_DEPLOY=true to run the browser suite.
 
@@ -84,7 +89,7 @@ jobs:
           if [ -n "$missing" ]; then
             echo "::error::Missing repository secret(s):$missing"
             echo "Add them under Settings -> Secrets and variables -> Actions."
-            echo "docs/FIRST-DEPLOY.md lists where each value comes from."
+            echo "docs/DEPLOY.md, Part 3, says where each value comes from."
             exit 1
           fi
           echo "all five deploy secrets are present"

@@ -60,14 +60,23 @@ jobs:
       ENVIRONMENT: production
       LOG_LEVEL: INFO
     steps:
-      # Until the repository secrets exist (docs/FIRST-DEPLOY.md, phase 7)
-      # there is nothing to connect to; say so and stop, rather than fail
-      # every night with a traceback about a missing variable.
+      # Until the repository secrets exist (docs/DEPLOY.md, Part 3) there is
+      # nothing to connect to; say so and stop, rather than fail every night
+      # with a traceback about a missing variable. Every value the
+      # application validates at start is checked, not only the database:
+      # adding the deploy secrets alone would otherwise switch these jobs on
+      # with no Redis or Supabase configuration, and fail nightly.
       - id: gate
         name: Are the secrets configured?
         run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "::notice::PRODUCTION_DATABASE_URL is not set; the jobs have nothing to run against yet."
+          missing=""
+          [ -n "$DATABASE_URL" ] || missing="$missing PRODUCTION_DATABASE_URL"
+          [ -n "$REDIS_URL" ] || missing="$missing REDIS_URL"
+          [ -n "$SUPABASE_URL" ] || missing="$missing SUPABASE_URL"
+          [ -n "$SUPABASE_ANON_KEY" ] || missing="$missing SUPABASE_ANON_KEY"
+          [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] || missing="$missing SUPABASE_SERVICE_ROLE_KEY"
+          if [ -n "$missing" ]; then
+            echo "::notice::Skipped: repository secret(s) not set:$missing (see docs/DEPLOY.md, Part 3)."
             echo "configured=false" >> "$GITHUB_OUTPUT"
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"

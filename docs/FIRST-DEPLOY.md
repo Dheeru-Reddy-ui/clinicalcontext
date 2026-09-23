@@ -1,9 +1,12 @@
 # First deploy, one step at a time — for $0
 
-[DEPLOY.md](DEPLOY.md) is the reference: what runs where, and why. This is the
-runbook for a deployment that costs nothing and asks for no card: the
-commands in order, what each one should print, and what to do when it prints
-something else.
+> **Already done.** This is how the deployment was first built from empty
+> accounts, kept in case it ever has to be rebuilt. **To put a change live
+> today, use [DEPLOY.md](DEPLOY.md)** — it starts from where things are now.
+
+This is the runbook for a deployment that costs nothing and asks for no
+card: the commands in order, what each one should print, and what to do when
+it prints something else.
 
 **You create the accounts and set the secrets. I never see their values, and
 nothing here asks you to paste one into a chat.** Commands are PowerShell,
@@ -390,7 +393,7 @@ GitHub → repository → **Settings → Secrets and variables → Actions**:
 | Secret | Value | Used by |
 |---|---|---|
 | `RENDER_DEPLOY_HOOK_URL` | from step 4 | deploy |
-| `PRODUCTION_DATABASE_URL` | the **direct** URL (5432) | deploy (migrations), jobs |
+| `PRODUCTION_DATABASE_URL` | the **session pooler** URL (pooler host, port 5432) — the direct URL is IPv6-only on the free plan and GitHub's runners cannot reach it | deploy (migrations), jobs |
 | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | Vercel → Account Settings → Tokens; the ids are in the project's `.vercel/project.json` after `vercel link`, or in the project settings | deploy |
 | `REDIS_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | from step 1 | jobs (and the E2E job, if enabled) |
 

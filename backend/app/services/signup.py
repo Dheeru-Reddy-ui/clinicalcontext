@@ -12,7 +12,7 @@ typed it. That is the same posture as Supabase's own "confirm email" switch
 turned off, and it is acceptable here because the product holds no patient
 data and an account grants nothing but an empty organisation. To require
 verification instead, configure SMTP in Supabase and have the sign-up form
-call ``supabase.auth.signUp`` directly again (see docs/FIRST-DEPLOY.md);
+call ``supabase.auth.signUp`` directly again (see docs/DEPLOY.md, Part 2);
 this endpoint is then dead code and should go.
 
 Password reset genuinely cannot be done without email, and is left on
