@@ -31,6 +31,14 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
+        # Values arrive by paste — into a dashboard field, a .env, a secret
+        # store — and a trailing newline survives all three. One rode into
+        # SUPABASE_ANON_KEY on Render and broke sign-up in production: httpx
+        # refuses to build a header containing a newline, so the request to
+        # Supabase was never sent and every sign-up answered 503. A stray
+        # newline is never part of a key, a URL or a DSN, so strip it here
+        # once rather than at each use.
+        str_strip_whitespace=True,
     )
 
     # -- Database pool ---------------------------------------------------------

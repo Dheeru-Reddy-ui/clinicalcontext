@@ -163,14 +163,16 @@ Open https://github.com/Dheeru-Reddy-ui/clinicalcontext/settings/secrets/actions
 | 1 | `PRODUCTION_DATABASE_URL` | Supabase → your project → the **Connect** button at the top of the page → choose **Session pooler** → copy the string. Replace `[YOUR-PASSWORD]` with your database password. It should look like `postgresql://postgres.hyqnrsqrldrdjmnaksjk:[YOUR-PASSWORD]@aws-0-eu-central-1.pooler.supabase.com:5432/postgres` — note **port 5432**. See the box below for why this one. |
 | 2 | `RENDER_DEPLOY_HOOK_URL` | Render → **clinicalcontext-api** → **Settings** → scroll to **Deploy Hook** → copy. Starts with `https://api.render.com/deploy/srv-`. Treat it like a password: anyone who has it can redeploy your API. |
 | 3 | `VERCEL_TOKEN` | https://vercel.com/account/tokens → **Create** → name it `github-deploy` → **Create** → copy it (shown only once). |
-| 4 | `VERCEL_PROJECT_ID` | Vercel → your project → **Settings** → **General** → **Project ID** (starts with `prj_`). |
-| 5 | `VERCEL_ORG_ID` | Vercel → your team's **Settings** (the team's, not the project's) → **General** → scroll to **Team ID** (starts with `team_`). |
+| 4 | `VERCEL_PROJECT_ID` | The project that serves your live site is **clinicalcontext-euev** — not the one called `clinicalcontext`, which exists too. Vercel → **clinicalcontext-euev** → **Settings** → **General** → **Project ID** (starts with `prj_`). |
+| 5 | `VERCEL_ORG_ID` | Vercel → your team's **Settings** (the team's, not the project's) → **General** → **Team ID** (starts with `team_`). |
 
 > **Why "Session pooler" and not "Direct connection"?** On Supabase's free plan the direct connection only works over IPv6, and GitHub's machines only have IPv4 — so the deploy would fail with *"network is unreachable"*. The session pooler works over IPv4 and can run database updates. It has been checked: a dry run of all 23 updates through it reports *database is up to date*.
 >
 > Don't use port **6543** either: that is the *transaction* pooler, which the API itself uses, and it cannot run database updates.
 
-**Can't find the two Vercel IDs?** In a terminal, go into the `frontend` folder and run `npx vercel link`. Log in and pick the project. It creates `frontend/.vercel/project.json`, which contains `projectId` and `orgId`. That file is already ignored by git — never commit it.
+> **Two Vercel projects, one live site.** The account holds both `clinicalcontext` and `clinicalcontext-euev`. Only **clinicalcontext-euev** serves https://clinicalcontext-euev.vercel.app. Taking the ID from the other one makes the deploy stop with *"Could not retrieve Project Settings"* — the ID and the team don't match a project the token can see. The same message appears if `VERCEL_ORG_ID` is wrong.
+
+**Can't find the two Vercel IDs?** In a terminal, go into the `frontend` folder and run `npx vercel link`. Log in and pick **clinicalcontext-euev**. It creates `frontend/.vercel/project.json`, which contains `projectId` and `orgId`. That file is already ignored by git — never commit it.
 
 ### 3b. Add four more for the nightly jobs
 
@@ -251,6 +253,8 @@ Either way, the website updates a few minutes before the API does. During those 
 | **Deploy** stops at *Check the deploy secrets are present* | A secret is missing or its name is misspelled | Add the secret it names ([Part 3a](#3a-add-the-five-deploy-secrets)) |
 | **Deploy** fails at *Apply migrations* with *network is unreachable* | `PRODUCTION_DATABASE_URL` is the *Direct connection* string | Replace it with the **Session pooler** string ([Part 3a](#3a-add-the-five-deploy-secrets), row 1) |
 | **Deploy** fails at *Deploy the API* | `RENDER_DEPLOY_HOOK_URL` is wrong | Copy it again from Render → Settings → Deploy Hook |
+| **Deploy** fails at *Deploy the frontend* with *Could not retrieve Project Settings* | `VERCEL_PROJECT_ID` or `VERCEL_ORG_ID` doesn't match a project the token can see — often the ID of the other Vercel project | Re-copy both ([Part 3a](#3a-add-the-five-deploy-secrets), rows 4 and 5); the live site is **clinicalcontext-euev** |
+| Sign-up on the live site says *"could not be reached"* (503) | A secret in Render has a stray newline or space from being pasted | Render → **clinicalcontext-api** → **Environment**, re-paste the value, **Save**. Since the config now trims whitespace, this only bites a deployment older than that fix. |
 | `/health` still shows the old `release` after a deploy | Render is still building, or the build failed | Render → **clinicalcontext-api** → **Events**. A failed build shows its log. |
 | Magic-link or reset email never arrives | Email isn't set up, or the email went to spam | [Part 2](#part-2--let-the-app-send-emails-optional); check the spam folder |
 | The email link says *"opened in a different browser"* | Links only work in the browser that asked for them | Type the 6-digit code instead ([Part 2d](#2d-put-a-6-digit-code-in-the-emails-recommended)) |

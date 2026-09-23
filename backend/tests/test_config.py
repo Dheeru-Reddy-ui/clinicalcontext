@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import httpx
 import pytest
 from pydantic import SecretStr, ValidationError
 
@@ -43,6 +44,26 @@ def test_cors_origins_parse_to_list(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CORS_ORIGINS", "http://localhost:3000, https://app.example.com ,")
     settings = Settings(_env_file=None)
     assert settings.cors_origin_list == ["http://localhost:3000", "https://app.example.com"]
+
+
+def test_a_pasted_newline_does_not_reach_an_http_header(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A trailing newline in a secret must not survive into a request header.
+
+    One rode into SUPABASE_ANON_KEY through Render's dashboard and broke
+    sign-up in production: httpx raises "Illegal header value" rather than
+    sending the request, so every attempt answered 503 with nothing to
+    show for it upstream.
+    """
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "sb_publishable_abc123\n")
+    monkeypatch.setenv("SUPABASE_URL", "  https://example.supabase.co\n")
+    settings = Settings(_env_file=None)
+
+    key = settings.supabase_anon_key.get_secret_value()
+    assert key == "sb_publishable_abc123"
+    assert settings.supabase_url == "https://example.supabase.co"
+
+    # The failure was in httpx, so prove it there rather than on the string.
+    httpx.Headers({"apikey": key, "Authorization": f"Bearer {key}"})
 
 
 def test_api_keys_are_secret_and_never_leak_in_repr() -> None:
