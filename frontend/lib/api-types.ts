@@ -2490,6 +2490,11 @@ export interface components {
         /** VoiceConfigOut */
         VoiceConfigOut: {
             /**
+             * Available
+             * @default true
+             */
+            available: boolean;
+            /**
              * Backend
              * @enum {string}
              */
@@ -2520,6 +2525,8 @@ export interface components {
              * @enum {string}
              */
             tts_quality: "flash" | "multilingual";
+            /** Unavailable Reason */
+            unavailable_reason?: string | null;
             /**
              * Ws Path
              * @default /api/v1/voice/ws

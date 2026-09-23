@@ -3839,6 +3839,11 @@
       },
       "VoiceConfigOut": {
         "properties": {
+          "available": {
+            "default": true,
+            "title": "Available",
+            "type": "boolean"
+          },
           "backend": {
             "enum": [
               "offline",
@@ -3891,6 +3896,17 @@
             ],
             "title": "Tts Quality",
             "type": "string"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
           },
           "ws_path": {
             "default": "/api/v1/voice/ws",

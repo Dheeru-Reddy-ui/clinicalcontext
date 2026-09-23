@@ -237,6 +237,11 @@ function reduce(state: VoiceSessionState, action: Action): VoiceSessionState {
 }
 
 const RESUME_ATTEMPTS = 5;
+// Refusals the server makes on purpose. Reconnecting cannot change them, so
+// the session ends with the server's own sentence instead of retrying and
+// then reporting "Connection lost." (4503: this server cannot run voice.)
+const FINAL_ERROR_CODES = new Set(["voice_unavailable", "forbidden", "unauthorized"]);
+const FINAL_CLOSE_CODES = new Set([4401, 4403, 4503]);
 
 export function useVoiceSession(options: { querySessionId: string | null }) {
   const token = useToken();
@@ -330,6 +335,12 @@ export function useVoiceSession(options: { querySessionId: string | null }) {
           break;
         case "error":
           if (event.code === "resume_failed") session.current = null;
+          if (FINAL_ERROR_CODES.has(event.code)) {
+            live.current = false;
+            void audio.current?.close();
+            audio.current = null;
+            dispatch({ type: "status", status: "error", error: event.message });
+          }
           break;
         default:
           break;
@@ -413,8 +424,9 @@ export function useVoiceSession(options: { querySessionId: string | null }) {
         if (!firstFrameAt.current.has(key)) firstFrameAt.current.set(key, performance.now());
         audio.current.enqueue(frame.turn, frame.sentence, frame.pcm);
       };
-      ws.onclose = () => {
+      ws.onclose = (event: CloseEvent) => {
         if (socket.current === ws) socket.current = null;
+        if (FINAL_CLOSE_CODES.has(event.code)) live.current = false;
         if (!live.current) return;
         // Network blip: resume with the session id + token (11A.5).
         if (attempts.current < RESUME_ATTEMPTS) {
@@ -434,7 +446,7 @@ export function useVoiceSession(options: { querySessionId: string | null }) {
     [handleEvent, options.querySessionId, send, token],
   );
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (deviceId?: string) => {
     if (live.current) return;
     live.current = true;
     dispatch({ type: "reset" });
@@ -451,7 +463,7 @@ export function useVoiceSession(options: { querySessionId: string | null }) {
         onPlaybackEnded: ({ turn, sentence }) => send({ type: "playback", turn, sentence, event: "ended" }),
         onAgentLevel: (rms) => dispatch({ type: "levels", agent: rms }),
       });
-      await a.start();
+      await a.start(deviceId);
       audio.current = a;
       dispatch({ type: "echo", enabled: a.echoCancellation });
       dispatch({ type: "mic", available: a.micAvailable, error: a.micError });

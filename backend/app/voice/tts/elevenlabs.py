@@ -25,6 +25,8 @@ import httpx
 import structlog
 import websockets
 
+from app.voice.availability import key_configured
+
 logger = structlog.stdlib.get_logger("app.voice.tts.elevenlabs")
 
 _WS = "wss://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream-input"
@@ -123,6 +125,11 @@ class ElevenLabsProvider:
             ]
         await socket.send(json.dumps(bos))
         return socket
+
+    def unavailable_reason(self) -> str | None:
+        if key_configured(self._api_key):
+            return None
+        return "Voice is set to speak through ElevenLabs, but ELEVENLABS_API_KEY is not set."
 
     async def open(self, *, quality: str, lexicon_pls: str | None) -> ElevenLabsStream:
         model = self._quality if quality == "multilingual" else self._flash

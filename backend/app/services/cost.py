@@ -48,6 +48,7 @@ LIST_PRICES: dict[tuple[Component, str], tuple[float, Unit]] = {
     ("stt", "nova-3-medical"): (0.0077 / 60, "seconds"),
     ("tts", "eleven_flash_v2_5"): (0.15 / 1_000, "characters"),
     ("tts", "eleven_multilingual_v2"): (0.30 / 1_000, "characters"),
+    ("tts", "aura-2"): (0.030 / 1_000, "characters"),
 }
 GENERATION_OUTPUT_PRICE: dict[str, float] = {"claude-sonnet-4-6": 15.0 / 1_000_000}
 # What the offline stand-ins (provider "local") would cost on the cloud
@@ -151,6 +152,9 @@ def current() -> Collector | None:
 
 
 def list_price(component: Component, model: str) -> tuple[float, Unit] | None:
+    # Aura-2 is priced per model family; the model id names the voice.
+    if component == "tts" and model.startswith("aura-2"):
+        model = "aura-2"
     return LIST_PRICES.get((component, model))
 
 

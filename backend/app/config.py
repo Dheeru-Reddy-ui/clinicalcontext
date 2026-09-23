@@ -182,6 +182,10 @@ class Settings(BaseSettings):
     voice_tts_model: str = "eleven_flash_v2_5"
     voice_tts_model_quality: str = "eleven_multilingual_v2"
     voice_tts_voice_id: str = "21m00Tcm4TlvDq8ikWAM"
+    # In the cloud backend, which provider speaks. Deepgram by default: one
+    # free Deepgram account then covers both hearing and speaking.
+    voice_tts_provider: Literal["deepgram", "elevenlabs"] = "deepgram"
+    voice_deepgram_tts_model: str = "aura-2-thalia-en"
     # Offline engines.
     voice_whisper_model: str = "tiny.en"
     voice_whisper_compute: str = "int8"

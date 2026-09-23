@@ -18,13 +18,37 @@ from urllib.parse import urlencode
 import structlog
 import websockets
 
+from app.voice.availability import CLOUD_SETUP, key_configured
 from app.voice.stt.base import QueueEvents, SttEvent, SttWord
 
 logger = structlog.stdlib.get_logger("app.voice.stt.deepgram")
 
 _ENDPOINT = "wss://api.deepgram.com/v1/listen"
 _KEEPALIVE_SECONDS = 5.0
-_MAX_KEYTERMS = 100
+# Deepgram rejects a request whose keyterms exceed 500 tokens in total
+# ("Keyterm limit exceeded") and recommends the 20-50 most important terms.
+# The boost list arrives ranked (corpus drugs by document count, then LASA
+# names), so the budget keeps the head of it. Token counts are estimated
+# conservatively — drug names tokenize poorly — to stay well inside the cap.
+_MAX_KEYTERMS = 50
+_KEYTERM_TOKEN_BUDGET = 400
+
+
+def _estimated_tokens(term: str) -> int:
+    return max(1, -(-len(term) // 3))
+
+
+def select_keyterms(boost: list[str]) -> list[str]:
+    """The ranked terms that fit Deepgram's keyterm limit, in order."""
+    chosen: list[str] = []
+    spent = 0
+    for term in boost:
+        cost = _estimated_tokens(term)
+        if len(chosen) >= _MAX_KEYTERMS or spent + cost > _KEYTERM_TOKEN_BUDGET:
+            break
+        chosen.append(term)
+        spent += cost
+    return chosen
 
 
 class DeepgramStream:
@@ -159,6 +183,9 @@ class DeepgramProvider:
         self._api_key = api_key
         self.model = model
 
+    def unavailable_reason(self) -> str | None:
+        return None if key_configured(self._api_key) else CLOUD_SETUP
+
     async def open(self, *, boost: list[str]) -> DeepgramStream:
         params: list[tuple[str, str]] = [
             ("model", self.model),
@@ -172,12 +199,13 @@ class DeepgramProvider:
             ("endpointing", "300"),
             ("utterance_end_ms", "1000"),
         ]
-        params.extend(("keyterm", term) for term in boost[:_MAX_KEYTERMS])
+        keyterms = select_keyterms(boost)
+        params.extend(("keyterm", term) for term in keyterms)
         url = f"{_ENDPOINT}?{urlencode(params)}"
         socket = await websockets.connect(
             url,
             additional_headers={"Authorization": f"Token {self._api_key}"},
             max_size=None,
         )
-        logger.info("deepgram_connected", model=self.model, keyterms=min(len(boost), _MAX_KEYTERMS))
+        logger.info("deepgram_connected", model=self.model, keyterms=len(keyterms))
         return DeepgramStream(socket, model=self.model)

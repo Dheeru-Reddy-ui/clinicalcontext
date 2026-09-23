@@ -155,6 +155,16 @@ async def voice_ws(socket: WebSocket) -> None:
                 return
             await session.attach(transport)
         else:
+            # Refuse in words rather than open a session whose providers
+            # cannot start — that crashed on the free deployment, and the
+            # browser was left recording into nothing.
+            reason = runtime.unavailable_reason()
+            if reason is not None:
+                await transport.send_json(
+                    protocol.ErrorEvent(code="voice_unavailable", message=reason).model_dump()
+                )
+                await socket.close(code=4503)
+                return
             pool = socket.app.state.db_pool
             async with tenant_connection(pool, user.org_id, user.user_id) as conn:
                 quality = await VoiceRepository().get_tts_quality(conn, org_id=user.org_id)
@@ -241,7 +251,8 @@ async def voice_config(
         stt_provider=runtime.stt.name,
         stt_model=runtime.stt.model,
         tts_provider=runtime.tts.name,
-        tts_model=(
+        tts_model=getattr(runtime.tts, "model", None)
+        or (
             runtime.settings.voice_tts_model
             if runtime.settings.voice_backend == "cloud"
             else f"local:{runtime.settings.voice_offline_voice}"
@@ -251,6 +262,8 @@ async def voice_config(
         lexicon_entries=len(lexicon.entries),
         lexicon_coverage=round(lexicon.coverage, 3),
         lasa_pairs=len(runtime.lasa),
+        available=runtime.unavailable_reason() is None,
+        unavailable_reason=runtime.unavailable_reason(),
     )
 
 

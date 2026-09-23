@@ -33,6 +33,10 @@ class VoiceConfigOut(BaseModel):
     lexicon_entries: int
     lexicon_coverage: float
     lasa_pairs: int
+    # False when this server cannot run voice at all (no engine, no key);
+    # the page then says why instead of opening a session that dies.
+    available: bool = True
+    unavailable_reason: str | None = None
 
 
 class VoiceSettingsIn(BaseModel):

@@ -326,6 +326,18 @@ class WhisperProvider:
         self._compute_type = compute_type
         self._cpu_threads = cpu_threads
 
+    def unavailable_reason(self) -> str | None:
+        import importlib.util
+
+        if importlib.util.find_spec("faster_whisper") is not None:
+            return None
+        from app.voice.availability import CLOUD_SETUP
+
+        return (
+            "This server has no speech-recognition engine installed — the free "
+            "deployment leaves it out to fit in memory. " + CLOUD_SETUP
+        )
+
     async def warm(self) -> None:
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(

@@ -1,5 +1,7 @@
 """Text-to-speech providers behind one Protocol (11F).
 
+* ``deepgram`` — Deepgram Aura-2 over REST, the cloud default: the same free
+  Deepgram account that runs speech-to-text.
 * ``elevenlabs`` — ElevenLabs streaming over a pre-warmed WebSocket; Flash
   for latency, Multilingual for prosody (a per-org setting).
 * ``local`` — the operating system's synthesizer: Windows OneCore voices
@@ -15,6 +17,13 @@ from app.voice.tts.base import TtsProvider, TtsStream
 
 
 def get_tts_provider(settings: Settings) -> TtsProvider:
+    if settings.voice_backend == "cloud" and settings.voice_tts_provider == "deepgram":
+        from app.voice.tts.deepgram import DeepgramTtsProvider
+
+        return DeepgramTtsProvider(
+            api_key=settings.deepgram_api_key.get_secret_value(),
+            model=settings.voice_deepgram_tts_model,
+        )
     if settings.voice_backend == "cloud":
         from app.voice.tts.elevenlabs import ElevenLabsProvider
 

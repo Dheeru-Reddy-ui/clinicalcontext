@@ -10,6 +10,8 @@
  * latency, the first-audio playback time — comes from timestamps taken here.
  */
 
+import { describeMicError } from "@/components/voice/mic-check";
+
 export interface CapturedFrame {
   pcm: ArrayBuffer;
   rms: number;
@@ -46,10 +48,14 @@ export class VoiceAudio {
   micAvailable = false;
   micError: string | null = null;
 
-  async start(): Promise<void> {
+  /** `deviceId`: the microphone chosen in the mic check, if any. */
+  async start(deviceId?: string): Promise<void> {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: {
+          // `ideal`, not `exact`: a remembered device that has since been
+          // unplugged falls back to the default instead of failing.
+          deviceId: deviceId ? { ideal: deviceId } : undefined,
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
@@ -64,7 +70,7 @@ export class VoiceAudio {
       // to typed turns, and says so, rather than refusing to open.
       this.stream = null;
       this.micAvailable = false;
-      this.micError = error instanceof Error ? error.message : "microphone unavailable";
+      this.micError = describeMicError(error);
     }
     const track = this.stream?.getAudioTracks()[0];
     const settings = track?.getSettings();

@@ -17,6 +17,7 @@ import structlog
 
 from app.config import Settings, get_settings
 from app.guardrails.phi import PhiDetector
+from app.voice.availability import provider_unavailable_reason
 from app.voice.endpointing import (
     CompletenessClassifier,
     EndpointPolicy,
@@ -78,6 +79,10 @@ class VoiceRuntime:
     def backend(self) -> str:
         return self.settings.voice_backend
 
+    def unavailable_reason(self) -> str | None:
+        """Why voice cannot run here, or None when both providers can serve."""
+        return provider_unavailable_reason(self.stt) or provider_unavailable_reason(self.tts)
+
     def warm_guardrails(self) -> None:
         """Load the Presidio engine (blocking; call it off the event loop)."""
         self.phi_full.scan("warm-up")
@@ -106,7 +111,7 @@ def build_runtime(settings: Settings | None = None) -> VoiceRuntime:
         phi_inline=PhiDetector(use_presidio=False),
     )
     logger.info(
-        "voice_runtime_ready",
+        "voice_runtime_ready" if runtime.unavailable_reason() is None else "voice_unavailable",
         backend=resolved.voice_backend,
         stt=f"{runtime.stt.name}:{runtime.stt.model}",
         tts=runtime.tts.name,

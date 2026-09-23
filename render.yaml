@@ -43,8 +43,11 @@ services:
       # Anthropic keys and a corpus re-embedded with Cohere (docs/FIRST-DEPLOY.md).
       - key: AI_BACKEND
         value: offline
-      # Voice in the cloud needs Deepgram + ElevenLabs; the image carries no
-      # offline speech stack. Leave "offline" and the voice page reports that.
+      # The image carries no speech engine (it would not fit in 512 MB), so
+      # voice needs a cloud provider: set this to "cloud" together with a
+      # DEEPGRAM_API_KEY — one free Deepgram account covers hearing and
+      # speaking (docs/DEPLOY.md, Part 4). Left "offline", the voice page
+      # says voice is unavailable instead of opening a session that fails.
       - key: VOICE_BACKEND
         value: offline
       - key: OTEL_SERVICE_NAME

@@ -821,4 +821,8 @@ def _inline_phi(text: str) -> bool:
 
 def _tts_provider(model: str) -> str:
     """The billing provider behind a TTS stream, from its model label."""
-    return "elevenlabs" if model.startswith("eleven") else cost.LOCAL_PROVIDER
+    if model.startswith("eleven"):
+        return "elevenlabs"
+    if model.startswith("aura"):
+        return "deepgram"
+    return cost.LOCAL_PROVIDER

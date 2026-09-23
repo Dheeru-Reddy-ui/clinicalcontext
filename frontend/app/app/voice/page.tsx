@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AgentTranscript } from "@/components/voice/agent-transcript";
+import { MicCheck, readSavedMicId } from "@/components/voice/mic-check";
 import { ConfirmCard } from "@/components/voice/confirm-card";
 import { StateIndicator } from "@/components/voice/state-indicator";
 import { UserTranscript } from "@/components/voice/transcript";
@@ -16,6 +17,7 @@ import { WaterfallChart, type WaterfallRow } from "@/components/voice/waterfall-
 import { Waveform } from "@/components/voice/waveform";
 import { useVoiceConfig } from "@/hooks/use-api";
 import { useVoiceSession, type VoiceTurn } from "@/hooks/use-voice-session";
+import { warmApi } from "@/lib/signup";
 
 /** Reads `?session=` (handoff from the text Ask screen) outside the page's render. */
 function SessionFromUrl({ onSession }: { onSession: (id: string | null) => void }) {
@@ -42,7 +44,16 @@ function VoiceScreen({ querySessionId }: { querySessionId: string | null }) {
   const config = useVoiceConfig();
   const { state } = voice;
   const [typed, setTyped] = useState("");
+  const [micId, setMicId] = useState<string | undefined>(undefined);
   const active = state.status === "ready" || state.status === "reconnecting";
+  // The server says up front whether it can run voice (no engine, no key);
+  // `undefined` while the config is loading counts as available.
+  const unavailable = config.data?.available === false ? (config.data.unavailable_reason ?? "") : null;
+
+  // A sleeping free-tier API takes up to two minutes to wake, and a voice
+  // connection opened against it fails; waking it on arrival hides that.
+  useEffect(warmApi, []);
+  useEffect(() => setMicId(readSavedMicId()), []);
   const turns = useMemo(() => state.turns.filter((t) => t.final || t.partial || t.sentences.length), [state.turns]);
   const current = state.turns[state.turnIndex] ?? null;
   const pendingConfirm = turns.find((t) => t.confirm) ?? null;
@@ -100,8 +111,8 @@ function VoiceScreen({ querySessionId }: { querySessionId: string | null }) {
             {!active ? (
               <Button
                 size="lg"
-                onClick={() => void voice.start()}
-                disabled={state.status === "connecting"}
+                onClick={() => void voice.start(micId)}
+                disabled={state.status === "connecting" || unavailable !== null}
                 data-testid="voice-start"
               >
                 <Mic /> {state.status === "connecting" ? "Starting…" : "Start listening"}
@@ -120,6 +131,18 @@ function VoiceScreen({ querySessionId }: { querySessionId: string | null }) {
             )}
           </div>
         </div>
+        {unavailable !== null && (
+          <Alert className="mt-3" data-testid="voice-unavailable">
+            <AlertTitle>Voice isn&apos;t available on this server yet</AlertTitle>
+            <AlertDescription>
+              {unavailable || "The server has no speech engine configured."} You can still ask the same
+              questions by typing on the Ask page.
+            </AlertDescription>
+          </Alert>
+        )}
+        {!active && unavailable === null && (
+          <MicCheck deviceId={micId} onDeviceChange={setMicId} className="mt-3" />
+        )}
         <Waveform micLevel={state.micLevel} agentLevel={state.agentLevel} active={active} className="mt-3" />
         <p className="mt-1 font-mono text-[11px] text-muted-foreground">
           {config.data

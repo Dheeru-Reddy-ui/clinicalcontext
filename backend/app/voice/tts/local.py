@@ -132,6 +132,18 @@ class LocalTtsProvider:
         self._voice = voice
         self._respell: Any | None = None
 
+    def unavailable_reason(self) -> str | None:
+        if _IS_WINDOWS:
+            import importlib.util
+
+            if importlib.util.find_spec("winrt") is not None:
+                return None
+        elif shutil.which("espeak-ng") or shutil.which("espeak"):
+            return None
+        from app.voice.availability import CLOUD_SETUP
+
+        return "This server has no speech synthesizer installed. " + CLOUD_SETUP
+
     def set_respeller(self, respell: Any) -> None:
         self._respell = respell
 

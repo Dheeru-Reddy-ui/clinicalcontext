@@ -663,3 +663,26 @@ async def test_voice_rest_surface_reports_config_turns_and_analytics(env: ApiEnv
         "/api/v1/voice/settings", json={"tts_quality": "flash"}, headers=env.auth(clinician_token)
     )
     assert denied.status_code == 403
+
+
+async def test_a_server_that_cannot_run_voice_says_why_instead_of_starting(env: ApiEnv) -> None:
+    # On the free deployment the session died on start (no speech engine in
+    # the image) while /voice/config reported a ready runtime; the browser
+    # was left recording into nothing. Both now tell the truth.
+    _org, _user, token = await env.new_org_with_owner()
+    reason = "This server has no speech engine installed."
+    async with voice_server(env, []) as server:
+        server.tts.unavailable_reason = lambda: reason  # type: ignore[attr-defined]
+
+        config = await env.client.get("/api/v1/voice/config", headers=env.auth(token))
+        assert config.status_code == 200, config.text
+        assert config.json()["available"] is False
+        assert config.json()["unavailable_reason"] == reason
+
+        socket = await websockets.connect(server.url, max_size=None)
+        await socket.send(json.dumps({"type": "start", "token": token}))
+        reply = json.loads(await socket.recv())
+        assert reply == {"type": "error", "code": "voice_unavailable", "message": reason}
+        with pytest.raises(websockets.ConnectionClosed) as closed:
+            await socket.recv()
+        assert closed.value.rcvd is not None and closed.value.rcvd.code == 4503

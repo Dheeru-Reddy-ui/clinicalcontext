@@ -14,6 +14,7 @@
 - [Part 1 — Put the newest API live](#part-1--put-the-newest-api-live) · *do this first, 5 minutes*
 - [Part 2 — Let the app send emails](#part-2--let-the-app-send-emails-optional) · *optional, 15 minutes*
 - [Part 3 — Make every push deploy itself](#part-3--make-every-push-deploy-itself-optional) · *optional, 20 minutes*
+- [Part 4 — Turn on voice](#part-4--turn-on-voice-optional) · *optional, 10 minutes*
 - [Every day: how a change goes live](#every-day-how-a-change-goes-live)
 - [If something goes wrong](#if-something-goes-wrong)
 - [Words on this page](#words-on-this-page)
@@ -35,6 +36,7 @@ The app is a few services that work together. Most are already fine.
 | **Cache** | Makes repeated questions fast; rate limits | Upstash | Working. |
 | **Automatic deploys** | Ships the API after every test passes | GitHub Actions | Working. After tests pass, a deploy waits for your approval, then ships the API. The website ships itself through Vercel. |
 | **Email** | Magic-link sign-in and forgot-password emails | Supabase + an email provider | Not set up. Optional — Part 2. Sign-up and password sign-in do **not** need it. |
+| **Voice** | Ask out loud, hear the answer | Deepgram | Not set up. Optional — Part 4. The Voice page says so and disables Start until it is. |
 
 **Why do the two move separately?** Vercel rebuilds the website on its own every time you push to `main`. Render is deliberately set to wait until it is told (`autoDeployTrigger: "off"` in `render.yaml`), so a broken API can never go live on its own — either the deploy pipeline tells it (Part 3) or you do (Part 1).
 
@@ -201,6 +203,38 @@ From then on each deploy pauses. The run on the **Actions** page shows a **Revie
 
 ---
 
+## Part 4 — Turn on voice (optional)
+
+**About 10 minutes. Free, no card needed.**
+
+Voice mode lets people ask out loud and hear the answer. It needs a speech service, because the free server is far too small to run speech recognition itself: until this is done the Voice page says *"Voice isn't available on this server yet"* and the Start button is disabled.
+
+This uses **Deepgram**: one free account covers both halves — `nova-3-medical` hears the question (a model trained on medical vocabulary, so drug names come through) and Aura-2 speaks the answer. New accounts get **$200 of credit with no card and no expiry**, which is tens of thousands of minutes of listening.
+
+### 4a. Get a Deepgram key
+
+1. Sign up at https://console.deepgram.com/signup (email or Google; no card).
+2. Top-left, pick your project from the **Projects** menu, then click **Settings** → **API Keys**.
+3. Click **Create a New API Key**. Friendly name: `clinicalcontext-voice`. Permissions: **Member**. Expiration: **Never**. Click **Create Key**.
+4. **Copy the key now** — Deepgram shows it only once — then click **Got it**.
+
+### 4b. Give it to the API
+
+1. Render → **clinicalcontext-api** → **Environment**.
+2. Find `DEEPGRAM_API_KEY` → **Edit** → paste the key → make sure nothing follows it (no space, no line break).
+3. Find `VOICE_BACKEND` → change `offline` to `cloud`.
+4. Click **Save, rebuild, and deploy**. It takes about 5 minutes.
+
+### Check it worked
+
+1. Open https://clinicalcontext-euev.vercel.app/app/voice. The *"isn't available"* notice should be gone.
+2. Click **Test microphone** and say something. The bar should move and the text should change to *"Your voice is coming through."* If the browser asks for the microphone, choose **Allow**.
+3. Click **Start listening** and ask: *"What is first-line anticoagulation in non-valvular atrial fibrillation?"* You should see your words appear, then hear a cited answer. Talk over it to interrupt.
+
+> **What each part does if something is wrong.** The mic check needs nothing from the server — if the bar does not move, the problem is the browser or the microphone, and the message under it says which. If the bar moves but voice says it is unavailable, the key or `VOICE_BACKEND` is not set on Render.
+
+---
+
 ## Every day: how a change goes live
 
 **Before you push**, you can run the same checks GitHub runs, on your own machine, in about 8 minutes:
@@ -258,6 +292,9 @@ Either way, the website updates a few minutes before the API does. During those 
 | The email link says *"opened in a different browser"* | Links only work in the browser that asked for them | Type the 6-digit code instead ([Part 2d](#2d-put-a-6-digit-code-in-the-emails-recommended)) |
 | The email link opens `localhost` | Supabase doesn't know your website's address | [Part 2c](#2c-tell-supabase-where-your-website-is) |
 | *"Error sending confirmation email"* or *"Email address not authorized"* | Supabase is still using its built-in email | [Part 2b](#2b-connect-brevo-to-supabase) |
+| Voice page says *"Voice isn't available on this server yet"* | No speech service is set up | [Part 4](#part-4--turn-on-voice-optional) |
+| The microphone test bar does not move | The browser blocked the mic, or the wrong one is chosen | Read the message under the bar; pick another microphone from the list |
+| Voice worked, then says it is unavailable | The Deepgram key was deleted, or the $200 credit ran out | Deepgram console → **Usage**; make a new key ([Part 4a](#4a-get-a-deepgram-key)) |
 
 ---
 
