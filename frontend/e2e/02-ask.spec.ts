@@ -123,11 +123,16 @@ test("a query containing PHI is blocked before any model is called", async ({ pa
     [queryId],
   );
   expect(generation, "no generation call was made for a blocked query").toHaveLength(0);
-  const status = await one<{ status: string }>(
-    "SELECT status::text AS status FROM public.queries WHERE id = $1",
+  const status = await one<{ status: string; raw_query: string }>(
+    "SELECT status::text AS status, raw_query FROM public.queries WHERE id = $1",
     [queryId],
   );
   expect(status?.status).toBe("blocked");
+  // "Stopped before anything is stored" has to be literally true: the row is
+  // written before the gate runs, and once kept the name and date of birth,
+  // which the autocomplete and dashboard could show back to colleagues.
+  expect(status?.raw_query).not.toContain("John Smith");
+  expect(status?.raw_query).not.toContain("1982");
 });
 
 test("a diagnosis request renders the refusal", async ({ page }) => {

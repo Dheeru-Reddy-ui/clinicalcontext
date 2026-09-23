@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.guardrails.phi import PhiDetector
+from app.guardrails.phi import WITHHELD_TEXT, PhiDetector, carries_phi, withhold_phi
 
 # Presidio NER is telemetry-only; the deterministic layer is what blocks, so
 # these tests run it without Presidio for speed and determinism.
@@ -72,3 +72,17 @@ def test_findings_never_contain_raw_phi() -> None:
 def test_short_harmless_base64_not_flagged() -> None:
     # "ASA" (aspirin abbrev) base64 — too short / no PHI after decode.
     assert not detector.scan("the drug QVNB is aspirin").detected
+
+
+def test_text_the_gate_blocks_is_stored_as_the_placeholder() -> None:
+    blocked = "What anticoagulant for patient John Smith, DOB 03/14/1982?"
+    assert carries_phi(blocked)
+    assert withhold_phi(blocked) == WITHHELD_TEXT
+
+
+def test_a_described_patient_is_stored_as_asked() -> None:
+    # The block message tells people to describe a patient this way, so it
+    # must pass the gate and be kept exactly as typed.
+    described = "What is the treatment for a 67-year-old with non-valvular atrial fibrillation?"
+    assert not carries_phi(described)
+    assert withhold_phi(described) == described

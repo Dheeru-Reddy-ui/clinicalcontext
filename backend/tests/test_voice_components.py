@@ -460,6 +460,25 @@ def test_waterfall_legs_are_sequential_and_missing_legs_stay_none() -> None:
     assert percentile([], 0.5) is None
 
 
+async def test_speculation_never_fires_on_a_partial_carrying_patient_identifiers() -> None:
+    # Speculation retrieves before the committed turn reaches the PHI gate —
+    # with the cloud backend, through an embedding provider. A partial that
+    # names a patient must wait for the gate like any other turn.
+    calls: list[str] = []
+
+    async def retrieve(query: str) -> list[str]:
+        calls.append(query)
+        return []
+
+    spec = SpeculativeRetriever(retrieve, min_words=6, stable_ms=0, similarity_threshold=0.9)
+    partial = "what anticoagulant for patient john smith date of birth 03/14/1982"
+    verdict = heuristic_completeness(partial)
+    assert not spec.should_fire(partial, 400, verdict)
+    # The same shape of question without identifiers still speculates.
+    clean = "what anticoagulant for a patient with atrial fibrillation and renal failure"
+    assert spec.should_fire(clean, 400, heuristic_completeness(clean))
+
+
 async def test_speculation_hits_on_stable_complete_partial_and_counts_waste() -> None:
     calls: list[str] = []
 

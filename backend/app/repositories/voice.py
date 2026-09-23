@@ -6,6 +6,7 @@ import json
 from typing import Any
 from uuid import UUID
 
+from app.guardrails.phi import withhold_phi
 from app.repositories.base import PgConnection
 
 
@@ -67,8 +68,9 @@ class VoiceRepository:
             backend,
             stt_model,
             tts_model,
-            transcript_raw,
-            transcript_final,
+            # A spoken question the PHI gate blocked keeps no transcript.
+            withhold_phi(transcript_raw),
+            withhold_phi(transcript_final),
             json.dumps(corrections),
             json.dumps(confirmation),
             outcome,

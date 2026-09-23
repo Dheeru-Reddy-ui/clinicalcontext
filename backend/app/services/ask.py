@@ -22,6 +22,7 @@ from app.core.telemetry import bind_context
 from app.graph.graph import AgentGraph
 from app.graph.reasoner import Reasoner, get_reasoner
 from app.graph.state import GraphEvent
+from app.guardrails.phi import WITHHELD_TEXT, carries_phi, withhold_phi
 from app.guardrails.pipeline import GuardrailPipeline
 from app.repositories.answers import AnswersRepository, reasoning_payload
 from app.repositories.base import tenant_connection
@@ -159,7 +160,8 @@ class AskService:
                 "data": {
                     "query_id": str(query_id),
                     "session_id": str(resolved_session),
-                    "contextualized_query": contextualized,
+                    # The events are also kept for idempotent replay.
+                    "contextualized_query": withhold_phi(contextualized),
                 },
             }
         )
@@ -278,21 +280,31 @@ class AskService:
         pico: dict[str, Any] | None = None,
     ) -> tuple[UUID, UUID, str]:
         """Create (or reuse) the session, contextualize the query, and write
-        the query row. → (query_id, session_id, contextualized_query)."""
+        the query row. → (query_id, session_id, contextualized_query).
+
+        This runs before the guardrails (they record against the query's id),
+        so text the PHI gate will block is never written: the row and a new
+        session's title keep a placeholder. The caller still gets the real
+        contextualized text, which is what the gate has to inspect.
+        """
+        stored_query = withhold_phi(query)
         async with tenant_connection(self._pool, org_id, user_id) as conn:
             resolved_session = session_id or await self._answers.create_session(
-                conn, org_id=org_id, user_id=user_id, title=query[:120]
+                conn, org_id=org_id, user_id=user_id, title=stored_query[:120]
             )
             contextualized = await self._contextualize(conn, resolved_session, query)
+            withheld = stored_query != query or carries_phi(contextualized)
             query_id = await self._answers.create_query(
                 conn,
                 session_id=resolved_session,
                 org_id=org_id,
                 user_id=user_id,
-                raw_query=query,
+                raw_query=WITHHELD_TEXT if withheld else query,
                 mode=mode,
                 pico=pico,
-                contextualized_query=contextualized if contextualized != query else None,
+                contextualized_query=(
+                    None if withheld or contextualized == query else contextualized
+                ),
             )
         return query_id, resolved_session, contextualized
 
@@ -525,7 +537,7 @@ class AskService:
             "WHERE session_id = $1 ORDER BY created_at DESC LIMIT 1",
             session_id,
         )
-        if not prior:
+        if not prior or prior == WITHHELD_TEXT:
             return query
         return f"{prior.rstrip('?. ')} — follow-up: {query}"
 

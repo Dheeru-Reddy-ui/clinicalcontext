@@ -20,6 +20,7 @@ from typing import Any
 
 import structlog
 
+from app.guardrails.phi import carries_phi
 from app.services import cost
 from app.voice.endpointing import CompletenessVerdict
 
@@ -110,6 +111,11 @@ class SpeculativeRetriever:
             return False
         if stable_ms < self._stable_ms or not completeness.complete:
             return False
+        # Speculation retrieves before the committed turn reaches the PHI
+        # gate; with the cloud backend retrieval embeds through a provider.
+        # A partial carrying identifiers waits for the gate like any turn.
+        if carries_phi(text):
+            return False
         # One speculation per turn: replacing it on every re-decoded partial
         # is pure waste (a re-decode is not new information).
         return self._inflight is None
@@ -119,7 +125,7 @@ class SpeculativeRetriever:
         if self._inflight is not None and not self._inflight.task.done():
             self._inflight.task.cancel()
             self.wasted_count += 1
-            logger.info("speculation_replaced", previous=self._inflight.text[:80])
+            logger.info("speculation_replaced", previous_words=len(self._inflight.text.split()))
         started = time.monotonic() * 1000
         collector = cost.Collector()
 
@@ -130,7 +136,8 @@ class SpeculativeRetriever:
         task = asyncio.create_task(run(), name="voice-speculation")
         self._inflight = _InFlight(text, task, started, collector)
         self.fired_count += 1
-        logger.info("speculation_fired", text=text[:120])
+        # Word count, not text: a transcript is patient-adjacent by nature.
+        logger.info("speculation_fired", words=len(text.split()))
 
     # -- commit --------------------------------------------------------------------
 

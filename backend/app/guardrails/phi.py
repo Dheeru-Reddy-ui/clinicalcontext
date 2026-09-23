@@ -13,6 +13,13 @@ model. Detection is layered:
 
 Findings carry entity *types and counts only* — never the matched values — so
 the verdict is safe to log and audit.
+
+Blocked text is not stored either. The query row, the session title and a
+voice transcript are all written before the gate runs (the gate logs against
+the query's id), so each of them passes through :func:`withhold_phi` and
+keeps a fixed placeholder instead of the identifiers. Before that, the gate
+blocked the question and the database kept it word for word — and the
+autocomplete and the dashboard's top questions read from that column.
 """
 
 from __future__ import annotations
@@ -312,3 +319,20 @@ _BLOCK_MESSAGE = (
 
 def phi_block_message() -> str:
     return _BLOCK_MESSAGE
+
+
+# What text carrying patient identifiers is stored as, wherever it would
+# otherwise be written. Migration 024 rewrites earlier rows to the same value.
+WITHHELD_TEXT = "[withheld: contained patient identifiers]"
+
+_STORAGE_DETECTOR = PhiDetector(use_presidio=False)
+
+
+def carries_phi(text: str) -> bool:
+    """The block decision's own test: the deterministic layer, no model."""
+    return _STORAGE_DETECTOR.scan(text).detected
+
+
+def withhold_phi(text: str) -> str:
+    """``text`` as it may be stored: unchanged, or WITHHELD_TEXT."""
+    return WITHHELD_TEXT if carries_phi(text) else text
