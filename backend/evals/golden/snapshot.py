@@ -175,6 +175,15 @@ async def load(pool: DbPool, *, embedder_name: str) -> dict[str, int]:
             ON CONFLICT (term) DO UPDATE SET document_count = excluded.document_count
             """
         )
+        # A bulk load leaves the planner with an empty table's statistics
+        # until autovacuum gets round to it, and with none the planner will
+        # not use the HNSW index: dense search falls back to scanning every
+        # vector. CI starts its tests seconds after this load, so whether
+        # the index was used depended on that race — the flaky "the HNSW
+        # index must be used" failure. Reproduced with autovacuum off:
+        # no index before ANALYZE, the index after it.
+        for table in ("documents", "chunks", "chunk_embeddings"):
+            await conn.execute(f"ANALYZE public.{table}")
     return {"documents": len(docs), "chunks": len(chunks), "embedded": embedded}
 
 
