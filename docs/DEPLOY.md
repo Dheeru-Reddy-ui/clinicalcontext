@@ -33,13 +33,10 @@ The app is a few services that work together. Most are already fine.
 | **API** | The server behind the website. Answers questions, creates accounts. | Render — [clinicalcontext-api.onrender.com](https://clinicalcontext-api.onrender.com/health) | Up to date. Does **not** update itself — see Part 1, or set up Part 3. |
 | **Database and logins** | Stores documents, users and organisations | Supabase | Working. All 23 database updates are applied. |
 | **Cache** | Makes repeated questions fast; rate limits | Upstash | Working. |
-| **Automatic deploys** | Ships the API after every test passes | GitHub Actions | Secrets added. `RENDER_DEPLOY_HOOK_URL` needs re-copying — see Part 3a, row 2. |
-| **A stray Render service** | Nothing — created by mistake | Render — `clinicalcontext` (no `-api`) | **Delete it.** It tries to build a `Dockerfile` that doesn't exist on every push, fails, and emails you each time. See below. |
+| **Automatic deploys** | Ships the API after every test passes | GitHub Actions | Working. After tests pass, a deploy waits for your approval, then ships the API. The website ships itself through Vercel. |
 | **Email** | Magic-link sign-in and forgot-password emails | Supabase + an email provider | Not set up. Optional — Part 2. Sign-up and password sign-in do **not** need it. |
 
 **Why do the two move separately?** Vercel rebuilds the website on its own every time you push to `main`. Render is deliberately set to wait until it is told (`autoDeployTrigger: "off"` in `render.yaml`), so a broken API can never go live on its own — either the deploy pipeline tells it (Part 3) or you do (Part 1).
-
-**Deleting the stray service.** Render → the service named **clinicalcontext** — *not* **clinicalcontext-api** → **Settings** → scroll to the bottom → **Delete Web Service** → type its name to confirm. Nothing uses it: the API is **clinicalcontext-api**, and the website is on Vercel.
 
 ### The four websites you will use
 
@@ -159,7 +156,7 @@ Go to https://clinicalcontext-euev.vercel.app/login, click **Forgot your passwor
 
 To do that, GitHub needs a few **secrets**: values it keeps hidden and gives only to the deploy job. You type each one into GitHub once.
 
-### 3a. Add the five deploy secrets
+### 3a. Add the two deploy secrets
 
 Open https://github.com/Dheeru-Reddy-ui/clinicalcontext/settings/secrets/actions. For each row below: click **New repository secret** → type the **Name** exactly as shown → paste the value → **Add secret**.
 
@@ -167,17 +164,12 @@ Open https://github.com/Dheeru-Reddy-ui/clinicalcontext/settings/secrets/actions
 |---|---|---|
 | 1 | `PRODUCTION_DATABASE_URL` | Supabase → your project → the **Connect** button at the top of the page → choose **Session pooler** → copy the string. Replace `[YOUR-PASSWORD]` with your database password. It should look like `postgresql://postgres.hyqnrsqrldrdjmnaksjk:[YOUR-PASSWORD]@aws-0-eu-central-1.pooler.supabase.com:5432/postgres` — note **port 5432**. See the box below for why this one. |
 | 2 | `RENDER_DEPLOY_HOOK_URL` | Render → **clinicalcontext-api** (the one ending in `-api`) → **Settings** → scroll to **Deploy Hook** → copy. It must look like `https://api.render.com/deploy/srv-dap2mulg1s2s7396sveg?key=…` — that `srv-…` is the API's id. Not the page address in your browser bar, and not `clinicalcontext-api.onrender.com`. Treat it like a password: anyone who has it can redeploy your API. |
-| 3 | `VERCEL_TOKEN` | https://vercel.com/account/tokens → **Create** → name it `github-deploy` → **Create** → copy it (shown only once). |
-| 4 | `VERCEL_PROJECT_ID` | The project that serves your live site is **clinicalcontext-euev** — not the one called `clinicalcontext`, which exists too. Vercel → **clinicalcontext-euev** → **Settings** → **General** → **Project ID** (starts with `prj_`). |
-| 5 | `VERCEL_ORG_ID` | Vercel → your team's **Settings** (the team's, not the project's) → **General** → **Team ID** (starts with `team_`). |
 
 > **Why "Session pooler" and not "Direct connection"?** On Supabase's free plan the direct connection only works over IPv6, and GitHub's machines only have IPv4 — so the deploy would fail with *"network is unreachable"*. The session pooler works over IPv4 and can run database updates. It has been checked: a dry run of all 23 updates through it reports *database is up to date*.
 >
 > Don't use port **6543** either: that is the *transaction* pooler, which the API itself uses, and it cannot run database updates.
 
-> **Two Vercel projects, one live site.** The account holds both `clinicalcontext` and `clinicalcontext-euev`. Only **clinicalcontext-euev** serves https://clinicalcontext-euev.vercel.app. Taking the ID from the other one makes the deploy stop with *"Could not retrieve Project Settings"* — the ID and the team don't match a project the token can see. The same message appears if `VERCEL_ORG_ID` is wrong.
-
-**Can't find the two Vercel IDs?** In a terminal, go into the `frontend` folder and run `npx vercel link`. Log in and pick **clinicalcontext-euev**. It creates `frontend/.vercel/project.json`, which contains `projectId` and `orgId`. That file is already ignored by git — never commit it.
+> **The website needs no secret here.** Vercel builds and publishes it by itself on every push to `main`. Only the API is deployed by this pipeline.
 
 ### 3b. Add four more for the nightly jobs
 
@@ -204,7 +196,7 @@ From then on each deploy pauses. The run on the **Actions** page shows a **Revie
 ### Check it worked
 
 1. Open https://github.com/Dheeru-Reddy-ui/clinicalcontext/actions, click **Deploy** in the left list, then **Run workflow** → **Run workflow**.
-2. Click the run that appears. Its first step, *Check the deploy secrets are present*, should say `all five deploy secrets are present`. If it names a missing secret, add it (3a) and run again.
+2. Click the run that appears. Its first step, *Check the deploy secrets are present*, should say `both deploy secrets are present`. If it names a missing secret, add it (3a) and run again.
 3. The whole run takes 5–10 minutes. A green tick means the API and website are both on the newest commit.
 
 ---
@@ -255,12 +247,11 @@ Either way, the website updates a few minutes before the API does. During those 
 | *"The server is starting up"*, or *"Waking the API"* on the home page | The free API was asleep | Wait up to two minutes. It carries on by itself. |
 | Sign-up says *"An account with this email already exists"* | That email already has an account | Sign in instead, or reset the password (needs Part 2) |
 | A red ✗ next to **CI** on GitHub | A test failed | Click it; the red step shows the error. `python scripts/preflight.py` reproduces it on your machine. |
-| **Deploy** stops at *Check the deploy secrets are present* | A secret is missing or its name is misspelled | Add the secret it names ([Part 3a](#3a-add-the-five-deploy-secrets)) |
-| **Deploy** fails at *Apply migrations* with *network is unreachable* | `PRODUCTION_DATABASE_URL` is the *Direct connection* string | Replace it with the **Session pooler** string ([Part 3a](#3a-add-the-five-deploy-secrets), row 1) |
-| **Deploy** stops at *Check the deploy secrets are present* with *not a Render deploy hook* | `RENDER_DEPLOY_HOOK_URL` holds some other address — a dashboard page, the API's own URL | Copy the real hook ([Part 3a](#3a-add-the-five-deploy-secrets), row 2). The step prints which `srv-…` a hook targets; for the API it is `srv-dap2mulg1s2s7396sveg`. |
+| **Deploy** stops at *Check the deploy secrets are present* | A secret is missing or its name is misspelled | Add the secret it names ([Part 3a](#3a-add-the-two-deploy-secrets)) |
+| **Deploy** fails at *Apply migrations* with *network is unreachable* | `PRODUCTION_DATABASE_URL` is the *Direct connection* string | Replace it with the **Session pooler** string ([Part 3a](#3a-add-the-two-deploy-secrets), row 1) |
+| **Deploy** stops at *Check the deploy secrets are present* with *not a Render deploy hook* | `RENDER_DEPLOY_HOOK_URL` holds some other address — a dashboard page, the API's own URL | Copy the real hook ([Part 3a](#3a-add-the-two-deploy-secrets), row 2). The step prints which `srv-…` a hook targets; for the API it is `srv-dap2mulg1s2s7396sveg`. |
 | **Deploy** fails at *Deploy the API* with 401 or 404 | The hook was regenerated in Render, or points at a service that no longer exists | Copy it again from Render → **clinicalcontext-api** → Settings → Deploy Hook |
 | **Deploy** times out at *Wait for the new release to answer* | Render never built the commit — usually a hook for a different service | Check the service id the secrets step printed, then Render → **clinicalcontext-api** → **Events** |
-| **Deploy** fails at *Deploy the frontend* with *Could not retrieve Project Settings* | `VERCEL_PROJECT_ID` or `VERCEL_ORG_ID` doesn't match a project the token can see — often the ID of the other Vercel project | Re-copy both ([Part 3a](#3a-add-the-five-deploy-secrets), rows 4 and 5); the live site is **clinicalcontext-euev** |
 | Sign-up on the live site says *"could not be reached"* (503) | A secret in Render has a stray newline or space from being pasted | Render → **clinicalcontext-api** → **Environment**, re-paste the value, **Save**. Since the config now trims whitespace, this only bites a deployment older than that fix. |
 | `/health` still shows the old `release` after a deploy | Render is still building, or the build failed | Render → **clinicalcontext-api** → **Events**. A failed build shows its log. |
 | Magic-link or reset email never arrives | Email isn't set up, or the email went to spam | [Part 2](#part-2--let-the-app-send-emails-optional); check the spam folder |
@@ -351,12 +342,12 @@ push to main → CI (lint, types, schema, tests over the seeded snapshot, secret
              → migrations     (session pooler, forward-only, checksummed)
              → the API        (Render's deploy hook with ref=<the tested commit>; must return a deploy id)
              → wait           (until /health reports the new commit, not the old process)
-             → the frontend   (Vercel)
+             (the website: Vercel's Git integration builds every push itself)
              → smoke test     (ready, headers, a real demo answer, live evals, the page)
              → end-to-end     (opt-in: repository variable E2E_AFTER_DEPLOY=true)
 ```
 
-Vercel's Git integration also builds every push to `main`, so the website is normally live before this job reaches its frontend step; that step then redeploys the same commit. The sign-up form handles the window in which the website is newer than the API.
+The website is not deployed by this job: Vercel's Git integration builds every push to `main` on its own. The sign-up form handles the window in which the website is newer than the API.
 
 CI's pytest step loads `evals/golden/snapshot` first, because the integration suites answer real questions and assert citations, contradictions, cache hits and HNSW index use; a runner's database starts empty. `scripts/preflight.py` runs the same set of checks locally, except that local pytest uses your own database's corpus.
 

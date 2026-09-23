@@ -16,8 +16,7 @@ name: Deploy
 # store, and the application's own secrets live in Render and Vercel.
 #
 # Repository secrets (docs/DEPLOY.md, Part 3, says where each comes from):
-#   RENDER_DEPLOY_HOOK_URL, PRODUCTION_DATABASE_URL, VERCEL_TOKEN,
-#   VERCEL_ORG_ID, VERCEL_PROJECT_ID; for the E2E job also REDIS_URL,
+#   RENDER_DEPLOY_HOOK_URL, PRODUCTION_DATABASE_URL; for the E2E job also REDIS_URL,
 #   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY.
 #   PRODUCTION_DATABASE_URL is Supabase's *session pooler* string (port 5432
 #   on the pooler host): migrations cannot run through the transaction
@@ -86,12 +85,9 @@ jobs:
         env:
           PRODUCTION_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           missing=""
-          for name in PRODUCTION_DATABASE_URL RENDER_DEPLOY_HOOK_URL VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+          for name in PRODUCTION_DATABASE_URL RENDER_DEPLOY_HOOK_URL; do
             eval "value=\${$name}"
             [ -n "$value" ] || missing="$missing $name"
           done
@@ -101,7 +97,7 @@ jobs:
             echo "docs/DEPLOY.md, Part 3, says where each value comes from."
             exit 1
           fi
-          echo "all five deploy secrets are present"
+          echo "both deploy secrets are present"
 
           # Any URL that answers would have passed the old deploy step, which
           # only failed on 4xx/5xx: a pasted service or dashboard address
@@ -174,15 +170,11 @@ jobs:
           echo "timed out: $SHA never answered on $API_URL"
           exit 1
 
-      - name: Deploy the frontend
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          npx --yes vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
-          npx --yes vercel@latest build --prod --token="$VERCEL_TOKEN"
-          npx --yes vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+      # The website is not deployed here. Vercel's Git integration builds
+      # every push to main by itself, and has shipped every version of the
+      # site so far; a CLI deploy here only rebuilt the same commit a second
+      # time, needed three more secrets, and was the step that kept failing.
+      # The smoke test below still checks the site renders.
 
       # The smoke test is the product's own promises, asked of the
       # deployment: it is ready, it answers with citations, it carries the
