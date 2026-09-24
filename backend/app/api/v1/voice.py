@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketDisc
 from pydantic import ValidationError
 
 from app.core.deps import DbPool, get_asyncpg_pool
-from app.core.errors import PermissionDeniedError
+from app.core.errors import InvalidRequestError, PermissionDeniedError, ServiceUnavailableError
 from app.core.ratelimit import enforce_rate_limit
 from app.core.security import CurrentUser, JWTVerifier
 from app.repositories.base import tenant_connection
@@ -231,6 +231,45 @@ async def voice_ws(socket: WebSocket) -> None:
 
 
 # -- REST -------------------------------------------------------------------------------
+
+
+_TRANSCRIBE_MAX_BYTES = 5 * 1024 * 1024
+_AUDIO_TYPES = ("audio/webm", "audio/ogg", "audio/wav", "audio/x-wav", "audio/mp4", "audio/mpeg")
+
+
+@router.post("/transcribe")
+async def transcribe(
+    request: Request,
+    request_user: Annotated[CurrentUser, Depends(enforce_rate_limit)],
+    socket_app: Annotated[Any, Depends(_app_state)],
+) -> dict[str, str]:
+    """Voice typing: a short recording from the chat box → its text.
+
+    Needs the cloud speech service (Deepgram); on a server without it this
+    says so, the same way the voice page does."""
+    del request_user  # authenticated and rate limited; nothing else needed
+    runtime = get_voice_runtime(socket_app)
+    stt = runtime.stt
+    if not hasattr(stt, "transcribe") or runtime.unavailable_reason() is not None:
+        raise ServiceUnavailableError(
+            runtime.unavailable_reason() or "Voice typing needs the cloud speech service."
+        )
+    content_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
+    if content_type not in _AUDIO_TYPES:
+        raise InvalidRequestError(f"unsupported audio type: {content_type or 'none'}")
+    audio = await request.body()
+    if not audio:
+        raise InvalidRequestError("no audio received")
+    if len(audio) > _TRANSCRIBE_MAX_BYTES:
+        raise InvalidRequestError("the recording is too long — keep it under a minute")
+    try:
+        text = await stt.transcribe(audio, request.headers.get("content-type", content_type))
+    except Exception as exc:
+        logger.warning("transcribe_failed", error=f"{type(exc).__name__}: {exc}")
+        raise ServiceUnavailableError(
+            "The speech service could not transcribe that — try again."
+        ) from exc
+    return {"text": text}
 
 
 @router.get("/config")

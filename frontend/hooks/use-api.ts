@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/components/providers/auth-provider";
+import { apiFetch } from "@/lib/api";
 import { api } from "@/lib/api-client";
 import type { Schemas } from "@/lib/domain";
 
@@ -322,5 +323,55 @@ export function usePublicEval<T>(name: "golden" | "ablation" | "calibration") {
     queryKey: keys.publicEval(name),
     queryFn: () => api.publicEval<T>(name),
     staleTime: 5 * 60_000,
+  });
+}
+
+// -- the chat assistant, Learn and Treatment ------------------------------------------
+
+export function useChatSessions(kind: "chat" | "learn" | "treatment" = "chat") {
+  const token = useToken();
+  return useQuery({
+    queryKey: ["chat-sessions", kind],
+    queryFn: () =>
+      apiFetch<Schemas["ChatSessionOut"][]>(`/api/v1/chat/sessions?kind=${kind}`, {
+        accessToken: token,
+      }),
+    enabled: Boolean(token),
+  });
+}
+
+export function useAssistantStatus() {
+  const token = useToken();
+  return useQuery({
+    queryKey: ["assistant-status"],
+    queryFn: () =>
+      apiFetch<Schemas["AssistantStatus"]>("/api/v1/assistant/status", { accessToken: token }),
+    enabled: Boolean(token),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useSpecialties() {
+  const token = useToken();
+  return useQuery({
+    queryKey: ["specialties"],
+    queryFn: () =>
+      apiFetch<Schemas["SpecialtyOut"][]>("/api/v1/learn/specialties", { accessToken: token }),
+    enabled: Boolean(token),
+    staleTime: 60 * 60_000,
+  });
+}
+
+export function useSpecialtyFeed(slug: string, days = 180) {
+  const token = useToken();
+  return useQuery({
+    queryKey: ["specialty-feed", slug, days],
+    queryFn: () =>
+      apiFetch<Schemas["SpecialtyFeedOut"]>(
+        `/api/v1/learn/specialties/${encodeURIComponent(slug)}/latest?days=${days}`,
+        { accessToken: token },
+      ),
+    enabled: Boolean(token && slug),
+    staleTime: 30 * 60_000,
   });
 }

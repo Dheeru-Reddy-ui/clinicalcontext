@@ -15,6 +15,7 @@
 - [Part 2 — Let the app send emails](#part-2--let-the-app-send-emails-optional) · *optional, 15 minutes*
 - [Part 3 — Make every push deploy itself](#part-3--make-every-push-deploy-itself-optional) · *optional, 20 minutes*
 - [Part 4 — Turn on voice](#part-4--turn-on-voice-optional) · *optional, 10 minutes*
+- [Part 5 — Turn on the AI writer](#part-5--turn-on-the-ai-writer-optional) · *optional, 5 minutes*
 - [Every day: how a change goes live](#every-day-how-a-change-goes-live)
 - [If something goes wrong](#if-something-goes-wrong)
 - [Words on this page](#words-on-this-page)
@@ -32,11 +33,12 @@ The app is a few services that work together. Most are already fine.
 |---|---|---|---|
 | **Website** | The pages people see | Vercel — [clinicalcontext-euev.vercel.app](https://clinicalcontext-euev.vercel.app) | Up to date. Updates itself every time you push. |
 | **API** | The server behind the website. Answers questions, creates accounts. | Render — [clinicalcontext-api.onrender.com](https://clinicalcontext-api.onrender.com/health) | Up to date. Does **not** update itself — see Part 1, or set up Part 3. |
-| **Database and logins** | Stores documents, users and organisations | Supabase | Working. All 23 database updates are applied. |
+| **Database and logins** | Stores documents, users and organisations | Supabase | Working. All 25 database updates are applied once the newest deploy runs (Part 1). |
 | **Cache** | Makes repeated questions fast; rate limits | Upstash | Working. |
 | **Automatic deploys** | Ships the API after every test passes | GitHub Actions | Working. After tests pass, a deploy waits for your approval, then ships the API. The website ships itself through Vercel. |
 | **Email** | Magic-link sign-in and forgot-password emails | Supabase + an email provider | Not set up. Optional — Part 2. Sign-up and password sign-in do **not** need it. |
 | **Voice** | Ask out loud, hear the answer | Deepgram | Not set up. Optional — Part 4. The Voice page says so and disables Start until it is. |
+| **AI writer** | Writes chat answers as a conversation | Groq (and optionally Cerebras) | Not set up. Optional — Part 5. Until then answers are quoted from the sources. |
 
 **Why do the two move separately?** Vercel rebuilds the website on its own every time you push to `main`. Render is deliberately set to wait until it is told (`autoDeployTrigger: "off"` in `render.yaml`), so a broken API can never go live on its own — either the deploy pipeline tells it (Part 3) or you do (Part 1).
 
@@ -235,6 +237,37 @@ This uses **Deepgram**: one free account covers both halves — `nova-3-medical`
 
 ---
 
+## Part 5 — Turn on the AI writer (optional)
+
+**About 5 minutes. Free, no card needed.**
+
+The Chat, Learn and Treatment tabs work without this: answers are then *quoted* from the sources, and personal symptom questions get the symptom check's warning signs and home-care steps. With a free language model, the assistant *writes* the answer — a conversation like any chat assistant, in plain language for patients, guideline detail for doctors, structured teaching for students — still only from the sources it found, with every fact marked `[1]`, `[2]` and checked against its source.
+
+This uses **Groq** (the model `gpt-oss-120b`): free, no card, about 1,000 answers a day. Groq's terms say it does not train on what you send it. Optionally add **Cerebras** as a second free account: when Groq's per-minute limit is reached, answers go to Cerebras instead of stopping.
+
+### 5a. Get a Groq key
+
+1. Open https://console.groq.com/keys and sign in (Google, GitHub or email; no card).
+2. Click **Create API Key**. Name: `clinicalcontext`. Click **Submit**.
+3. **Copy the key now** — it is not shown again.
+
+### 5b. Give it to the API
+
+1. Render → **clinicalcontext-api** → **Environment**.
+2. Click **Add Environment Variable**. Key: `GROQ_API_KEY`. Value: paste the key — nothing after it (no space, no line break).
+3. Click **Save, rebuild, and deploy**. It takes about 5 minutes.
+
+*Optional second provider:* sign up at https://cloud.cerebras.ai (no card), open **API Keys**, create one, and add it the same way as `CEREBRAS_API_KEY`.
+
+### Check it worked
+
+1. Open https://clinicalcontext-euev.vercel.app/app/chat. The badge at the top right should say **AI writer: groq** (not *Quoting sources*).
+2. Ask: *"Explain the first-line treatment for type 2 diabetes."* The answer should arrive word by word, with numbered sources, and end with a line such as *"Written by gpt-oss-120b · groq"* and *"6 of 6 cited statements match their sources"*.
+
+> **If it says *"The AI writer is busy right now — answering straight from the sources"*:** the free per-minute limit was reached. Wait a minute, or add the Cerebras key so busy minutes go there.
+
+---
+
 ## Every day: how a change goes live
 
 **Before you push**, you can run the same checks GitHub runs, on your own machine, in about 8 minutes:
@@ -295,6 +328,9 @@ Either way, the website updates a few minutes before the API does. During those 
 | Voice page says *"Voice isn't available on this server yet"* | No speech service is set up | [Part 4](#part-4--turn-on-voice-optional) |
 | The microphone test bar does not move | The browser blocked the mic, or the wrong one is chosen | Read the message under the bar; pick another microphone from the list |
 | Voice worked, then says it is unavailable | The Deepgram key was deleted, or the $200 credit ran out | Deepgram console → **Usage**; make a new key ([Part 4a](#4a-get-a-deepgram-key)) |
+| A feature that worked disappears right after a deploy you approved | An **older** Deploy run was approved after a newer one: it ships its own, older commit | Actions → **Deploy**: approve only the newest run (top of the list); cancel older waiting runs with **Cancel workflow** |
+| Chat badge says *Quoting sources (no AI writer configured)* | No `GROQ_API_KEY` on Render | [Part 5](#part-5--turn-on-the-ai-writer-optional) |
+| Chat answers say *"The AI writer is busy right now"* | The free per-minute limit was reached | Wait a minute, or add `CEREBRAS_API_KEY` ([Part 5](#part-5--turn-on-the-ai-writer-optional)) |
 
 ---
 

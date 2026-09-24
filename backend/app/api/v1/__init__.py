@@ -6,6 +6,7 @@ from app.api.v1 import (
     analytics,
     answers,
     api_keys,
+    assistant,
     auth,
     batches,
     binders,
@@ -42,3 +43,4 @@ router.include_router(suggest.router)
 router.include_router(webhooks.router)
 router.include_router(voice.router)
 router.include_router(api_keys.router)
+router.include_router(assistant.router)

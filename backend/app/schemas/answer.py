@@ -36,6 +36,9 @@ class Citation(BaseModel):
     doi: str | None = None
     url: str | None = None
     passage: str
+    # Where the source stands relative to the answer (the evidence timeline's
+    # colour): cited for a claim, argued against, or retrieved but uncited.
+    stance: Literal["supports", "opposes", "neutral"] | None = None
 
 
 class ContradictionPosition(BaseModel):

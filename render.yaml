@@ -98,5 +98,13 @@ services:
         sync: false
       - key: ELEVENLABS_API_KEY
         sync: false
+      # Optional, free, no card: a language model to write chat answers
+      # (docs/DEPLOY.md, Part 5). Unset, answers are quoted from the sources.
+      # Cerebras is a second free quota the chat falls back to when Groq's
+      # per-minute limit is reached.
+      - key: GROQ_API_KEY
+        sync: false
+      - key: CEREBRAS_API_KEY
+        sync: false
       # Optional and off when absent — add SENTRY_DSN, LANGSMITH_API_KEY (a
       # real one) or OTEL_EXPORTER_OTLP_ENDPOINT in the dashboard when wanted.

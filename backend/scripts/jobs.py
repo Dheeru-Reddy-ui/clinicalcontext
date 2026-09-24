@@ -7,6 +7,7 @@ These are the out-of-band workers the API deliberately does *not* run inline:
     uv run python -m scripts.jobs corpus-freshness      # weekly (needs network)
     uv run python -m scripts.jobs rebuild-mesh          # after an ingest
     uv run python -m scripts.jobs weekly-digest         # weekly (opt-in users)
+    uv run python -m scripts.jobs latest-research       # nightly (needs network)
 
 Each is idempotent and safe to re-run: deliveries are picked up by due time,
 living answers only supersede on a material change, freshness upserts by
@@ -111,6 +112,15 @@ async def _rebuild_mesh() -> Summary:
     return await _with_pool(run)
 
 
+async def _latest_research(per_specialty: int, days: int) -> Summary:
+    from app.knowledge.refresh import refresh_latest
+
+    async def run(pool: DbPool) -> Summary:
+        return await refresh_latest(pool, per_specialty=per_specialty, days=days)
+
+    return await _with_pool(run)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="job", required=True)
@@ -125,6 +135,12 @@ def main(argv: list[str] | None = None) -> int:
     freshness.add_argument("--per-query", type=int, default=50)
 
     sub.add_parser("rebuild-mesh", help="rebuild the autocomplete vocabulary")
+
+    latest = sub.add_parser(
+        "latest-research", help="file each specialty's newest strong evidence (needs network)"
+    )
+    latest.add_argument("--per-specialty", type=int, default=3)
+    latest.add_argument("--days", type=int, default=30)
 
     digest = sub.add_parser(
         "weekly-digest", help="send the weekly evidence digest to opted-in users"
@@ -143,6 +159,8 @@ def main(argv: list[str] | None = None) -> int:
             summary = asyncio.run(_corpus_freshness(args.per_query))
         elif args.job == "weekly-digest":
             summary = asyncio.run(_weekly_digest(args.force))
+        elif args.job == "latest-research":
+            summary = asyncio.run(_latest_research(args.per_specialty, args.days))
         else:
             summary = asyncio.run(_rebuild_mesh())
     except (asyncpg.PostgresError, OSError) as exc:

@@ -117,6 +117,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+/** The auth state where there is one — the website's public chatbot has none. */
+export function useOptionalAuth(): AuthState | null {
+  return useContext(AuthContext);
+}
+
 export function useAuth(): AuthState {
   const context = useContext(AuthContext);
   if (!context) {

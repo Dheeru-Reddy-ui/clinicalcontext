@@ -5,10 +5,11 @@ no session may reach live here, and each one enforces its own gates
 explicitly rather than relying on RLS, because there is no tenant context to
 run under.
 
-Mostly reading: a shared answer, the published eval results, the demo. The
-one exception is ``/signup``, which creates an account — the only way in for
+Mostly reading: a shared answer, the published eval results, the demo, the
+website's chatbot and the symptom check (both store nothing). The one
+exception is ``/signup``, which creates an account — the only way in for
 somebody who does not have one yet. It is rate limited per client address
-and per email, and it is the only route here that writes.
+and per email, and it is the only route here that writes account data.
 """
 
 from __future__ import annotations
@@ -18,16 +19,26 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import StreamingResponse
 
+from app.api.v1.assistant import run_step, stream_events
+from app.assistant.chat import ChatAssistant
 from app.core.deps import DbPool, get_asyncpg_pool, get_redis_client
 from app.core.errors import NotFoundError, RateLimitError
-from app.core.ratelimit import RateLimiter
+from app.core.ratelimit import RateLimiter, client_address
+from app.schemas.assistant import (
+    ComplaintOut,
+    PublicChatRequest,
+    TreatmentStepOut,
+    TreatmentStepRequest,
+)
 from app.schemas.demo import DemoAnswerOut, DemoQuestionsOut, DemoRequest
 from app.schemas.sharing import PublicAnswerOut
 from app.schemas.signup import SignupOut, SignupRequest
 from app.services.demo import DEMO_QUESTIONS, DemoService, demo_question
 from app.services.sharing import SharingService
 from app.services.signup import SignupService
+from app.treatment.protocols import PROTOCOLS
 
 router = APIRouter(prefix="/api/public", tags=["public"])
 
@@ -44,12 +55,17 @@ _DEMO_GLOBAL_PER_MINUTE = 60
 # somebody "this email already exists" necessarily opens.
 _SIGNUP_PER_MINUTE = 5
 _SIGNUP_PER_EMAIL_PER_MINUTE = 3
+# The website's chatbot runs the real assistant (and a free-tier model with
+# its own per-minute cap): a conversation's pace per visitor, and a ceiling
+# across all of them.
+_CHAT_PER_MINUTE = 6
+_CHAT_GLOBAL_PER_MINUTE = 40
 
 
 async def _anon_rate_limit(
     request: Request, redis: Annotated[Any, Depends(get_redis_client)]
 ) -> None:
-    client = request.client.host if request.client else "unknown"
+    client = client_address(request)
     ok, retry_after = await RateLimiter(redis).hit(f"rl:anon:{client}", _ANON_PER_MINUTE)
     if not ok:
         raise RateLimitError("too many requests", retry_after=retry_after)
@@ -99,7 +115,7 @@ async def public_eval(name: str) -> dict[str, Any]:
 async def _demo_rate_limit(
     request: Request, redis: Annotated[Any, Depends(get_redis_client)]
 ) -> None:
-    client = request.client.host if request.client else "unknown"
+    client = client_address(request)
     limiter = RateLimiter(redis)
     ok, retry_after = await limiter.hit(f"rl:demo:{client}", _DEMO_PER_MINUTE)
     if not ok:
@@ -130,6 +146,56 @@ async def demo_ask(
     return await DemoService(pool, redis).ask(question)
 
 
+async def _chat_rate_limit(
+    request: Request, redis: Annotated[Any, Depends(get_redis_client)]
+) -> None:
+    limiter = RateLimiter(redis)
+    ok, retry_after = await limiter.hit(f"rl:pchat:{client_address(request)}", _CHAT_PER_MINUTE)
+    if not ok:
+        raise RateLimitError(
+            "You're sending messages quickly — wait a moment and try again.",
+            retry_after=retry_after,
+        )
+    ok, retry_after = await limiter.hit("rl:pchat:all", _CHAT_GLOBAL_PER_MINUTE)
+    if not ok:
+        raise RateLimitError(
+            "The assistant is busy right now — try again in a minute.", retry_after=retry_after
+        )
+
+
+@router.post("/chat", dependencies=[Depends(_chat_rate_limit)])
+async def public_chat(
+    body: PublicChatRequest,
+    pool: Annotated[DbPool, Depends(get_asyncpg_pool)],
+    redis: Annotated[Any, Depends(get_redis_client)],
+) -> StreamingResponse:
+    """The website's chatbot: the same assistant, the shared corpus only,
+    and nothing stored — the recent turns come from the page."""
+    assistant = ChatAssistant(pool, redis)
+    return stream_events(
+        assistant.reply(
+            message=body.message,
+            audience=body.audience,
+            org_id=None,
+            user_id=None,
+            history=[(t.question, t.answer) for t in body.history],
+            persist=False,
+        )
+    )
+
+
+@router.get("/treatment/complaints", dependencies=[Depends(_anon_rate_limit)])
+async def public_complaints() -> list[ComplaintOut]:
+    return [ComplaintOut(id=p.id, name=p.name, summary=p.summary) for p in PROTOCOLS.values()]
+
+
+@router.post("/treatment/step", dependencies=[Depends(_anon_rate_limit)])
+async def public_treatment_step(body: TreatmentStepRequest) -> TreatmentStepOut:
+    """The symptom check needs no account: it is deterministic, stateless,
+    and stores nothing about the person."""
+    return run_step(body)
+
+
 @router.post("/signup", dependencies=[Depends(_anon_rate_limit)])
 async def public_signup(
     body: SignupRequest,
@@ -143,7 +209,7 @@ async def public_signup(
     does not go directly from the browser to Supabase.
     """
     limiter = RateLimiter(redis)
-    client = request.client.host if request.client else "unknown"
+    client = client_address(request)
     email = body.email.strip().lower()
     for key, limit in (
         (f"rl:signup:{client}", _SIGNUP_PER_MINUTE),

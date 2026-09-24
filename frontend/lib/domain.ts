@@ -45,6 +45,8 @@ export interface Citation {
   doi: string | null;
   url: string | null;
   passage: string;
+  /** Where the source stands relative to the answer (the timeline's colour). */
+  stance?: Stance | null;
 }
 
 export interface ContradictionPosition {
@@ -232,11 +234,20 @@ export function asComparisonTable(value: unknown): ComparisonTable | null {
 }
 
 /**
- * Stance of each citation marker, derived from the contradiction detector.
- * Markers in a "supports" position are green, "against" red, the rest neutral.
+ * Stance of each citation marker. Every citation now carries its own stance
+ * from the backend (cited for a claim → supports, argued against → opposes,
+ * shown but uncited → neutral); a detected contradiction then places its own
+ * sides. Before this, only a contradiction produced a stance, so an ordinary
+ * answer drew every source grey.
  */
-export function stanceByMarker(contradiction: Contradiction): Map<number, Stance> {
+export function stanceByMarker(
+  contradiction: Contradiction,
+  citations: readonly Citation[] = [],
+): Map<number, Stance> {
   const map = new Map<number, Stance>();
+  for (const citation of citations) {
+    if (citation.stance) map.set(citation.marker, citation.stance);
+  }
   if (!contradiction.detected) return map;
   for (const position of contradiction.positions) {
     const stance: Stance = /against|not support|oppos|no benefit|inferior/i.test(

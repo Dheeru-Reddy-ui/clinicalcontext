@@ -220,3 +220,97 @@ async def test_a_refused_request_yields_silence_not_an_exception() -> None:
     audio = [c async for c in stream.synthesize("Hello.")]
     await stream.close()
     assert audio == []
+
+
+# -- a refusal says why, and a vocabulary Deepgram rejects does not cost the session -----
+
+
+def _refusal(status: int, reason: str) -> Exception:
+    from websockets.datastructures import Headers
+    from websockets.exceptions import InvalidStatus
+    from websockets.http11 import Response
+
+    return InvalidStatus(Response(status, "Bad Request", Headers({"dg-error": reason}), b""))
+
+
+async def test_a_rejected_vocabulary_is_retried_without_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    urls: list[str] = []
+
+    class _Socket:
+        async def send(self, _data: object) -> None: ...
+
+        async def close(self) -> None: ...
+
+        def __aiter__(self) -> _Socket:
+            return self
+
+        async def __anext__(self) -> str:
+            raise StopAsyncIteration
+
+    async def connect(url: str, **_kwargs: object) -> _Socket:
+        urls.append(url)
+        if "keyterm=" in url:
+            raise _refusal(400, "Too many keyterm tokens")
+        return _Socket()
+
+    monkeypatch.setattr("app.voice.stt.deepgram.websockets.connect", connect)
+    stream = await DeepgramProvider(api_key=REAL_LOOKING).open(boost=["apixaban", "warfarin"])
+    await stream.close()
+    assert len(urls) == 2 and "keyterm=" in urls[0] and "keyterm=" not in urls[1]
+
+
+async def test_other_refusals_are_not_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+    from websockets.exceptions import InvalidStatus
+
+    async def connect(_url: str, **_kwargs: object) -> object:
+        raise _refusal(401, "Invalid credentials")
+
+    monkeypatch.setattr("app.voice.stt.deepgram.websockets.connect", connect)
+    with pytest.raises(InvalidStatus):
+        await DeepgramProvider(api_key=REAL_LOOKING).open(boost=["apixaban"])
+
+
+def test_the_refusal_reason_comes_from_the_dg_error_header() -> None:
+    from app.voice.stt.deepgram import handshake_refusal
+
+    assert handshake_refusal(_refusal(400, "bad keyterm")) == (400, "bad keyterm")  # type: ignore[arg-type]
+
+
+# -- voice typing --------------------------------------------------------------------------
+
+
+async def test_a_recording_becomes_text() -> None:
+    seen: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["params"] = dict(request.url.params)
+        seen["type"] = request.headers.get("content-type")
+        seen["body"] = request.content
+        return httpx.Response(
+            200,
+            json={
+                "results": {
+                    "channels": [
+                        {"alternatives": [{"transcript": " What is the dose of apixaban? "}]}
+                    ]
+                }
+            },
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        text = await DeepgramProvider(api_key=REAL_LOOKING).transcribe(
+            b"OggS...", "audio/webm;codecs=opus", client=client
+        )
+    assert text == "What is the dose of apixaban?"
+    assert seen["type"] == "audio/webm;codecs=opus" and seen["body"] == b"OggS..."
+    params = seen["params"]
+    assert isinstance(params, dict) and params["model"] == "nova-3-medical"
+
+
+async def test_a_failed_transcription_raises() -> None:
+    transport = httpx.MockTransport(lambda _r: httpx.Response(402, json={"err": "no credit"}))
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(RuntimeError):
+            await DeepgramProvider(api_key=REAL_LOOKING).transcribe(
+                b"x", "audio/webm", client=client
+            )

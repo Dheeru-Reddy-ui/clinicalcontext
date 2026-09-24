@@ -218,6 +218,16 @@ async def backfill_classifications(pool: object, *, limit: int | None = None) ->
 
 async def classify_document(document: RawDocument, *, allow_llm: bool = True) -> Classification:
     """Full classification: rules first, LLM fallback, honest 'unclassified' last."""
+    if document.source_type == "drug_label":
+        # The regulator's label: authoritative on dosing and safety, and no
+        # evidence of efficacy at all — so its own type, and no grade.
+        return Classification(
+            study_type="drug_label",
+            evidence_grade=None,
+            method="publication_types",
+            reasoning="FDA structured product label (openFDA); regulatory text, not graded.",
+            signals=["source:drug_label"],
+        )
     from_rules = classify_from_metadata(document)
     if from_rules is not None:
         return from_rules

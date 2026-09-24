@@ -66,7 +66,10 @@ export function AnswerView({
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
   const isDesktop = useIsDesktop();
   const known = useMemo(() => new Set(answer.citations.map((c) => c.marker)), [answer.citations]);
-  const stances = useMemo(() => stanceByMarker(answer.contradiction), [answer.contradiction]);
+  const stances = useMemo(
+    () => stanceByMarker(answer.contradiction, answer.citations),
+    [answer.contradiction, answer.citations],
+  );
   const onCite = useCallback((m: number) => setActiveMarker(m), []);
   const banner = escalationBanner ?? answer.reasoning.escalation_banner;
   const text = streaming ? (streamingText ?? "") : answer.content;

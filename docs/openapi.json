@@ -397,6 +397,131 @@
         "title": "ApiKeysOut",
         "type": "object"
       },
+      "AssessmentOut": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "doctor_may": {
+            "items": {
+              "$ref": "#/components/schemas/DoctorOptionOut"
+            },
+            "title": "Doctor May",
+            "type": "array"
+          },
+          "headline": {
+            "title": "Headline",
+            "type": "string"
+          },
+          "medicines": {
+            "items": {
+              "$ref": "#/components/schemas/MedicineOut"
+            },
+            "title": "Medicines",
+            "type": "array"
+          },
+          "possible_causes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Possible Causes",
+            "type": "array"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/ReasonOut"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "see_doctor_if": {
+            "items": {
+              "type": "string"
+            },
+            "title": "See Doctor If",
+            "type": "array"
+          },
+          "self_care": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Self Care",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceOut"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "tests": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tests",
+            "type": "array"
+          },
+          "urgency": {
+            "enum": [
+              "self_care",
+              "soon",
+              "urgent",
+              "emergency"
+            ],
+            "title": "Urgency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "urgency",
+          "headline",
+          "action",
+          "reasons",
+          "possible_causes",
+          "self_care",
+          "medicines",
+          "doctor_may",
+          "tests",
+          "see_doctor_if",
+          "sources"
+        ],
+        "title": "AssessmentOut",
+        "type": "object"
+      },
+      "AssistantStatus": {
+        "description": "What powers the assistant on this server, so the page can say so.",
+        "properties": {
+          "live_search": {
+            "default": true,
+            "title": "Live Search",
+            "type": "boolean"
+          },
+          "llm_available": {
+            "title": "Llm Available",
+            "type": "boolean"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "providers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Providers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "llm_available",
+          "providers",
+          "message"
+        ],
+        "title": "AssistantStatus",
+        "type": "object"
+      },
       "BatchQueryRequest": {
         "properties": {
           "queries": {
@@ -795,6 +920,273 @@
         "title": "BootstrapRequest",
         "type": "object"
       },
+      "ChatRequest": {
+        "properties": {
+          "audience": {
+            "default": "patient",
+            "enum": [
+              "patient",
+              "clinician",
+              "student"
+            ],
+            "title": "Audience",
+            "type": "string"
+          },
+          "kind": {
+            "default": "chat",
+            "enum": [
+              "chat",
+              "learn",
+              "treatment"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "mbbs",
+                  "pg"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "message": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "specialty": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Specialty"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ChatRequest",
+        "type": "object"
+      },
+      "ChatSessionDetail": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "turns": {
+            "items": {
+              "$ref": "#/components/schemas/ChatTurnOut"
+            },
+            "title": "Turns",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "kind",
+          "created_at",
+          "updated_at",
+          "turns"
+        ],
+        "title": "ChatSessionDetail",
+        "type": "object"
+      },
+      "ChatSessionOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "turns": {
+            "title": "Turns",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "kind",
+          "created_at",
+          "updated_at",
+          "turns"
+        ],
+        "title": "ChatSessionOut",
+        "type": "object"
+      },
+      "ChatTurnOut": {
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "answer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer Id"
+          },
+          "audience": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audience"
+          },
+          "citations": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "query_id": {
+            "format": "uuid",
+            "title": "Query Id",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query_id",
+          "question",
+          "audience",
+          "status",
+          "created_at",
+          "answer_id",
+          "answer",
+          "citations",
+          "model",
+          "details"
+        ],
+        "title": "ChatTurnOut",
+        "type": "object"
+      },
       "ChunkOut": {
         "properties": {
           "chunk_index": {
@@ -851,6 +1243,29 @@
           "embedded"
         ],
         "title": "ChunkOut",
+        "type": "object"
+      },
+      "ComplaintOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "summary"
+        ],
+        "title": "ComplaintOut",
         "type": "object"
       },
       "CostLine": {
@@ -1392,6 +1807,24 @@
         "title": "DigestPreferencesUpdate",
         "type": "object"
       },
+      "DoctorOptionOut": {
+        "properties": {
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "source"
+        ],
+        "title": "DoctorOptionOut",
+        "type": "object"
+      },
       "DocumentChunksOut": {
         "properties": {
           "chunks": {
@@ -1772,6 +2205,44 @@
           "offset"
         ],
         "title": "DocumentsOut",
+        "type": "object"
+      },
+      "FeedItemOut": {
+        "properties": {
+          "design": {
+            "title": "Design",
+            "type": "string"
+          },
+          "journal": {
+            "title": "Journal",
+            "type": "string"
+          },
+          "pmid": {
+            "title": "Pmid",
+            "type": "string"
+          },
+          "published": {
+            "title": "Published",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pmid",
+          "title",
+          "journal",
+          "published",
+          "design",
+          "url"
+        ],
+        "title": "FeedItemOut",
         "type": "object"
       },
       "FeedbackOut": {
@@ -2159,6 +2630,98 @@
         "title": "MeOut",
         "type": "object"
       },
+      "MedicineOut": {
+        "properties": {
+          "dose": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dose"
+          },
+          "how_often": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "How Often"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "maximum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maximum"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "reason_not_suitable": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Not Suitable"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "suitable": {
+            "title": "Suitable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "purpose",
+          "suitable",
+          "dose",
+          "how_often",
+          "maximum",
+          "notes",
+          "reason_not_suitable",
+          "sources"
+        ],
+        "title": "MedicineOut",
+        "type": "object"
+      },
       "MemberOut": {
         "properties": {
           "email": {
@@ -2304,6 +2867,24 @@
           "unread"
         ],
         "title": "NotificationsOut",
+        "type": "object"
+      },
+      "OptionOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "OptionOut",
         "type": "object"
       },
       "OrgOut": {
@@ -2511,6 +3092,96 @@
         "title": "PassageSnapshot",
         "type": "object"
       },
+      "Profile": {
+        "description": "Who the symptom check is for. No name, no date of birth: age is all\nthe dosing needs, and identifiers are never collected.",
+        "properties": {
+          "age_years": {
+            "maximum": 120.0,
+            "minimum": 0.0,
+            "title": "Age Years",
+            "type": "number"
+          },
+          "allergies": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Allergies",
+            "type": "array"
+          },
+          "breastfeeding": {
+            "default": false,
+            "title": "Breastfeeding",
+            "type": "boolean"
+          },
+          "conditions": {
+            "items": {
+              "enum": [
+                "asthma",
+                "kidney_disease",
+                "liver_disease",
+                "stomach_ulcer",
+                "heart_disease",
+                "diabetes",
+                "weak_immunity",
+                "bleeding_disorder",
+                "high_blood_pressure",
+                "lung_disease"
+              ],
+              "type": "string"
+            },
+            "title": "Conditions",
+            "type": "array"
+          },
+          "medicines": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 30,
+            "title": "Medicines",
+            "type": "array"
+          },
+          "pregnant": {
+            "default": false,
+            "title": "Pregnant",
+            "type": "boolean"
+          },
+          "sex": {
+            "anyOf": [
+              {
+                "enum": [
+                  "female",
+                  "male",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sex"
+          },
+          "weight_kg": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 350.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Kg"
+          }
+        },
+        "required": [
+          "age_years"
+        ],
+        "title": "Profile",
+        "type": "object"
+      },
       "PublicAnswerOut": {
         "description": "Everything a logged-out reader needs to verify the answer \u2014 nothing more.\n\nNo user identity, no org internals beyond its display name, no query ids.",
         "properties": {
@@ -2614,6 +3285,60 @@
           "superseded"
         ],
         "title": "PublicAnswerOut",
+        "type": "object"
+      },
+      "PublicChatRequest": {
+        "description": "The website's chatbot: nothing is stored, so recent turns come along.",
+        "properties": {
+          "audience": {
+            "default": "patient",
+            "enum": [
+              "patient",
+              "clinician",
+              "student"
+            ],
+            "title": "Audience",
+            "type": "string"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/PublicTurn"
+            },
+            "maxItems": 4,
+            "title": "History",
+            "type": "array"
+          },
+          "message": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "PublicChatRequest",
+        "type": "object"
+      },
+      "PublicTurn": {
+        "properties": {
+          "answer": {
+            "maxLength": 6000,
+            "title": "Answer",
+            "type": "string"
+          },
+          "question": {
+            "maxLength": 4000,
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "answer"
+        ],
+        "title": "PublicTurn",
         "type": "object"
       },
       "QualityReport": {
@@ -2749,6 +3474,53 @@
         "title": "QueryRequest",
         "type": "object"
       },
+      "QuestionOut": {
+        "properties": {
+          "help": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Help"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "single",
+              "multi"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "kind",
+          "help",
+          "options"
+        ],
+        "title": "QuestionOut",
+        "type": "object"
+      },
       "ReadinessCheck": {
         "description": "Result of probing one dependency.",
         "properties": {
@@ -2813,6 +3585,51 @@
           "checks"
         ],
         "title": "ReadinessResponse",
+        "type": "object"
+      },
+      "ReasonOut": {
+        "properties": {
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "urgency": {
+            "title": "Urgency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "urgency",
+          "source"
+        ],
+        "title": "ReasonOut",
+        "type": "object"
+      },
+      "RenameSession": {
+        "properties": {
+          "title": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "RenameSession",
         "type": "object"
       },
       "ReviewQueueItem": {
@@ -3355,6 +4172,111 @@
         "title": "SignupRequest",
         "type": "object"
       },
+      "SourceOut": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "publisher": {
+            "title": "Publisher",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "publisher",
+          "url"
+        ],
+        "title": "SourceOut",
+        "type": "object"
+      },
+      "SpecialtyFeedOut": {
+        "properties": {
+          "available": {
+            "default": true,
+            "title": "Available",
+            "type": "boolean"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FeedItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "specialty": {
+            "$ref": "#/components/schemas/SpecialtyOut"
+          }
+        },
+        "required": [
+          "specialty",
+          "items",
+          "days"
+        ],
+        "title": "SpecialtyFeedOut",
+        "type": "object"
+      },
+      "SpecialtyOut": {
+        "properties": {
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "level_label": {
+            "title": "Level Label",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "topics": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Topics",
+            "type": "array"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "level",
+          "level_label",
+          "topics"
+        ],
+        "title": "SpecialtyOut",
+        "type": "object"
+      },
       "SuggestOut": {
         "properties": {
           "query": {
@@ -3483,6 +4405,76 @@
           "count"
         ],
         "title": "TopQuery",
+        "type": "object"
+      },
+      "TreatmentStepOut": {
+        "properties": {
+          "answered": {
+            "title": "Answered",
+            "type": "integer"
+          },
+          "assessment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssessmentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "complaint": {
+            "$ref": "#/components/schemas/ComplaintOut"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuestionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "complaint",
+          "answered",
+          "total"
+        ],
+        "title": "TreatmentStepOut",
+        "type": "object"
+      },
+      "TreatmentStepRequest": {
+        "properties": {
+          "answers": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Answers",
+            "type": "object"
+          },
+          "complaint": {
+            "maxLength": 64,
+            "title": "Complaint",
+            "type": "string"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/Profile"
+          }
+        },
+        "required": [
+          "complaint",
+          "profile"
+        ],
+        "title": "TreatmentStepRequest",
         "type": "object"
       },
       "UsageOverview": {
@@ -4313,6 +5305,46 @@
         ]
       }
     },
+    "/api/public/chat": {
+      "post": {
+        "description": "The website's chatbot: the same assistant, the shared corpus only,\nand nothing stored \u2014 the recent turns come from the page.",
+        "operationId": "public_chat_api_public_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Public Chat",
+        "tags": [
+          "public"
+        ]
+      }
+    },
     "/api/public/demo": {
       "post": {
         "description": "Run one allowlisted question through the real pipeline as the demo\ntenant \u2014 the answer, its citations, and a contradiction when the sources\ndisagree \u2014 with no login.",
@@ -4459,6 +5491,73 @@
           }
         },
         "summary": "Public Signup",
+        "tags": [
+          "public"
+        ]
+      }
+    },
+    "/api/public/treatment/complaints": {
+      "get": {
+        "operationId": "public_complaints_api_public_treatment_complaints_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ComplaintOut"
+                  },
+                  "title": "Response Public Complaints Api Public Treatment Complaints Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Public Complaints",
+        "tags": [
+          "public"
+        ]
+      }
+    },
+    "/api/public/treatment/step": {
+      "post": {
+        "description": "The symptom check needs no account: it is deterministic, stateless,\nand stores nothing about the person.",
+        "operationId": "public_treatment_step_api_public_treatment_step_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TreatmentStepRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreatmentStepOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Public Treatment Step",
         "tags": [
           "public"
         ]
@@ -5111,6 +6210,60 @@
         "summary": "Revoke Api Key",
         "tags": [
           "api-keys"
+        ]
+      }
+    },
+    "/api/v1/assistant/status": {
+      "get": {
+        "operationId": "get_assistant_status_api_v1_assistant_status_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssistantStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Assistant Status",
+        "tags": [
+          "assistant"
         ]
       }
     },
@@ -5847,6 +7000,297 @@
         ]
       }
     },
+    "/api/v1/chat": {
+      "post": {
+        "operationId": "chat_api_v1_chat_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Chat",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
+    "/api/v1/chat/sessions": {
+      "get": {
+        "operationId": "list_chat_sessions_api_v1_chat_sessions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ChatSessionOut"
+                  },
+                  "title": "Response List Chat Sessions Api V1 Chat Sessions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Chat Sessions",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
+    "/api/v1/chat/sessions/{session_id}": {
+      "get": {
+        "operationId": "get_chat_session_api_v1_chat_sessions__session_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSessionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Chat Session",
+        "tags": [
+          "assistant"
+        ]
+      },
+      "patch": {
+        "operationId": "rename_chat_session_api_v1_chat_sessions__session_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameSession"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Rename Chat Session Api V1 Chat Sessions  Session Id  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rename Chat Session",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
     "/api/v1/corpus/freshness": {
       "get": {
         "description": "Per-domain staleness: how many papers the source has that we don't.\n\n``last_checked_at`` is null until the weekly job has run \u2014 the endpoint\nreports \"unknown\", never an unearned clean bill of health.",
@@ -6537,6 +7981,139 @@
         "summary": "Review Queue",
         "tags": [
           "feedback"
+        ]
+      }
+    },
+    "/api/v1/learn/specialties": {
+      "get": {
+        "operationId": "list_specialties_api_v1_learn_specialties_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SpecialtyOut"
+                  },
+                  "title": "Response List Specialties Api V1 Learn Specialties Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Specialties",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
+    "/api/v1/learn/specialties/{slug}/latest": {
+      "get": {
+        "operationId": "specialty_latest_api_v1_learn_specialties__slug__latest_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 180,
+              "maximum": 730,
+              "minimum": 30,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpecialtyFeedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Specialty Latest",
+        "tags": [
+          "assistant"
         ]
       }
     },
@@ -8022,6 +9599,129 @@
         ]
       }
     },
+    "/api/v1/treatment/complaints": {
+      "get": {
+        "operationId": "list_complaints_api_v1_treatment_complaints_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ComplaintOut"
+                  },
+                  "title": "Response List Complaints Api V1 Treatment Complaints Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Complaints",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
+    "/api/v1/treatment/step": {
+      "post": {
+        "description": "Stateless: nothing about the person is stored.",
+        "operationId": "treatment_step_api_v1_treatment_step_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TreatmentStepRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreatmentStepOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Treatment Step",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
     "/api/v1/voice/analytics": {
       "get": {
         "description": "Aggregate latency per leg, speculation economics, confirmations,\nbarge-ins, masks, and the cost of interactivity (11G.5, 11D.4).",
@@ -8256,6 +9956,65 @@
           }
         ],
         "summary": "Set Settings",
+        "tags": [
+          "voice"
+        ]
+      }
+    },
+    "/api/v1/voice/transcribe": {
+      "post": {
+        "description": "Voice typing: a short recording from the chat box \u2192 its text.\n\nNeeds the cloud speech service (Deepgram); on a server without it this\nsays so, the same way the voice page does.",
+        "operationId": "transcribe_api_v1_voice_transcribe_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Transcribe Api V1 Voice Transcribe Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Transcribe",
         "tags": [
           "voice"
         ]

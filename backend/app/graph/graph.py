@@ -41,6 +41,7 @@ from app.schemas.answer import (
     Contradiction,
     EvidenceGrade,
 )
+from app.services.stance import assign_stances
 
 logger = structlog.stdlib.get_logger("app.graph")
 
@@ -541,7 +542,11 @@ def _to_result(query: str, state: GraphState) -> AnswerResult:
         sub_questions=state.get("sub_questions", []),
         abstained=state.get("abstained", False),
         answer=state.get("answer", ""),
-        citations=state.get("citations", []),
+        citations=assign_stances(
+            state.get("answer", ""),
+            state.get("citations", []),
+            state.get("contradiction"),
+        ),
         contradiction=state.get("contradiction") or Contradiction(detected=False),
         confidence=state.get("confidence", "low"),
         evidence_grade=state.get("evidence_grade"),

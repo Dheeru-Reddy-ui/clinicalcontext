@@ -58,14 +58,20 @@ async def test_digest_is_built_from_what_the_user_asked_and_delivered_once(
     ]
     result = next(e for e in events if e["stage"] == "result")["data"]
     assert result["citations"], "the question must ground for the digest to have topics"
-    cited_doc = result["citations"][0]["document_id"]
-    mesh = await env.admin.fetchval(
-        "SELECT metadata -> 'mesh_terms' FROM public.documents WHERE id = $1", cited_doc
-    )
-    headings = json.loads(mesh) if isinstance(mesh, str) else (mesh or [])
     # A topic is a heading, not a check tag ("Humans", "Female") — those are
-    # on nearly every record and say nothing about what was asked.
-    mesh_terms = [h for h in headings if h.lower() not in CHECK_TAGS]
+    # on nearly every record and say nothing about what was asked. Not every
+    # cited source is indexed with MeSH (an FDA drug label is not), so the
+    # topic comes from the first cited paper that is.
+    mesh_terms: list[str] = []
+    for citation in result["citations"]:
+        mesh = await env.admin.fetchval(
+            "SELECT metadata -> 'mesh_terms' FROM public.documents WHERE id = $1",
+            citation["document_id"],
+        )
+        headings = json.loads(mesh) if isinstance(mesh, str) else (mesh or [])
+        mesh_terms = [h for h in headings if h.lower() not in CHECK_TAGS]
+        if mesh_terms:
+            break
     assert mesh_terms, "the seeded corpus carries MeSH headings beyond the check tags"
 
     # "New evidence" is a document ingested this week that carries one of the

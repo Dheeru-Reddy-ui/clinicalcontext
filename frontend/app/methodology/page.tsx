@@ -5,6 +5,7 @@ import { ArchitectureDiagram } from "@/app/methodology/architecture-diagram";
 import { EvalMethodology } from "@/app/methodology/eval-methodology";
 import { Limitations } from "@/app/methodology/limitations";
 import { LoadMethodology } from "@/app/methodology/load-methodology";
+import { SymptomCheckMethodology } from "@/app/methodology/symptom-check-methodology";
 import { VoiceMethodology, type VoiceEvalReport } from "@/app/methodology/voice-methodology";
 import { apiUrl } from "@/lib/api";
 import type { AblationReport, CalibrationReport, GoldenReport, LoadReport } from "@/lib/evals";
@@ -30,6 +31,7 @@ const CONTENTS: { href: string; label: string }[] = [
   { href: "#safety", label: "Safety" },
   { href: "#calibration", label: "Calibration" },
   { href: "#voice-heading", label: "Voice" },
+  { href: "#symptom-check", label: "Symptom check" },
   { href: "#load", label: "Load test" },
   { href: "#limitations", label: "Limitations" },
 ];
@@ -97,6 +99,8 @@ export default async function MethodologyPage() {
       <EvalMethodology golden={golden} ablation={ablation} calibration={calibration} />
 
       <VoiceMethodology report={voice} />
+
+      <SymptomCheckMethodology />
 
       <LoadMethodology report={load} />
 

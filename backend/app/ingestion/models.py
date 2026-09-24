@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Literal
 
-SourceType = Literal["pubmed", "pmc", "guideline", "uploaded"]
+SourceType = Literal["pubmed", "pmc", "guideline", "uploaded", "drug_label"]
 
 StudyType = Literal[
     "systematic_review",
@@ -18,6 +18,7 @@ StudyType = Literal[
     "case_report",
     "clinical_guideline",
     "narrative_review",
+    "drug_label",
     "other",
 ]
 

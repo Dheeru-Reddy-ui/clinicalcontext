@@ -21,6 +21,10 @@ import { cn } from "@/lib/utils";
 
 interface Point {
   marker: number;
+  /** Lane plus a small vertical nudge when sources share a date. */
+  y: number;
+  /** Fractional year (month-precise), nudged apart when two sources would overlap. */
+  x: number;
   year: number;
   /** Row on the chart: supports on top, opposes at the bottom, neutral between. */
   lane: number;
@@ -56,17 +60,20 @@ export function EvidenceTimeline({
 }) {
   const [hover, setHover] = useState<Point | null>(null);
 
-  const { points, flip, domain } = useMemo(() => {
-    const stances = stanceByMarker(contradiction);
+  const { points, flip, domain, span } = useMemo(() => {
+    const stances = stanceByMarker(contradiction, citations);
     const pts: Point[] = citations
       .map((c) => {
         const year = yearOf(c.publication_date);
         if (year === null) return null;
         const stance = stances.get(c.marker) ?? "neutral";
+        const month = Number(c.publication_date?.slice(5, 7)) || 7;
         return {
           marker: c.marker,
+          x: year + (month - 1) / 12,
           year,
           lane: LANE[stance],
+          y: LANE[stance],
           size: SIZE[c.evidence_grade ?? "none"],
           stance,
           grade: c.evidence_grade,
@@ -76,7 +83,39 @@ export function EvidenceTimeline({
         };
       })
       .filter((p): p is Point => p !== null)
-      .sort((a, b) => a.year - b.year);
+      .sort((a, b) => a.x - b.x);
+    // The x-axis runs over the sources' own dates with a margin, so five
+    // papers from one year spread across the chart instead of sitting in a
+    // two-year window as one blob.
+    const xs = pts.map((p) => p.x);
+    const lo = xs.length ? Math.min(...xs) : new Date().getFullYear() - 5;
+    const hi = xs.length ? Math.max(...xs) : new Date().getFullYear();
+    const pad = Math.max(0.5, (hi - lo) * 0.12);
+    const width = hi - lo + 2 * pad;
+    // Sources closer than a dot's width in one lane would still overlap (the
+    // screenshot showed five sources as two): fan each cluster out, sideways
+    // and up/down within the lane.
+    const near = width * 0.07;
+    let cluster: Point[] = [];
+    const fan = (group: Point[]) => {
+      group.forEach((p, i) => {
+        const offset = i - (group.length - 1) / 2;
+        p.x += offset * near * 0.8;
+        p.y = p.lane + (group.length > 1 ? (i % 2 === 0 ? 0.18 : -0.18) : 0);
+      });
+    };
+    for (const lane of [0, 1, 2]) {
+      cluster = [];
+      for (const p of pts.filter((q) => q.lane === lane)) {
+        const last = cluster[cluster.length - 1];
+        if (last && p.x - last.x > near) {
+          fan(cluster);
+          cluster = [];
+        }
+        cluster.push(p);
+      }
+      fan(cluster);
+    }
 
     // A flip: the dominant non-neutral stance changes between two years.
     let flipRange: { from: number; to: number } | null = null;
@@ -94,13 +133,19 @@ export function EvidenceTimeline({
         break;
       }
     }
-    const min = pts[0]?.year ?? new Date().getFullYear() - 5;
-    const max = pts[pts.length - 1]?.year ?? new Date().getFullYear();
-    return { points: pts, flip: flipRange, domain: [min - 1, max + 1] as [number, number] };
+    return {
+      points: pts,
+      flip: flipRange,
+      domain: [lo - pad, hi + pad] as [number, number],
+      span: Math.max(...pts.map((q) => q.year), 0) - Math.min(...pts.map((q) => q.year), 9999),
+    };
   }, [citations, contradiction]);
 
   if (points.length < 2) return null;
-  const span = domain[1] - domain[0] - 2;
+  const ticks: number[] = [];
+  for (let y = Math.ceil(domain[0]); y <= Math.floor(domain[1]); y += 1) ticks.push(y);
+  const step = Math.ceil(ticks.length / 8);
+  const shownTicks = ticks.filter((_, i) => i % step === 0);
 
   return (
     <section className={cn("rounded-lg border bg-card", className)} aria-labelledby="timeline-heading">
@@ -108,7 +153,7 @@ export function EvidenceTimeline({
         <h2 id="timeline-heading" className="text-sm font-medium">
           Evidence timeline
           <span className="ml-2 font-mono text-xs text-muted-foreground">
-            {points.length} sources · {span} yr span
+            {points.length} sources · {span === 0 ? `all ${points[0]?.year ?? ""}` : `${span} yr span`}
           </span>
         </h2>
         <div className="flex items-center gap-3">
@@ -132,10 +177,11 @@ export function EvidenceTimeline({
             <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" />
             <XAxis
               type="number"
-              dataKey="year"
+              dataKey="x"
               domain={domain}
-              tickCount={Math.min(span + 2, 10)}
-              tickFormatter={(v: number) => String(v)}
+              ticks={shownTicks}
+              allowDecimals={false}
+              tickFormatter={(v: number) => String(Math.round(v))}
               tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
               axisLine={{ stroke: "var(--border)" }}
               tickLine={false}
@@ -143,7 +189,7 @@ export function EvidenceTimeline({
             />
             <YAxis
               type="number"
-              dataKey="lane"
+              dataKey="y"
               domain={[-0.5, 2.5]}
               ticks={[0, 1, 2]}
               tickFormatter={(v: number) => LANE_LABEL[v] ?? ""}
@@ -206,7 +252,8 @@ export function EvidenceTimeline({
               cursor="pointer"
               shape={(props: unknown) => {
                 const { cx, cy, payload } = props as { cx: number; cy: number; payload: Point };
-                const r = Math.sqrt(payload.size / Math.PI) * 0.75;
+                // Big enough to read the marker number inside, bigger for stronger evidence.
+                const r = Math.max(9, Math.sqrt(payload.size / Math.PI) * 0.9);
                 const active = activeMarker === payload.marker || hover?.marker === payload.marker;
                 const fill =
                   payload.stance === "supports"

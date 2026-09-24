@@ -12,6 +12,8 @@ implementations:
 - :class:`LLMReasoner` — Claude (claude-sonnet-4-6) with versioned prompts,
   falling back to the heuristic on any provider error, so an outage degrades
   gracefully instead of failing the run.
+- :class:`FreeLLMReasoner` — the heuristic's decisions with a free-tier model
+  (Groq / Cerebras, see ``app.llm.chat``) writing the answer.
 
 Which one is active is a config/runtime choice; the graph is identical.
 """
@@ -26,6 +28,7 @@ from typing import Protocol, cast, runtime_checkable
 import structlog
 
 from app.graph.cost import UsageAccumulator
+from app.llm.chat import ChatMessage, ChatModel, ChatResult, LLMUnavailable
 from app.retrieval.types import RetrievedChunk
 from app.schemas.answer import Contradiction, ContradictionPosition, QueryType, RetrievalGrade
 from app.services import cost
@@ -256,6 +259,20 @@ def _phrase_present(phrase: tuple[str, ...], passages: list[list[str]]) -> bool:
     answers a question about fine-needle aspiration biopsy)."""
     needles = [phrase] if len(phrase) <= 2 else [phrase[i : i + 2] for i in range(len(phrase) - 1)]
     return any(_contains(p, n) for p in passages for n in needles)
+
+
+def chunk_relevance(query: str, chunk: RetrievedChunk) -> float:
+    """The share of the query's topic phrases this one passage carries.
+
+    Coverage (below) asks whether the top passages carry the topic *between
+    them*, which one on-topic passage among five unrelated ones satisfies;
+    an answer built from all five would then cite the unrelated four. This
+    is the per-passage test that keeps them out."""
+    phrases = topic_phrases(query)
+    if not phrases:
+        return 1.0
+    passage = [_stems(f"{chunk.title or ''} {chunk.content}")]
+    return sum(1 for phrase in phrases if _phrase_present(phrase, passage)) / len(phrases)
 
 
 def topic_coverage(query: str, chunks: list[RetrievedChunk], *, top: int = 5) -> float:
@@ -700,9 +717,91 @@ class LLMReasoner:
                 yield item
 
 
+class FreeLLMReasoner(HeuristicReasoner):
+    """A free-tier model writes the answer; everything else stays offline.
+
+    The graph asks a reasoner six things per question. On a free tier with
+    30 requests and 8,000 tokens a minute, spending six calls per question
+    would exhaust the minute on the first one, so classification, grading,
+    rewriting and contradiction detection keep their deterministic forms —
+    they decide from retrieval scores and passage metadata, which is what
+    the offline engine does already — and the one call goes to the step
+    where a model changes the result: turning passages into prose. Any
+    provider failure falls back to extraction, so the graph never fails."""
+
+    name = "free-llm"
+
+    def __init__(self, *, voice: bool = False) -> None:
+        super().__init__()
+        self._generation_prompt = "voice_answer" if voice else "generate_answer"
+
+    def _messages(
+        self, query: str, chunks: list[RetrievedChunk], contradiction: Contradiction
+    ) -> list[ChatMessage]:
+        from app.prompts.loader import load_prompt
+
+        prompt = load_prompt(self._generation_prompt, LLM_PROMPTS[self._generation_prompt])
+        conflict_note = (
+            f"\n\nA contradiction was detected — structure the answer as a conflict, "
+            f"never as false consensus. {contradiction.explanation}"
+            if contradiction.detected
+            else ""
+        )
+        return [
+            ChatMessage("system", prompt.text),
+            ChatMessage(
+                "user",
+                f"QUESTION: {query}\n\nNUMBERED PASSAGES:\n"
+                f"{_numbered_passages(chunks)}{conflict_note}",
+            ),
+        ]
+
+    async def generate(
+        self, query: str, chunks: list[RetrievedChunk], contradiction: Contradiction
+    ) -> GenerationOutput:
+        if not chunks:
+            return await super().generate(query, chunks, contradiction)
+        try:
+            result = await ChatModel().complete(
+                self._messages(query, chunks, contradiction), max_tokens=900
+            )
+            self.usage.add(result.model, result.input_tokens, result.output_tokens)
+            return GenerationOutput(text=result.text, ordered_chunks=chunks, mode="llm")
+        except (LLMUnavailable, ValueError) as exc:
+            logger.warning("generate_free_llm_fallback", error=f"{type(exc).__name__}: {exc}")
+            return await super().generate(query, chunks, contradiction)
+
+    async def generate_stream(
+        self, query: str, chunks: list[RetrievedChunk], contradiction: Contradiction
+    ) -> AsyncIterator[str | GenerationOutput]:
+        if not chunks:
+            async for offline in super().generate_stream(query, chunks, contradiction):
+                yield offline
+            return
+        spoken = False
+        try:
+            async for piece in ChatModel().stream(
+                self._messages(query, chunks, contradiction), max_tokens=700
+            ):
+                if isinstance(piece, ChatResult):
+                    self.usage.add(piece.model, piece.input_tokens, piece.output_tokens)
+                    yield GenerationOutput(text=piece.text, ordered_chunks=chunks, mode="llm")
+                    return
+                spoken = True
+                yield piece
+        except LLMUnavailable as exc:
+            if spoken:
+                raise
+            logger.warning("generate_free_llm_fallback", error=str(exc))
+        async for fallback in super().generate_stream(query, chunks, contradiction):
+            yield fallback
+
+
 def get_reasoner(name: str, *, voice: bool = False) -> Reasoner:
     if name in ("heuristic", "offline"):
         return HeuristicReasoner()
     if name in ("llm", "claude", "anthropic"):
         return LLMReasoner(voice=voice)
+    if name == "free-llm":
+        return FreeLLMReasoner(voice=voice)
     raise ValueError(f"unknown reasoner: {name!r}")

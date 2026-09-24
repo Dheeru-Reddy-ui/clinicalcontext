@@ -24,6 +24,7 @@ from app.graph.reasoner import Reasoner, get_reasoner
 from app.graph.state import GraphEvent
 from app.guardrails.phi import WITHHELD_TEXT, carries_phi, withhold_phi
 from app.guardrails.pipeline import GuardrailPipeline
+from app.llm.chat import llm_available
 from app.repositories.answers import AnswersRepository, reasoning_payload
 from app.repositories.base import tenant_connection
 from app.repositories.tenancy import TenancyRepository
@@ -56,9 +57,14 @@ _QUERY_TYPE_ENUM = frozenset(
 
 
 def _backend_components() -> tuple[str, str, str]:
-    """(reasoner, embedder, reranker) names for the configured AI backend."""
+    """(reasoner, embedder, reranker) names for the configured AI backend.
+
+    Offline retrieval with a free-tier model writing the answer when one is
+    configured; the deterministic engine alone when none is."""
     if get_settings().ai_backend == "cloud":
         return "llm", "cohere", "cohere"
+    if llm_available():
+        return "free-llm", "local", "local"
     return "heuristic", "local", "local"
 
 

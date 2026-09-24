@@ -15,8 +15,10 @@ from collections.abc import AsyncIterator
 from typing import Any
 from urllib.parse import urlencode
 
+import httpx
 import structlog
 import websockets
+from websockets.exceptions import InvalidStatus
 
 from app.voice.availability import CLOUD_SETUP, key_configured
 from app.voice.stt.base import QueueEvents, SttEvent, SttWord
@@ -24,6 +26,19 @@ from app.voice.stt.base import QueueEvents, SttEvent, SttWord
 logger = structlog.stdlib.get_logger("app.voice.stt.deepgram")
 
 _ENDPOINT = "wss://api.deepgram.com/v1/listen"
+_REST_ENDPOINT = "https://api.deepgram.com/v1/listen"
+
+
+def handshake_refusal(exc: InvalidStatus) -> tuple[int, str]:
+    """Deepgram's reason for refusing a WebSocket: it rides in the dg-error
+    header (the body is often empty). Logged, so a refusal says why."""
+    response = exc.response
+    reason = response.headers.get("dg-error") or ""
+    if not reason and response.body:
+        reason = response.body.decode("utf-8", "replace")[:300]
+    return response.status_code, reason
+
+
 _KEEPALIVE_SECONDS = 5.0
 # Deepgram rejects a request whose keyterms exceed 500 tokens in total
 # ("Keyterm limit exceeded") and recommends the 20-50 most important terms.
@@ -200,12 +215,60 @@ class DeepgramProvider:
             ("utterance_end_ms", "1000"),
         ]
         keyterms = select_keyterms(boost)
-        params.extend(("keyterm", term) for term in keyterms)
-        url = f"{_ENDPOINT}?{urlencode(params)}"
-        socket = await websockets.connect(
-            url,
+        try:
+            socket = await self._connect([*params, *(("keyterm", t) for t in keyterms)])
+        except InvalidStatus as exc:
+            status, reason = handshake_refusal(exc)
+            logger.warning("deepgram_refused", status=status, reason=reason, keyterms=len(keyterms))
+            # A vocabulary Deepgram will not take must not cost the session:
+            # hearing without the boost beats not hearing at all.
+            if status != 400 or not keyterms:
+                raise
+            socket = await self._connect(params)
+            keyterms = []
+        logger.info("deepgram_connected", model=self.model, keyterms=len(keyterms))
+        return DeepgramStream(socket, model=self.model)
+
+    async def _connect(self, params: list[tuple[str, str]]) -> Any:
+        return await websockets.connect(
+            f"{_ENDPOINT}?{urlencode(params)}",
             additional_headers={"Authorization": f"Token {self._api_key}"},
             max_size=None,
         )
-        logger.info("deepgram_connected", model=self.model, keyterms=len(keyterms))
-        return DeepgramStream(socket, model=self.model)
+
+    async def transcribe(
+        self, audio: bytes, content_type: str, *, client: httpx.AsyncClient | None = None
+    ) -> str:
+        """One finished recording → its text (Deepgram's pre-recorded API).
+
+        For typing by voice in the chat box: the browser records a clip and
+        sends it whole, so there is no stream to hold open."""
+        owned = client is None
+        http = client or httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0))
+        try:
+            response = await http.post(
+                _REST_ENDPOINT,
+                params={
+                    "model": self.model,
+                    "smart_format": "true",
+                    "punctuate": "true",
+                    # nova-3-medical is English-only; say so rather than
+                    # ask it to detect.
+                    "language": "en",
+                },
+                headers={"Authorization": f"Token {self._api_key}", "Content-Type": content_type},
+                content=audio,
+            )
+        finally:
+            if owned:
+                await http.aclose()
+        if response.status_code != 200:
+            logger.warning(
+                "deepgram_transcribe_failed",
+                status=response.status_code,
+                detail=response.text[:300],
+            )
+            raise RuntimeError(f"Deepgram answered {response.status_code}")
+        channels = (response.json().get("results") or {}).get("channels") or []
+        alternatives = (channels[0].get("alternatives") if channels else None) or []
+        return str(alternatives[0].get("transcript", "")).strip() if alternatives else ""

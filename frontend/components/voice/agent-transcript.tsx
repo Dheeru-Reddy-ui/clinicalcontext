@@ -29,7 +29,7 @@ export function AgentTranscript({
 }) {
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
   const answer = turn.answer;
-  const stances = answer ? stanceByMarker(answer.contradiction) : undefined;
+  const stances = answer ? stanceByMarker(answer.contradiction, answer.citations) : undefined;
   const spokenIndexes = new Set(turn.sentences.filter((s) => s.spoken).map((s) => s.index));
 
   if (turn.sentences.length === 0 && !turn.guardrail) return null;

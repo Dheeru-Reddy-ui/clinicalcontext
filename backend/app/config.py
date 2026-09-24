@@ -169,6 +169,26 @@ class Settings(BaseSettings):
     anthropic_api_key: SecretStr
     langsmith_api_key: SecretStr
 
+    # -- Free language models (the chat assistant, and the graph when set) --------
+    # Any OpenAI-compatible chat endpoint. Each provider is used only when its
+    # key is real; they are tried in LLM_PROVIDER_ORDER and a provider that
+    # refuses (rate limit, quota, outage) hands the request to the next, so a
+    # free tier's daily cap degrades to the next free tier rather than to an
+    # error. With none configured, answers come from the offline engine.
+    llm_provider_order: str = "groq,cerebras,openai_compat"
+    groq_api_key: SecretStr = SecretStr("")
+    groq_model: str = "openai/gpt-oss-120b"
+    # Groq's free limits are per model: the smaller model is a second quota.
+    groq_fallback_model: str = "openai/gpt-oss-20b"
+    cerebras_api_key: SecretStr = SecretStr("")
+    cerebras_model: str = "gpt-oss-120b"
+    # A third, generic slot: OpenRouter, a self-hosted vLLM/Ollama, anything
+    # speaking the OpenAI chat API.
+    openai_compat_base_url: str = ""
+    openai_compat_api_key: SecretStr = SecretStr("")
+    openai_compat_model: str = ""
+    llm_timeout_seconds: float = 45.0
+
     # -- Voice pipeline (Phase 11) ----------------------------------------------
     deepgram_api_key: SecretStr
     elevenlabs_api_key: SecretStr

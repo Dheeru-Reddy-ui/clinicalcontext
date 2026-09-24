@@ -38,8 +38,11 @@ def sanitize_xml(xml_text: str) -> str:
 class NcbiClient:
     """Polite E-utilities access shared by the PubMed and PMC sources."""
 
-    def __init__(self, *, timeout: float = 30.0) -> None:
+    def __init__(self, *, timeout: float = 30.0, max_attempts: int = _MAX_ATTEMPTS) -> None:
         settings = get_settings()
+        # Ingestion can wait out NCBI's hiccups; a person waiting on an
+        # answer cannot, so the live path asks for fewer, quicker attempts.
+        self._max_attempts = max(1, max_attempts)
         self._api_key = settings.ncbi_api_key.get_secret_value() if settings.ncbi_api_key else None
         self._email = settings.ncbi_email
         self._min_interval = 1.0 / (10.0 if self._api_key else 3.0)
@@ -61,7 +64,7 @@ class NcbiClient:
     async def _request(self, path: str, params: dict[str, str]) -> httpx.Response:
         merged = {**self._common_params(), **params}
         last_error: Exception | None = None
-        for attempt in range(1, _MAX_ATTEMPTS + 1):
+        for attempt in range(1, self._max_attempts + 1):
             async with self._gate:
                 wait = self._min_interval - (time.monotonic() - self._last_request)
                 if wait > 0:
@@ -79,7 +82,7 @@ class NcbiClient:
                 return response
             except (httpx.HTTPStatusError, httpx.TransportError) as exc:
                 last_error = exc
-                if attempt == _MAX_ATTEMPTS:
+                if attempt == self._max_attempts:
                     break
                 delay = _RETRY_BASE_DELAY_S * (2 ** (attempt - 1))
                 logger.warning(
@@ -90,23 +93,32 @@ class NcbiClient:
                     error=str(exc),
                 )
                 await asyncio.sleep(delay)
-        raise RuntimeError(f"NCBI request failed after {_MAX_ATTEMPTS} attempts: {last_error}")
+        raise RuntimeError(f"NCBI request failed after {self._max_attempts} attempts: {last_error}")
 
-    async def search_ids(self, *, db: str, term: str, limit: int) -> list[str]:
-        """esearch: resolve a query to a list of record ids (newest first)."""
-        response = await self._request(
-            "/esearch.fcgi",
-            {
-                "db": db,
-                "term": term,
-                "retmax": str(limit),
-                "retmode": "json",
-                "sort": "date",
-            },
-        )
+    async def search_ids(
+        self, *, db: str, term: str, limit: int, sort: str | None = "date"
+    ) -> list[str]:
+        """esearch: resolve a query to a list of record ids — by publication
+        date, PubMed's Best Match with ``sort="relevance"``, or most recently
+        added with ``sort=None``."""
+        params = {"db": db, "term": term, "retmax": str(limit), "retmode": "json"}
+        if sort:
+            params["sort"] = sort
+        response = await self._request("/esearch.fcgi", params)
         payload: dict[str, Any] = response.json()
         ids = payload.get("esearchresult", {}).get("idlist", [])
         return [str(record_id) for record_id in ids]
+
+    async def summaries(self, *, db: str, ids: list[str]) -> list[dict[str, Any]]:
+        """esummary: title, journal, date and publication types per id, in
+        the order asked (cheaper than efetch when no abstract is needed)."""
+        if not ids:
+            return []
+        response = await self._request(
+            "/esummary.fcgi", {"db": db, "id": ",".join(ids), "retmode": "json"}
+        )
+        result: dict[str, Any] = response.json().get("result", {})
+        return [result[i] for i in ids if isinstance(result.get(i), dict)]
 
     async def fetch_xml_batches(self, *, db: str, ids: list[str]) -> list[str]:
         """efetch in batches; returns one XML document string per batch."""

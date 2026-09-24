@@ -7,13 +7,17 @@ import {
   History,
   LayoutList,
   Library,
+  GraduationCap,
   LogOut,
+  Menu,
   MessageSquarePlus,
+  MessagesSquare,
   Mic,
   Monitor,
   Moon,
   Search,
   Settings2,
+  Stethoscope,
   Sun,
 } from "lucide-react";
 import Link from "next/link";
@@ -21,6 +25,7 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { AssistantLauncher } from "@/components/chat/assistant-launcher";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useCommandPalette } from "@/components/shell/command-palette";
 import { OfflineBanner } from "@/components/shell/offline-banner";
@@ -49,7 +54,10 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { href: "/app", label: "Ask", icon: MessageSquarePlus, exact: true },
+  { href: "/app/chat", label: "Chat", icon: MessagesSquare },
+  { href: "/app/treatment", label: "Treatment", icon: Stethoscope },
+  { href: "/app/learn", label: "Learn", icon: GraduationCap },
+  { href: "/app", label: "Evidence search", icon: MessageSquarePlus, exact: true },
   { href: "/app/voice", label: "Voice", icon: Mic },
   { href: "/app/sessions", label: "Sessions", icon: LayoutList },
   { href: "/app/history", label: "History", icon: History },
@@ -63,6 +71,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { org, role, me, signOut } = useAuth();
   const palette = useCommandPalette();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const visibleNav = NAV.filter((item) => !item.roles || (role && item.roles.includes(role)));
 
@@ -159,18 +168,72 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-12 items-center justify-between border-b px-4 md:hidden">
-          <Link href="/app" className="font-semibold tracking-tight">
+        <header className="flex h-12 items-center justify-between border-b px-2 md:hidden">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={menuOpen}
+            data-testid="mobile-menu"
+          >
+            <Menu className="size-4" />
+          </Button>
+          <Link href="/app/chat" className="font-semibold tracking-tight">
             ClinicalContext
           </Link>
           <Button variant="ghost" size="sm" onClick={palette.open} aria-label="Open command palette">
             <Search className="size-4" />
           </Button>
         </header>
+        {menuOpen && (
+          <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-label="Menu">
+            <button
+              type="button"
+              aria-label="Close menu"
+              className="absolute inset-0 bg-black/40"
+              onClick={() => setMenuOpen(false)}
+            />
+            <nav
+              className="absolute inset-y-0 left-0 flex w-64 flex-col gap-0.5 bg-sidebar p-2 shadow-xl"
+              aria-label="Sections"
+            >
+              <p className="px-2.5 py-3 font-semibold tracking-tight">ClinicalContext</p>
+              {visibleNav.map((item) => {
+                const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMenuOpen(false)}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex items-center gap-2.5 rounded-sm px-2.5 py-2 text-sm",
+                      active ? "bg-sidebar-accent font-medium" : "text-muted-foreground",
+                    )}
+                  >
+                    <Icon className="size-4" aria-hidden />
+                    {item.label}
+                  </Link>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                className="mt-auto flex items-center gap-2.5 rounded-sm px-2.5 py-2 text-sm text-muted-foreground"
+              >
+                <LogOut className="size-4" aria-hidden /> Sign out
+              </button>
+            </nav>
+          </div>
+        )}
         <OfflineBanner />
-        <main id="main" className="min-w-0 flex-1" tabIndex={-1}>
+        {/* Bottom room so the floating assistant never covers a page's last button. */}
+        <main id="main" className={cn("min-w-0 flex-1", !pathname.startsWith("/app/chat") && "pb-20")} tabIndex={-1}>
           {children}
         </main>
+        <AssistantLauncher hideOn={["/app/chat"]} fullHref="/app/chat" checkHref="/app/treatment" />
       </div>
     </div>
   );

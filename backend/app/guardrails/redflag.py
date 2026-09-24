@@ -56,10 +56,10 @@ _RED_FLAGS: dict[str, tuple[re.Pattern[str], ...]] = {
 _BANNER = (
     "⚠ EMERGENCY INDICATORS DETECTED. If this describes a real person right now, "
     "this is a potential medical emergency — call your local emergency number "
-    "(911 in the US, 112 in the EU) or go to the nearest emergency department "
-    "immediately. For suicidal thoughts, contact a crisis line (988 in the US). "
-    "The information below is literature reference only and is not a substitute "
-    "for emergency care."
+    "(112 in India and the EU, 108 for an ambulance in India, 911 in the US) or go "
+    "to the nearest emergency department immediately. For suicidal thoughts, "
+    "contact a crisis line (Tele-MANAS 14416 in India, 988 in the US). The "
+    "information below is reference only and is not a substitute for emergency care."
 )
 
 

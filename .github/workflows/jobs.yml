@@ -35,6 +35,7 @@ on:
           - corpus-freshness
           - deliver-webhooks
           - rebuild-mesh
+          - latest-research
 
 permissions:
   contents: read
@@ -98,6 +99,11 @@ jobs:
         if: steps.gate.outputs.configured == 'true' && (github.event.schedule == '17 3 * * *' || github.event.inputs.job == 'living-answers')
         working-directory: backend
         run: uv run python -m scripts.jobs living-answers --limit 500
+
+      - name: Latest research into the library (nightly)
+        if: steps.gate.outputs.configured == 'true' && (github.event.schedule == '17 3 * * *' || github.event.inputs.job == 'latest-research')
+        working-directory: backend
+        run: uv run python -m scripts.jobs latest-research --per-specialty 3 --days 30
 
       - name: Weekly digest
         if: steps.gate.outputs.configured == 'true' && (github.event.schedule == '23 6 * * 1' || github.event.inputs.job == 'weekly-digest')

@@ -6,13 +6,16 @@ import {
   BookMarked,
   Clock,
   FolderOpen,
+  GraduationCap,
   History,
   LayoutList,
   Library,
   MessageSquarePlus,
+  MessagesSquare,
   Mic,
   Moon,
   Settings2,
+  Stethoscope,
   Sun,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -121,6 +124,15 @@ function Palette({ open, onOpenChange }: { open: boolean; onOpenChange: (v: bool
             <CommandItem onSelect={() => go("/app")} value="new query ask">
               <MessageSquarePlus /> New query
               <CommandShortcut>N</CommandShortcut>
+            </CommandItem>
+            <CommandItem onSelect={() => go("/app/chat")} value="chat assistant conversation ask">
+              <MessagesSquare /> Chat with the assistant
+            </CommandItem>
+            <CommandItem onSelect={() => go("/app/treatment")} value="treatment symptom check prescription medicine dose">
+              <Stethoscope /> Symptom check and treatment
+            </CommandItem>
+            <CommandItem onSelect={() => go("/app/learn")} value="learn specialties mbbs pg teaching">
+              <GraduationCap /> Learn by specialty
             </CommandItem>
             <CommandItem onSelect={() => go("/app/voice")} value="voice mode speak talk microphone">
               <Mic /> Voice mode

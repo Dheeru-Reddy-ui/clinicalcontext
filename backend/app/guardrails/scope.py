@@ -162,6 +162,12 @@ def _match_any(patterns: tuple[re.Pattern[str], ...], text: str) -> bool:
     return any(p.search(text) for p in patterns)
 
 
+def is_prompt_injection(text: str) -> bool:
+    """The injection patterns alone — for surfaces (the chat assistant) that
+    answer personal health questions but must still refuse to be re-programmed."""
+    return _match_any(_INJECTION_PATTERNS, text)
+
+
 def classify_keyword(query: str) -> ScopeVerdict:
     """Deterministic pre-filter. Order matters: injection and diagnosis first."""
     if _match_any(_INJECTION_PATTERNS, query):

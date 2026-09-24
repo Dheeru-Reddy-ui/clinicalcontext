@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AssistantLauncher } from "@/components/chat/assistant-launcher";
 import { DemoPanel } from "@/components/marketing/demo-panel";
 import { buttonVariants } from "@/components/ui/button";
 import { apiUrl } from "@/lib/api";
@@ -40,10 +41,11 @@ export default async function Home() {
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-4 py-10 md:px-6">
       <header className="space-y-4">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">ClinicalContext</p>
-        <h1 className="text-4xl font-semibold tracking-tight">Evidence-grounded answers to clinical questions.</h1>
+        <h1 className="text-4xl font-semibold tracking-tight">Evidence-grounded answers to health and clinical questions.</h1>
         <p className="text-lg text-muted-foreground">
-          Every claim traceable to a citation in the public medical literature — and explicit uncertainty when the
-          evidence is weak or contradictory.
+          A health assistant for patients, doctors and students. Every claim is traceable to a citation in the
+          medical literature, guidelines or drug labels — and it says so plainly when the evidence is weak or
+          contradictory. Ask the assistant in the corner, or run a symptom check.
         </p>
         <p className="text-sm text-muted-foreground">
           A clinical decision <em>support</em> tool, not a diagnostic tool. No patient data, no PHI — enforced in code,
@@ -52,6 +54,9 @@ export default async function Home() {
         <div className="flex flex-wrap gap-2">
           <Link href="/login" className={buttonVariants()}>
             Sign in
+          </Link>
+          <Link href="/check" className={buttonVariants({ variant: "outline" })} data-testid="home-check">
+            Symptom check
           </Link>
           <Link href="/methodology" className={buttonVariants({ variant: "outline" })}>
             How it is measured
@@ -87,6 +92,7 @@ export default async function Home() {
           </p>
         </div>
       </section>
+      <AssistantLauncher mode="public" checkHref="/check" />
     </main>
   );
 }

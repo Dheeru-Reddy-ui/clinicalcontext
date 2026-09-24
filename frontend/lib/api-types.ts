@@ -24,6 +24,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Public Chat
+         * @description The website's chatbot: the same assistant, the shared corpus only,
+         *     and nothing stored — the recent turns come from the page.
+         */
+        post: operations["public_chat_api_public_chat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/demo": {
         parameters: {
             query?: never;
@@ -105,6 +126,44 @@ export interface paths {
          *     does not go directly from the browser to Supabase.
          */
         post: operations["public_signup_api_public_signup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/treatment/complaints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public Complaints */
+        get: operations["public_complaints_api_public_treatment_complaints_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/treatment/step": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Public Treatment Step
+         * @description The symptom check needs no account: it is deterministic, stateless,
+         *     and stores nothing about the person.
+         */
+        post: operations["public_treatment_step_api_public_treatment_step_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -269,6 +328,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assistant/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Assistant Status */
+        get: operations["get_assistant_status_api_v1_assistant_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/bootstrap": {
         parameters: {
             query?: never;
@@ -425,6 +501,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Chat */
+        post: operations["chat_api_v1_chat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chat/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Chat Sessions */
+        get: operations["list_chat_sessions_api_v1_chat_sessions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chat/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Chat Session */
+        get: operations["get_chat_session_api_v1_chat_sessions__session_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Rename Chat Session */
+        patch: operations["rename_chat_session_api_v1_chat_sessions__session_id__patch"];
+        trace?: never;
+    };
     "/api/v1/corpus/freshness": {
         parameters: {
             query?: never;
@@ -577,6 +705,40 @@ export interface paths {
          *     review itself happens with ``python -m evals.golden.promote``.
          */
         get: operations["review_queue_api_v1_feedback_review_queue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learn/specialties": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Specialties */
+        get: operations["list_specialties_api_v1_learn_specialties_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learn/specialties/{slug}/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Specialty Latest */
+        get: operations["specialty_latest_api_v1_learn_specialties__slug__latest_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -903,6 +1065,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/treatment/complaints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Complaints */
+        get: operations["list_complaints_api_v1_treatment_complaints_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/treatment/step": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Treatment Step
+         * @description Stateless: nothing about the person is stored.
+         */
+        post: operations["treatment_step_api_v1_treatment_step_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/voice/analytics": {
         parameters: {
             query?: never;
@@ -963,6 +1162,29 @@ export interface paths {
          * @description Flash (latency) vs Multilingual (prosody): an owner-level org setting.
          */
         patch: operations["set_settings_api_v1_voice_settings_patch"];
+        trace?: never;
+    };
+    "/api/v1/voice/transcribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Transcribe
+         * @description Voice typing: a short recording from the chat box → its text.
+         *
+         *     Needs the cloud speech service (Deepgram); on a server without it this
+         *     says so, the same way the voice page does.
+         */
+        post: operations["transcribe_api_v1_voice_transcribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/voice/turns": {
@@ -1217,6 +1439,51 @@ export interface components {
             /** Api Keys */
             api_keys: components["schemas"]["ApiKeyOut"][];
         };
+        /** AssessmentOut */
+        AssessmentOut: {
+            /** Action */
+            action: string;
+            /** Doctor May */
+            doctor_may: components["schemas"]["DoctorOptionOut"][];
+            /** Headline */
+            headline: string;
+            /** Medicines */
+            medicines: components["schemas"]["MedicineOut"][];
+            /** Possible Causes */
+            possible_causes: string[];
+            /** Reasons */
+            reasons: components["schemas"]["ReasonOut"][];
+            /** See Doctor If */
+            see_doctor_if: string[];
+            /** Self Care */
+            self_care: string[];
+            /** Sources */
+            sources: components["schemas"]["SourceOut"][];
+            /** Tests */
+            tests: string[];
+            /**
+             * Urgency
+             * @enum {string}
+             */
+            urgency: "self_care" | "soon" | "urgent" | "emergency";
+        };
+        /**
+         * AssistantStatus
+         * @description What powers the assistant on this server, so the page can say so.
+         */
+        AssistantStatus: {
+            /**
+             * Live Search
+             * @default true
+             */
+            live_search: boolean;
+            /** Llm Available */
+            llm_available: boolean;
+            /** Message */
+            message: string;
+            /** Providers */
+            providers: string[];
+        };
         /** BatchQueryRequest */
         BatchQueryRequest: {
             /** Queries */
@@ -1343,6 +1610,110 @@ export interface components {
             /** Org Name */
             org_name?: string | null;
         };
+        /** ChatRequest */
+        ChatRequest: {
+            /**
+             * Audience
+             * @default patient
+             * @enum {string}
+             */
+            audience: "patient" | "clinician" | "student";
+            /**
+             * Kind
+             * @default chat
+             * @enum {string}
+             */
+            kind: "chat" | "learn" | "treatment";
+            /** Level */
+            level?: ("mbbs" | "pg") | null;
+            /** Message */
+            message: string;
+            /** Session Id */
+            session_id?: string | null;
+            /** Specialty */
+            specialty?: string | null;
+        };
+        /** ChatSessionDetail */
+        ChatSessionDetail: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Title */
+            title: string | null;
+            /** Turns */
+            turns: components["schemas"]["ChatTurnOut"][];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ChatSessionOut */
+        ChatSessionOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Title */
+            title: string | null;
+            /** Turns */
+            turns: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ChatTurnOut */
+        ChatTurnOut: {
+            /** Answer */
+            answer: string | null;
+            /** Answer Id */
+            answer_id: string | null;
+            /** Audience */
+            audience: string | null;
+            /** Citations */
+            citations: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Details */
+            details: {
+                [key: string]: unknown;
+            };
+            /** Model */
+            model: string | null;
+            /**
+             * Query Id
+             * Format: uuid
+             */
+            query_id: string;
+            /** Question */
+            question: string;
+            /** Status */
+            status: string;
+        };
         /** ChunkOut */
         ChunkOut: {
             /** Chunk Index */
@@ -1362,6 +1733,15 @@ export interface components {
             strategy: string | null;
             /** Token Count */
             token_count: number;
+        };
+        /** ComplaintOut */
+        ComplaintOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Summary */
+            summary: string;
         };
         /**
          * CostLine
@@ -1574,6 +1954,13 @@ export interface components {
             /** Enabled */
             enabled?: boolean | null;
         };
+        /** DoctorOptionOut */
+        DoctorOptionOut: {
+            /** Source */
+            source: string;
+            /** Text */
+            text: string;
+        };
         /** DocumentChunksOut */
         DocumentChunksOut: {
             /** Chunks */
@@ -1698,6 +2085,21 @@ export interface components {
             offset: number;
             /** Total */
             total: number;
+        };
+        /** FeedItemOut */
+        FeedItemOut: {
+            /** Design */
+            design: string;
+            /** Journal */
+            journal: string;
+            /** Pmid */
+            pmid: string;
+            /** Published */
+            published: string;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
         };
         /** FeedbackOut */
         FeedbackOut: {
@@ -1854,6 +2256,29 @@ export interface components {
              */
             user_id: string;
         };
+        /** MedicineOut */
+        MedicineOut: {
+            /** Dose */
+            dose: string | null;
+            /** How Often */
+            how_often: string | null;
+            /** Key */
+            key: string;
+            /** Maximum */
+            maximum: string | null;
+            /** Name */
+            name: string;
+            /** Notes */
+            notes: string[];
+            /** Purpose */
+            purpose: string;
+            /** Reason Not Suitable */
+            reason_not_suitable: string | null;
+            /** Sources */
+            sources: string[];
+            /** Suitable */
+            suitable: boolean;
+        };
         /** MemberOut */
         MemberOut: {
             /** Email */
@@ -1910,6 +2335,13 @@ export interface components {
             notifications: components["schemas"]["NotificationOut"][];
             /** Unread */
             unread: number;
+        };
+        /** OptionOut */
+        OptionOut: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
         };
         /** OrgOut */
         OrgOut: {
@@ -1979,6 +2411,35 @@ export interface components {
             study_type: string | null;
         };
         /**
+         * Profile
+         * @description Who the symptom check is for. No name, no date of birth: age is all
+         *     the dosing needs, and identifiers are never collected.
+         */
+        Profile: {
+            /** Age Years */
+            age_years: number;
+            /** Allergies */
+            allergies?: string[];
+            /**
+             * Breastfeeding
+             * @default false
+             */
+            breastfeeding: boolean;
+            /** Conditions */
+            conditions?: ("asthma" | "kidney_disease" | "liver_disease" | "stomach_ulcer" | "heart_disease" | "diabetes" | "weak_immunity" | "bleeding_disorder" | "high_blood_pressure" | "lung_disease")[];
+            /** Medicines */
+            medicines?: string[];
+            /**
+             * Pregnant
+             * @default false
+             */
+            pregnant: boolean;
+            /** Sex */
+            sex?: ("female" | "male" | "other") | null;
+            /** Weight Kg */
+            weight_kg?: number | null;
+        };
+        /**
          * PublicAnswerOut
          * @description Everything a logged-out reader needs to verify the answer — nothing more.
          *
@@ -2019,6 +2480,29 @@ export interface components {
             /** Slug */
             slug: string;
             superseded: components["schemas"]["SupersededInfo"] | null;
+        };
+        /**
+         * PublicChatRequest
+         * @description The website's chatbot: nothing is stored, so recent turns come along.
+         */
+        PublicChatRequest: {
+            /**
+             * Audience
+             * @default patient
+             * @enum {string}
+             */
+            audience: "patient" | "clinician" | "student";
+            /** History */
+            history?: components["schemas"]["PublicTurn"][];
+            /** Message */
+            message: string;
+        };
+        /** PublicTurn */
+        PublicTurn: {
+            /** Answer */
+            answer: string;
+            /** Question */
+            question: string;
         };
         /** QualityReport */
         QualityReport: {
@@ -2063,6 +2547,22 @@ export interface components {
             /** Session Id */
             session_id?: string | null;
         };
+        /** QuestionOut */
+        QuestionOut: {
+            /** Help */
+            help: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "single" | "multi";
+            /** Options */
+            options: components["schemas"]["OptionOut"][];
+            /** Text */
+            text: string;
+        };
         /**
          * ReadinessCheck
          * @description Result of probing one dependency.
@@ -2092,6 +2592,20 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "degraded";
+        };
+        /** ReasonOut */
+        ReasonOut: {
+            /** Source */
+            source: string | null;
+            /** Text */
+            text: string;
+            /** Urgency */
+            urgency: string;
+        };
+        /** RenameSession */
+        RenameSession: {
+            /** Title */
+            title: string;
         };
         /**
          * ReviewQueueItem
@@ -2312,6 +2826,45 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** SourceOut */
+        SourceOut: {
+            /** Key */
+            key: string;
+            /** Publisher */
+            publisher: string;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+        };
+        /** SpecialtyFeedOut */
+        SpecialtyFeedOut: {
+            /**
+             * Available
+             * @default true
+             */
+            available: boolean;
+            /** Days */
+            days: number;
+            /** Items */
+            items: components["schemas"]["FeedItemOut"][];
+            /** Message */
+            message?: string | null;
+            specialty: components["schemas"]["SpecialtyOut"];
+        };
+        /** SpecialtyOut */
+        SpecialtyOut: {
+            /** Level */
+            level: string;
+            /** Level Label */
+            level_label: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /** Topics */
+            topics: string[];
+        };
         /** SuggestOut */
         SuggestOut: {
             /** Query */
@@ -2364,6 +2917,26 @@ export interface components {
             count: number;
             /** Query */
             query: string;
+        };
+        /** TreatmentStepOut */
+        TreatmentStepOut: {
+            /** Answered */
+            answered: number;
+            assessment?: components["schemas"]["AssessmentOut"] | null;
+            complaint: components["schemas"]["ComplaintOut"];
+            question?: components["schemas"]["QuestionOut"] | null;
+            /** Total */
+            total: number;
+        };
+        /** TreatmentStepRequest */
+        TreatmentStepRequest: {
+            /** Answers */
+            answers?: {
+                [key: string]: string[];
+            };
+            /** Complaint */
+            complaint: string;
+            profile: components["schemas"]["Profile"];
         };
         /** UsageOverview */
         UsageOverview: {
@@ -2715,6 +3288,39 @@ export interface operations {
             };
         };
     };
+    public_chat_api_public_chat_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicChatRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     demo_ask_api_public_demo_post: {
         parameters: {
             query?: never;
@@ -2821,6 +3427,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SignupOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_complaints_api_public_treatment_complaints_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplaintOut"][];
+                };
+            };
+        };
+    };
+    public_treatment_step_api_public_treatment_step_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TreatmentStepRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TreatmentStepOut"];
                 };
             };
             /** @description Validation Error */
@@ -3157,6 +3816,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_assistant_status_api_v1_assistant_status_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantStatus"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -3550,6 +4240,147 @@ export interface operations {
             };
         };
     };
+    chat_api_v1_chat_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_chat_sessions_api_v1_chat_sessions_get: {
+        parameters: {
+            query?: {
+                kind?: string[] | null;
+                limit?: number;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatSessionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_chat_session_api_v1_chat_sessions__session_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatSessionDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rename_chat_session_api_v1_chat_sessions__session_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameSession"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     corpus_freshness_api_v1_corpus_freshness_get: {
         parameters: {
             query?: never;
@@ -3848,6 +4679,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReviewQueueOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_specialties_api_v1_learn_specialties_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecialtyOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    specialty_latest_api_v1_learn_specialties__slug__latest_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecialtyFeedOut"];
                 };
             };
             /** @description Validation Error */
@@ -4604,6 +5501,72 @@ export interface operations {
             };
         };
     };
+    list_complaints_api_v1_treatment_complaints_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplaintOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    treatment_step_api_v1_treatment_step_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TreatmentStepRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TreatmentStepOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     voice_analytics_api_v1_voice_analytics_get: {
         parameters: {
             query?: {
@@ -4721,6 +5684,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VoiceSettingsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transcribe_api_v1_voice_transcribe_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
             /** @description Validation Error */

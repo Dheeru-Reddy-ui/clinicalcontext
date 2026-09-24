@@ -34,6 +34,28 @@ _PLAN_LIMITS: dict[str, dict[Principal, int]] = {
 }
 
 
+def client_address(request: Request) -> str:
+    """The visitor's address, for per-visitor limits on anonymous routes.
+
+    Behind a hosting proxy the socket's peer is the proxy, not the visitor:
+    on Render every anonymous request arrived from one of a few 10.x
+    addresses, so "per visitor" limits were shared by everyone — one busy
+    visitor could lock all of them out of sign-up. The edge's own header
+    names the visitor (Cloudflare's CF-Connecting-IP, which it overwrites,
+    or True-Client-IP); failing that, the first X-Forwarded-For entry; and
+    only then the socket peer, which is right when nothing sits in front.
+    """
+    for header in ("cf-connecting-ip", "true-client-ip"):
+        value = request.headers.get(header, "").strip()
+        if value:
+            return value
+    forwarded = request.headers.get("x-forwarded-for", "")
+    first = forwarded.split(",")[0].strip()
+    if first:
+        return first
+    return request.client.host if request.client else "unknown"
+
+
 @dataclass(slots=True)
 class RateLimitStatus:
     allowed: bool
