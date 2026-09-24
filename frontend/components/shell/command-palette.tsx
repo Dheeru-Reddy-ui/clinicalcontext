@@ -134,8 +134,8 @@ function Palette({ open, onOpenChange }: { open: boolean; onOpenChange: (v: bool
             <CommandItem onSelect={() => go("/app/learn")} value="learn specialties mbbs pg teaching">
               <GraduationCap /> Learn by specialty
             </CommandItem>
-            <CommandItem onSelect={() => go("/app/voice")} value="voice mode speak talk microphone">
-              <Mic /> Voice mode
+            <CommandItem onSelect={() => go("/app/chat?voice=1")} value="voice mode speak talk microphone">
+              <Mic /> Talk to the assistant (voice)
             </CommandItem>
             <CommandItem
               onSelect={() => {

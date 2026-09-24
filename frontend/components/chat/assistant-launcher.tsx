@@ -80,7 +80,7 @@ export function AssistantLauncher({
             chat={chat}
             compact
             checkHref={checkHref}
-            dictation={mode === "app"}
+            voice={mode === "app"}
             placeholder="Ask a health question…"
           />
         </div>

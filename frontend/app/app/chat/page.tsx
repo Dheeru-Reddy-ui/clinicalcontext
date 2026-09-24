@@ -15,13 +15,19 @@ import { cn } from "@/lib/utils";
 function StartFromUrl({
   onStart,
 }: {
-  onStart: (q: string | null, audience: string | null, session: string | null) => void;
+  onStart: (
+    q: string | null,
+    audience: string | null,
+    session: string | null,
+    voice: string | null,
+  ) => void;
 }) {
   const params = useSearchParams();
   const q = params.get("q");
   const audience = params.get("audience");
   const session = params.get("session");
-  useEffect(() => onStart(q, audience, session), [q, audience, session, onStart]);
+  const voice = params.get("voice");
+  useEffect(() => onStart(q, audience, session, voice), [q, audience, session, voice, onStart]);
   return null;
 }
 
@@ -36,6 +42,7 @@ export default function ChatPage() {
   const status = useAssistantStatus();
   const [listOpen, setListOpen] = useState(false);
   const handled = useRef(false);
+  const [startVoice, setStartVoice] = useState(false);
 
   useEffect(warmApi, []);
 
@@ -43,9 +50,10 @@ export default function ChatPage() {
   // ?session= continues one (from the floating assistant).
   const { open, send, setAudience, ready } = chat;
   const startFromUrl = useCallback(
-    (q: string | null, audience: string | null, session: string | null) => {
+    (q: string | null, audience: string | null, session: string | null, voice: string | null) => {
       if (handled.current || !ready) return;
       handled.current = true;
+      if (voice) setStartVoice(true);
       if (audience === "patient" || audience === "clinician" || audience === "student") {
         setAudience(audience);
       }
@@ -144,7 +152,8 @@ export default function ChatPage() {
         </header>
         <ChatPanel
           chat={chat}
-          dictation
+          voice
+          startVoice={startVoice}
           footer="ClinicalContext gives information from medical sources, not a diagnosis. It can be wrong — check important decisions with a doctor."
         />
       </section>

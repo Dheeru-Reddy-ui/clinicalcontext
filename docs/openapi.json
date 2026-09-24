@@ -4200,6 +4200,21 @@
         "title": "SourceOut",
         "type": "object"
       },
+      "SpeakRequest": {
+        "properties": {
+          "text": {
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "SpeakRequest",
+        "type": "object"
+      },
       "SpecialtyFeedOut": {
         "properties": {
           "available": {
@@ -9961,9 +9976,72 @@
         ]
       }
     },
+    "/api/v1/voice/speak": {
+      "post": {
+        "description": "Text \u2192 speech, as a WAV clip the browser plays: the chat reads its\nanswers aloud a few sentences at a time with this. Deepgram Aura-2 on\nthe deployed server, the operating system's voice locally.",
+        "operationId": "speak_api_v1_voice_speak_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpeakRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Speak",
+        "tags": [
+          "voice"
+        ]
+      }
+    },
     "/api/v1/voice/transcribe": {
       "post": {
-        "description": "Voice typing: a short recording from the chat box \u2192 its text.\n\nNeeds the cloud speech service (Deepgram); on a server without it this\nsays so, the same way the voice page does.",
+        "description": "A spoken question from the chat \u2192 its text: voice typing, and each\nturn of a voice conversation. Deepgram's medical model on the deployed\nserver, faster-whisper locally; a server with neither says so.",
         "operationId": "transcribe_api_v1_voice_transcribe_post",
         "parameters": [
           {

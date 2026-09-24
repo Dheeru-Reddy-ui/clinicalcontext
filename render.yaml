@@ -44,12 +44,14 @@ services:
       - key: AI_BACKEND
         value: offline
       # The image carries no speech engine (it would not fit in 512 MB), so
-      # voice needs a cloud provider: set this to "cloud" together with a
-      # DEEPGRAM_API_KEY — one free Deepgram account covers hearing and
-      # speaking (docs/DEPLOY.md, Part 4). Left "offline", the voice page
-      # says voice is unavailable instead of opening a session that fails.
+      # voice always goes to Deepgram: one free account covers hearing and
+      # speaking, and its key is DEEPGRAM_API_KEY below (docs/DEPLOY.md,
+      # Part 4). Without a key, voice in the chat says so and stays off.
+      # This is set here, not in the dashboard, because Render re-applies
+      # every value in this file whenever the Blueprint syncs: a dashboard
+      # "cloud" was reset to this file's "offline" by the first sync after it.
       - key: VOICE_BACKEND
-        value: offline
+        value: cloud
       - key: OTEL_SERVICE_NAME
         value: clinicalcontext-api
       # The frontend's origin — the only origin a browser may call this API

@@ -6,7 +6,9 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { AudienceSwitch, Composer } from "@/components/chat/composer";
 import { DictationButton } from "@/components/chat/dictation";
 import { AssistantBubble, UserBubble } from "@/components/chat/message";
+import { VoiceBar, VoiceModeButton } from "@/components/chat/voice-bar";
 import type { ChatController } from "@/hooks/use-chat";
+import { useVoiceMode } from "@/hooks/use-voice-mode";
 import type { Audience } from "@/lib/chat";
 import { cn } from "@/lib/utils";
 
@@ -44,7 +46,8 @@ export function ChatPanel({
   placeholder,
   footer,
   checkHref,
-  dictation = false,
+  voice = false,
+  startVoice = false,
   className,
 }: {
   chat: ChatController;
@@ -54,10 +57,19 @@ export function ChatPanel({
   placeholder?: string;
   footer?: ReactNode;
   checkHref?: string;
-  /** Voice typing in the message box (signed-in surfaces only). */
-  dictation?: boolean;
+  /** Voice typing and the spoken conversation (signed-in surfaces only). */
+  voice?: boolean;
+  /** Open the voice bar on arrival (the old Voice tab's link lands here). */
+  startVoice?: boolean;
   className?: string;
 }) {
+  const voiceMode = useVoiceMode(chat, voice);
+  const { open: openVoice } = voiceMode;
+  useEffect(() => {
+    if (voice && startVoice) openVoice();
+    // Once, on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voice, startVoice]);
   const scroller = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
   const last = chat.messages[chat.messages.length - 1];
@@ -108,6 +120,7 @@ export function ChatPanel({
         </div>
       </div>
       <div className={cn("mx-auto w-full max-w-3xl", compact ? "p-2" : "px-4 pb-4")}>
+        {voice && <VoiceBar voice={voiceMode} />}
         <Composer
           onSend={(t) => void chat.send(t)}
           onStop={chat.stop}
@@ -120,7 +133,16 @@ export function ChatPanel({
             ) : null
           }
           footer={footer}
-          trailing={dictation ? (append) => <DictationButton onText={append} /> : undefined}
+          trailing={
+            voice
+              ? (append) => (
+                  <>
+                    <DictationButton onText={append} />
+                    <VoiceModeButton voice={voiceMode} />
+                  </>
+                )
+              : undefined
+          }
         />
       </div>
     </div>

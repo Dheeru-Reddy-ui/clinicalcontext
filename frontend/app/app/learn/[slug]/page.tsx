@@ -77,7 +77,7 @@ export default function SpecialtyPage() {
         </header>
         <ChatPanel
           chat={chat}
-          dictation
+          voice
           showAudience={false}
           placeholder={specialty ? `Ask anything in ${specialty.name}…` : "Ask anything…"}
           empty={

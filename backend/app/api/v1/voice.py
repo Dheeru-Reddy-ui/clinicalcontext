@@ -17,13 +17,18 @@ from typing import Annotated, Any
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketDisconnect
-from pydantic import ValidationError
+from fastapi import APIRouter, Depends, Query, Request, Response, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel, Field, ValidationError
 
-from app.core.deps import DbPool, get_asyncpg_pool
-from app.core.errors import InvalidRequestError, PermissionDeniedError, ServiceUnavailableError
-from app.core.ratelimit import enforce_rate_limit
-from app.core.security import CurrentUser, JWTVerifier
+from app.core.deps import DbPool, get_asyncpg_pool, get_redis_client
+from app.core.errors import (
+    InvalidRequestError,
+    PermissionDeniedError,
+    RateLimitError,
+    ServiceUnavailableError,
+)
+from app.core.ratelimit import RateLimiter, enforce_rate_limit
+from app.core.security import CurrentUser, JWTVerifier, get_current_org
 from app.repositories.base import tenant_connection
 from app.repositories.voice import VoiceRepository
 from app.schemas.voice import (
@@ -37,6 +42,8 @@ from app.schemas.voice import (
 )
 from app.services.voice_analytics import aggregate_voice
 from app.voice import protocol
+from app.voice.audio import write_wav
+from app.voice.availability import provider_unavailable_reason
 from app.voice.registry import SessionRegistry, get_registry
 from app.voice.runtime import BOOST_TERMS, VoiceRuntime, get_voice_runtime
 from app.voice.session import VoiceSession
@@ -234,20 +241,32 @@ async def voice_ws(socket: WebSocket) -> None:
 
 
 _TRANSCRIBE_MAX_BYTES = 5 * 1024 * 1024
+_TRANSCRIBE_PER_MINUTE = 20
+_SPEAK_PER_MINUTE = 90
+_SPEAK_MAX_CHARS = 1200
 _AUDIO_TYPES = ("audio/webm", "audio/ogg", "audio/wav", "audio/x-wav", "audio/mp4", "audio/mpeg")
+
+
+async def _voice_rate_limit(redis: Any, user: CurrentUser, kind: str, per_minute: int) -> None:
+    """Voice has its own per-person bucket: one spoken turn is a
+    transcription and several audio clips, which would otherwise eat the
+    plan's request limit that chat and search share."""
+    ok, retry_after = await RateLimiter(redis).hit(f"rl:{kind}:{user.user_id}", per_minute)
+    if not ok:
+        raise RateLimitError(f"{kind} limit of {per_minute}/min reached", retry_after=retry_after)
 
 
 @router.post("/transcribe")
 async def transcribe(
     request: Request,
-    request_user: Annotated[CurrentUser, Depends(enforce_rate_limit)],
+    request_user: Annotated[CurrentUser, Depends(get_current_org)],
     socket_app: Annotated[Any, Depends(_app_state)],
+    redis: Annotated[Any, Depends(get_redis_client)],
 ) -> dict[str, str]:
-    """Voice typing: a short recording from the chat box → its text.
-
-    Needs the cloud speech service (Deepgram); on a server without it this
-    says so, the same way the voice page does."""
-    del request_user  # authenticated and rate limited; nothing else needed
+    """A spoken question from the chat → its text: voice typing, and each
+    turn of a voice conversation. Deepgram's medical model on the deployed
+    server, faster-whisper locally; a server with neither says so."""
+    await _voice_rate_limit(redis, request_user, "transcribe", _TRANSCRIBE_PER_MINUTE)
     runtime = get_voice_runtime(socket_app)
     stt = runtime.stt
     if not hasattr(stt, "transcribe") or runtime.unavailable_reason() is not None:
@@ -270,6 +289,35 @@ async def transcribe(
             "The speech service could not transcribe that — try again."
         ) from exc
     return {"text": text}
+
+
+class SpeakRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=_SPEAK_MAX_CHARS)
+
+
+@router.post("/speak")
+async def speak(
+    body: SpeakRequest,
+    request_user: Annotated[CurrentUser, Depends(get_current_org)],
+    socket_app: Annotated[Any, Depends(_app_state)],
+    redis: Annotated[Any, Depends(get_redis_client)],
+) -> Response:
+    """Text → speech, as a WAV clip the browser plays: the chat reads its
+    answers aloud a few sentences at a time with this. Deepgram Aura-2 on
+    the deployed server, the operating system's voice locally."""
+    await _voice_rate_limit(redis, request_user, "speak", _SPEAK_PER_MINUTE)
+    runtime = get_voice_runtime(socket_app)
+    reason = provider_unavailable_reason(runtime.tts)
+    if reason is not None:
+        raise ServiceUnavailableError(reason)
+    stream = await runtime.tts.open(quality="flash", lexicon_pls=None)
+    try:
+        pcm = b"".join([chunk async for chunk in stream.synthesize(body.text)])
+    finally:
+        await stream.close()
+    if not pcm:
+        raise ServiceUnavailableError("The speech service returned no audio — try again.")
+    return Response(content=write_wav(pcm), media_type="audio/wav")
 
 
 @router.get("/config")

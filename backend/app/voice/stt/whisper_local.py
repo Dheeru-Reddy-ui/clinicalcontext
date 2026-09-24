@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import io
 import threading
 import time
 from collections.abc import AsyncIterator
@@ -343,6 +344,23 @@ class WhisperProvider:
         await loop.run_in_executor(
             _EXECUTOR, _load_model, self.model, self._compute_type, self._cpu_threads
         )
+
+    async def transcribe(self, audio: bytes, content_type: str) -> str:
+        """One finished recording → its text. faster-whisper decodes the
+        container itself (webm/ogg/wav), so the browser's clip goes in as is."""
+        del content_type  # the decoder reads the container, not the header
+        loop = asyncio.get_running_loop()
+        model = await loop.run_in_executor(
+            _EXECUTOR, _load_model, self.model, self._compute_type, self._cpu_threads
+        )
+
+        def run() -> str:
+            segments, _info = model.transcribe(
+                io.BytesIO(audio), language="en", beam_size=1, vad_filter=True
+            )
+            return " ".join(s.text.strip() for s in segments).strip()
+
+        return await loop.run_in_executor(_FINAL_EXECUTOR, run)
 
     async def open(self, *, boost: list[str]) -> WhisperStream:
         loop = asyncio.get_running_loop()

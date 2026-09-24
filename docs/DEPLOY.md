@@ -37,7 +37,7 @@ The app is a few services that work together. Most are already fine.
 | **Cache** | Makes repeated questions fast; rate limits | Upstash | Working. |
 | **Automatic deploys** | Ships the API after every test passes | GitHub Actions | Working. After tests pass, a deploy waits for your approval, then ships the API. The website ships itself through Vercel. |
 | **Email** | Magic-link sign-in and forgot-password emails | Supabase + an email provider | Not set up. Optional — Part 2. Sign-up and password sign-in do **not** need it. |
-| **Voice** | Ask out loud, hear the answer | Deepgram | Not set up. Optional — Part 4. The Voice page says so and disables Start until it is. |
+| **Voice** | Talk to the chat and hear the answer | Deepgram | Key added. Voice lives in the Chat: the waveform button in the message box. |
 | **AI writer** | Writes chat answers as a conversation | Groq (and optionally Cerebras) | Not set up. Optional — Part 5. Until then answers are quoted from the sources. |
 
 **Why do the two move separately?** Vercel rebuilds the website on its own every time you push to `main`. Render is deliberately set to wait until it is told (`autoDeployTrigger: "off"` in `render.yaml`), so a broken API can never go live on its own — either the deploy pipeline tells it (Part 3) or you do (Part 1).
@@ -209,7 +209,7 @@ From then on each deploy pauses. The run on the **Actions** page shows a **Revie
 
 **About 10 minutes. Free, no card needed.**
 
-Voice mode lets people ask out loud and hear the answer. It needs a speech service, because the free server is far too small to run speech recognition itself: until this is done the Voice page says *"Voice isn't available on this server yet"* and the Start button is disabled.
+Voice lets people talk to the chat assistant and hear its answers read aloud. It needs a speech service, because the free server is far too small to run speech recognition itself: until this is done the chat's voice buttons say *"Voice isn't available on this server"*.
 
 This uses **Deepgram**: one free account covers both halves — `nova-3-medical` hears the question (a model trained on medical vocabulary, so drug names come through) and Aura-2 speaks the answer. New accounts get **$200 of credit with no card and no expiry**, which is tens of thousands of minutes of listening.
 
@@ -224,16 +224,17 @@ This uses **Deepgram**: one free account covers both halves — `nova-3-medical`
 
 1. Render → **clinicalcontext-api** → **Environment**.
 2. Find `DEEPGRAM_API_KEY` → **Edit** → paste the key → make sure nothing follows it (no space, no line break).
-3. Find `VOICE_BACKEND` → change `offline` to `cloud`.
-4. Click **Save, rebuild, and deploy**. It takes about 5 minutes.
+3. Click **Save, rebuild, and deploy**. It takes about 5 minutes.
+
+> **Leave `VOICE_BACKEND` alone.** It is set to `cloud` in `render.yaml`, and Render copies every value in that file over the dashboard each time the Blueprint syncs — a value changed only in the dashboard is quietly put back on the next push. That is what switched voice off once: `cloud` typed into the dashboard was reset to the file's old `offline`.
 
 ### Check it worked
 
-1. Open https://clinicalcontext-euev.vercel.app/app/voice. The *"isn't available"* notice should be gone.
-2. Click **Test microphone** and say something. The bar should move and the text should change to *"Your voice is coming through."* If the browser asks for the microphone, choose **Allow**.
-3. Click **Start listening** and ask: *"What is first-line anticoagulation in non-valvular atrial fibrillation?"* You should see your words appear, then hear a cited answer. Talk over it to interrupt.
+1. Open https://clinicalcontext-euev.vercel.app/app/chat. If the browser asks for the microphone, choose **Allow**.
+2. **Voice conversation:** click the waveform button in the message box and ask out loud: *"What is first-line anticoagulation in non-valvular atrial fibrillation?"* Pause when you finish. Your words appear as your message, the answer is written with its sources and read aloud, and then it listens for your next question. **Interrupt** cuts an answer short; **✕** ends voice.
+3. **Voice typing:** click the microphone button, speak, click it again — your words appear in the box to check before sending.
 
-> **What each part does if something is wrong.** The mic check needs nothing from the server — if the bar does not move, the problem is the browser or the microphone, and the message under it says which. If the bar moves but voice says it is unavailable, the key or `VOICE_BACKEND` is not set on Render.
+> **What each part does if something is wrong.** The level bars move with your voice before anything reaches the server — if they do not move, the problem is the browser or the microphone, and the message under them says which. If they move but voice says it is unavailable, the Deepgram key is not set on Render. If the answer is written but not heard, the phone or computer is muted — the answer is still read by the browser's own voice when the server's cannot be reached.
 
 ---
 
@@ -325,7 +326,7 @@ Either way, the website updates a few minutes before the API does. During those 
 | The email link says *"opened in a different browser"* | Links only work in the browser that asked for them | Type the 6-digit code instead ([Part 2d](#2d-put-a-6-digit-code-in-the-emails-recommended)) |
 | The email link opens `localhost` | Supabase doesn't know your website's address | [Part 2c](#2c-tell-supabase-where-your-website-is) |
 | *"Error sending confirmation email"* or *"Email address not authorized"* | Supabase is still using its built-in email | [Part 2b](#2b-connect-brevo-to-supabase) |
-| Voice page says *"Voice isn't available on this server yet"* | No speech service is set up | [Part 4](#part-4--turn-on-voice-optional) |
+| Chat's voice buttons say *"Voice isn't available on this server"* | No Deepgram key on Render, or `VOICE_BACKEND` is not `cloud` | [Part 4](#part-4--turn-on-voice-optional) — and check `render.yaml` still says `cloud` |
 | The microphone test bar does not move | The browser blocked the mic, or the wrong one is chosen | Read the message under the bar; pick another microphone from the list |
 | Voice worked, then says it is unavailable | The Deepgram key was deleted, or the $200 credit ran out | Deepgram console → **Usage**; make a new key ([Part 4a](#4a-get-a-deepgram-key)) |
 | A feature that worked disappears right after a deploy you approved | An **older** Deploy run was approved after a newer one: it ships its own, older commit | Actions → **Deploy**: approve only the newest run (top of the list); cancel older waiting runs with **Cancel workflow** |

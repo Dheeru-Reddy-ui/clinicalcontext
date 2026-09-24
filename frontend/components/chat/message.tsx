@@ -10,18 +10,22 @@ import {
   Loader2,
   ShieldAlert,
   Sparkles,
+  Square,
   Stethoscope,
+  Volume2,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { EvidenceTimeline } from "@/components/answer/evidence-timeline";
 import { Markdown } from "@/components/chat/markdown";
 import { SourceList } from "@/components/chat/sources";
+import { useOptionalAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import type { AssistantMessage, UserMessage } from "@/hooks/use-chat";
 import { PROGRESS_LABELS, type ChatResult } from "@/lib/chat";
 import { EMPTY_CONTRADICTION } from "@/lib/domain";
+import { SentenceChunker, SpeechQueue } from "@/lib/voice-chat";
 import { cn } from "@/lib/utils";
 
 const COMPLAINT_NAMES: Record<string, string> = {
@@ -33,6 +37,40 @@ const COMPLAINT_NAMES: Record<string, string> = {
   rash_allergy: "Rash, hives or allergy",
   body_pain: "Body, joint or back pain",
 };
+
+/** Read one answer aloud (again). The server's voice when signed in. */
+function ReadAloudButton({ text }: { text: string }) {
+  const token = useOptionalAuth()?.session?.access_token ?? "";
+  const [playing, setPlaying] = useState(false);
+  const queue = useRef<SpeechQueue | null>(null);
+  useEffect(() => () => queue.current?.stop(), []);
+
+  const toggle = () => {
+    if (playing) {
+      queue.current?.stop();
+      setPlaying(false);
+      return;
+    }
+    queue.current?.stop();
+    const q = new SpeechQueue(token, { onIdle: () => setPlaying(false) });
+    queue.current = q;
+    for (const chunk of new SentenceChunker().take(text, true)) q.enqueue(chunk);
+    setPlaying(true);
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      onClick={toggle}
+      aria-label={playing ? "Stop reading aloud" : "Read aloud"}
+      aria-pressed={playing}
+      data-testid="read-aloud"
+    >
+      {playing ? <Square className="size-3 fill-current" /> : <Volume2 />}
+    </Button>
+  );
+}
 
 export function UserBubble({ message }: { message: UserMessage }) {
   return (
@@ -253,6 +291,7 @@ export function AssistantBubble({
                   <ChevronDown className={cn("transition-transform", showSources && "rotate-180")} aria-hidden />
                 </Button>
               )}
+              <ReadAloudButton text={message.text} />
               <Button variant="ghost" size="icon-sm" onClick={copy} aria-label="Copy answer">
                 {copied ? <Check /> : <Copy />}
               </Button>

@@ -1164,6 +1164,28 @@ export interface paths {
         patch: operations["set_settings_api_v1_voice_settings_patch"];
         trace?: never;
     };
+    "/api/v1/voice/speak": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Speak
+         * @description Text → speech, as a WAV clip the browser plays: the chat reads its
+         *     answers aloud a few sentences at a time with this. Deepgram Aura-2 on
+         *     the deployed server, the operating system's voice locally.
+         */
+        post: operations["speak_api_v1_voice_speak_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/voice/transcribe": {
         parameters: {
             query?: never;
@@ -1175,10 +1197,9 @@ export interface paths {
         put?: never;
         /**
          * Transcribe
-         * @description Voice typing: a short recording from the chat box → its text.
-         *
-         *     Needs the cloud speech service (Deepgram); on a server without it this
-         *     says so, the same way the voice page does.
+         * @description A spoken question from the chat → its text: voice typing, and each
+         *     turn of a voice conversation. Deepgram's medical model on the deployed
+         *     server, faster-whisper locally; a server with neither says so.
          */
         post: operations["transcribe_api_v1_voice_transcribe_post"];
         delete?: never;
@@ -2836,6 +2857,11 @@ export interface components {
             title: string;
             /** Url */
             url: string;
+        };
+        /** SpeakRequest */
+        SpeakRequest: {
+            /** Text */
+            text: string;
         };
         /** SpecialtyFeedOut */
         SpecialtyFeedOut: {
@@ -5684,6 +5710,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VoiceSettingsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    speak_api_v1_voice_speak_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SpeakRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

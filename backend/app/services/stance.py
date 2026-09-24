@@ -91,21 +91,43 @@ def stances_for(
                     result[marker] = "opposes" if opposing else "supports"
                     placed.add(marker)
 
-    sentences = [s for s in _SENTENCE.split(answer.strip()) if s]
+    sentences = statements(answer)
     lead = next((polarity(s) for s in sentences if polarity(s) != 0), 0)
+    # Votes, not the last word: a source cited for the answer's conclusion
+    # and again beside a caveat still supports it. Only a source cited
+    # solely by sentences arguing the other way opposes.
+    backing: set[int] = set()
+    against: set[int] = set()
     for sentence in sentences:
-        cited = markers_in(sentence) - placed
+        cited = {m for m in markers_in(sentence) if m in result} - placed
         if not cited:
             continue
-        against_lead = lead != 0 and polarity(sentence) == -lead
-        for marker in cited:
-            if marker not in result:
-                continue
-            if against_lead:
-                result[marker] = "opposes"
-            elif result[marker] == "neutral":
-                result[marker] = "supports"
+        if lead != 0 and polarity(sentence) == -lead:
+            against |= cited
+        else:
+            backing |= cited
+    for marker in backing:
+        result[marker] = "supports"
+    for marker in against - backing:
+        result[marker] = "opposes"
     return result
+
+
+_LIST_ITEM = re.compile(r"^\s*(?:[-*\u2022]|\d+[.)])\s+")
+_HEADING = re.compile(r"^\s*#{1,6}\s+")
+
+
+def statements(answer: str) -> list[str]:
+    """The answer as separate statements. A model writes Markdown — a
+    bullet list reads as one run-on sentence to a splitter that looks for
+    ". Capital", so one "not recommended" bullet would decide the stance of
+    every source in the list. Lines are statements first, then sentences."""
+    out: list[str] = []
+    for line in answer.splitlines():
+        text = _HEADING.sub("", _LIST_ITEM.sub("", line)).replace("**", "").strip()
+        if text:
+            out.extend(part for part in _SENTENCE.split(text) if part)
+    return out
 
 
 def assign_stances(

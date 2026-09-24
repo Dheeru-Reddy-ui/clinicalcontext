@@ -100,3 +100,27 @@ def test_assign_stances_fills_every_citation() -> None:
     out = assign_stances("Drug X is effective [1].", citations, None)
     assert [c.stance for c in out] == ["supports", "neutral"]
     assert citations[0].stance is None  # inputs untouched
+
+
+def test_a_markdown_answer_is_judged_bullet_by_bullet() -> None:
+    # The live scrub-typhus answer: one "not recommended" bullet about
+    # rifampicin turned every source in the list red.
+    answer = (
+        "**Bottom line:** Doxycycline is the preferred first-line antibiotic [1][5].\n\n"
+        "**Recommendation**\n"
+        "- **First-line:** Doxycycline is preferred based on the lowest failure rates [1][5].\n"
+        "- **Alternative:** Azithromycin is effective when doxycycline is not tolerated [2].\n"
+        "- **Not first-line:** Rifampicin is not recommended as initial therapy [3].\n"
+    )
+    assert stances_for(answer, [1, 2, 3, 4, 5]) == {
+        1: "supports",
+        2: "supports",
+        3: "opposes",
+        4: "neutral",
+        5: "supports",
+    }
+
+
+def test_a_source_cited_for_the_conclusion_and_a_caveat_still_supports() -> None:
+    answer = "Drug A is recommended [1]. Drug B is not recommended [1][2]."
+    assert stances_for(answer, [1, 2]) == {1: "supports", 2: "opposes"}
