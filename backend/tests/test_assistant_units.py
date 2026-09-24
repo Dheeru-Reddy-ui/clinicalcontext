@@ -136,3 +136,36 @@ def test_personal_complaints_are_offered_the_symptom_check() -> None:
     # Literature questions are not personal guidance.
     assert suggest_complaint("What is the pathophysiology of diarrhoea?") is None
     assert suggest_complaint("what is the treatment of migraine") is None
+
+
+def test_generic_and_population_words_do_not_make_a_passage_relevant() -> None:
+    # Seen on the live site: "first-line treatment for scrub typhus in adults"
+    # was answered from psychiatry guidelines that mention "first", "treatment"
+    # and "adults" — so the library looked sufficient and PubMed was skipped.
+    psychiatry = _chunk(
+        "Clinical practice guideline on the choice of first antipsychotic treatment "
+        "for adults with schizophrenia."
+    )
+    on_topic = _chunk("Doxycycline is an effective first-line treatment for scrub typhus.")
+    question = "What is the first-line treatment for scrub typhus in adults?"
+    assert ChatAssistant.relevant(question, [psychiatry, on_topic]) == [on_topic]
+
+
+def test_a_longer_topic_needs_most_of_its_words() -> None:
+    from app.assistant.extractive import core_words, required_hits
+
+    assert core_words("first-line treatment scrub typhus adults") == ["scrub", "typhus"]
+    assert [required_hits(n) for n in (1, 2, 3, 4, 5)] == [1, 2, 2, 3, 3]
+
+
+def test_the_clinician_voice_never_states_an_unsourced_dose() -> None:
+    # Seen on the live site: with no source on leptospirosis, the model filled
+    # in doses and a renal adjustment as "standard practice". The clinician
+    # prompt in use forbids numbers that are not in the sources.
+    from app.assistant.chat import PROMPTS
+    from app.prompts.loader import load_prompt
+
+    name, version = PROMPTS["clinician"]
+    text = load_prompt(name, version).text
+    assert "Never state a dose, duration" in text
+    assert "with no numbers" in text

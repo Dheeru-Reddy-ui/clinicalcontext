@@ -220,6 +220,12 @@ def _stem(token: str) -> str:
 _GENERIC_STEMS = frozenset(_stem(w) for w in _GENERIC)
 
 
+def is_generic_word(token: str) -> bool:
+    """A word that says how a question is asked, not what it is about."""
+    lowered = token.lower()
+    return lowered in _STOP or _stem(lowered) in _GENERIC_STEMS
+
+
 def _stems(text: str) -> list[str]:
     return [_stem(t) for t in _WORD.findall(text.lower())]
 

@@ -15,6 +15,7 @@ import re
 from collections.abc import Sequence
 from typing import Protocol
 
+from app.graph.reasoner import is_generic_word
 from app.guardrails.grounding import split_sentences
 from app.knowledge.terms import search_term
 from app.retrieval.types import RetrievedChunk
@@ -89,13 +90,56 @@ def us_spelling(text: str) -> str:
     return lowered
 
 
+# Who a question is about, not what: "in adults", "for children". Every
+# second abstract mentions adults, so these must not make a passage count
+# as on-topic (they did: psychiatry papers answered "scrub typhus in adults").
+POPULATION = frozenset(
+    """
+    adult adults child children kid kids infant infants baby babies newborn newborns neonate
+    neonates elderly older old aged age young adolescent adolescents teen teens teenager
+    teenagers women woman men man male males female females people person persons patient
+    patients individual individuals subject subjects population populations year years
+    """.split()  # noqa: SIM905 — a word list reads as prose
+)
+
+
+def core_words(term: str) -> list[str]:
+    """The words of ``term`` that carry its topic: not boilerplate
+    ("treatment", "first-line", "recommended") and not the population."""
+    words: list[str] = []
+    for raw in term.lower().split():
+        word = raw.strip(".,;:?!()\"'")
+        if len(word) <= 2 or word in POPULATION or is_generic_word(word):
+            continue
+        spelled = us_spelling(word)
+        if spelled not in words:
+            words.append(spelled)
+    return words
+
+
+def required_hits(n: int) -> int:
+    """How many topic words a passage must carry: all of one or two, and
+    three in five of a longer topic."""
+    return n if n <= 2 else -(-n * 3 // 5)
+
+
 def word_relevance(term: str, chunk: RetrievedChunk) -> float:
-    """The share of ``term``'s words the passage contains, spelling-blind."""
-    words = [us_spelling(w) for w in term.split() if len(w) > 2]
+    """The share of ``term``'s topic words the passage contains,
+    spelling-blind (0.0 when the term has none)."""
+    words = core_words(term)
     if not words:
         return 0.0
     haystack = us_spelling(f"{chunk.title or ''} {chunk.content}")
     return sum(1 for w in words if w in haystack) / len(words)
+
+
+def about(term: str, chunk: RetrievedChunk) -> bool:
+    """Does the passage carry enough of ``term``'s topic to be used?"""
+    words = core_words(term)
+    if not words:
+        return True  # nothing to judge by: keep the retrieval's own ranking
+    haystack = us_spelling(f"{chunk.title or ''} {chunk.content}")
+    return sum(1 for w in words if w in haystack) >= required_hits(len(words))
 
 
 def _topic_words(question: str) -> set[str]:

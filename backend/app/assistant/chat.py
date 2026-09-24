@@ -38,9 +38,9 @@ from uuid import UUID
 
 import structlog
 
-from app.assistant.extractive import extractive_answer, pick_passages, word_relevance
+from app.assistant.extractive import about, extractive_answer, pick_passages, word_relevance
 from app.graph.graph import citation_from_chunk
-from app.graph.reasoner import HeuristicReasoner, chunk_relevance, topic_coverage
+from app.graph.reasoner import HeuristicReasoner, topic_coverage
 from app.guardrails.grounding import verify_grounding
 from app.guardrails.phi import WITHHELD_TEXT, carries_phi, withhold_phi
 from app.guardrails.redflag import detect_red_flags
@@ -81,14 +81,12 @@ logger = structlog.stdlib.get_logger("app.assistant.chat")
 Audience = Literal["patient", "clinician", "student"]
 PROMPTS: dict[Audience, tuple[str, int]] = {
     "patient": ("chat_patient", 1),
-    "clinician": ("chat_clinician", 1),
+    "clinician": ("chat_clinician", 2),
     "student": ("chat_student", 1),
 }
 MAX_MESSAGE_CHARS = 4000
 _SOURCES = 6
-# A passage is used only when it carries at least half of the question's
-# topic; fewer than this many such passages sends the question to PubMed.
-_MIN_RELEVANCE = 0.5
+# Fewer passages about the question than this sends it to PubMed too.
 _MIN_RELEVANT = 3
 _PASSAGES_PER_DOCUMENT = 2
 _GRADE_WEIGHT = {"A": 1.0, "B": 0.75, "C": 0.45, "D": 0.25}
@@ -218,9 +216,7 @@ def rank_evidence(question: str, chunks: Sequence[RetrievedChunk]) -> list[Retri
     medical = search_term(question)
 
     def score(chunk: RetrievedChunk) -> tuple[float, int]:
-        relevance = max(
-            chunk_relevance(question, chunk), word_relevance(medical, chunk) if medical else 0.0
-        )
+        relevance = word_relevance(medical, chunk) if medical else 0.0
         strength = _GRADE_WEIGHT.get(chunk.evidence_grade or "", 0.3)
         if chunk.study_type == "drug_label" and mentions_a_medicine(question):
             strength = 1.0
@@ -319,13 +315,8 @@ class ChatAssistant:
     def relevant(question: str, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
         """The passages that are about the question — judged on its own words
         and on their indexed names ("loose motions" → diarrhea)."""
-        medical = search_term(question)
-        return [
-            c
-            for c in chunks
-            if max(chunk_relevance(question, c), word_relevance(medical, c) if medical else 0.0)
-            >= _MIN_RELEVANCE
-        ]
+        topic = search_term(question, max_words=10)
+        return [c for c in chunks if about(topic, c)]
 
     async def gather_evidence(
         self,
