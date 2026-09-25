@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 
 import { fromPublic } from "@/components/answer/answer-model";
 import { AnswerView } from "@/components/answer/answer-view";
+import { LogoMark } from "@/components/brand/logo";
 import { StatusPill } from "@/components/clinical/badges";
 import { LocalTime } from "@/components/clinical/local-time";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,7 @@ export function PublicAnswer({ page }: { page: Schemas["PublicAnswerOut"] }) {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 md:px-6">
-          <span className="grid size-6 place-items-center rounded-sm bg-primary font-mono text-xs font-bold text-primary-foreground">CC</span>
+          <LogoMark className="size-6" />
           <span className="font-semibold tracking-tight">ClinicalContext</span>
           <span className="text-sm text-muted-foreground">· shared by {page.organization}</span>
           <Button size="sm" variant="outline" className="ml-auto" nativeButton={false} render={<Link href="/login" />}>

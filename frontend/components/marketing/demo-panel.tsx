@@ -39,7 +39,16 @@ const WAKE_DEADLINE_MS = 4 * 60_000;
 // instance starting, and the status line says so.
 const SLOW_ANSWER_MS = 8_000;
 
-export function DemoPanel({ questions: initial }: { questions: DemoQuestion[] }) {
+export function DemoPanel({
+  questions: initial,
+  labelledBy,
+  className,
+}: {
+  questions: DemoQuestion[];
+  /** The id of a heading outside the panel that names it; the panel then shows none of its own. */
+  labelledBy?: string;
+  className?: string;
+}) {
   const [questions, setQuestions] = useState<DemoQuestion[]>(initial);
   const [picked, setPicked] = useState<DemoQuestion | null>(initial[0] ?? null);
   const [answer, setAnswer] = useState<DemoAnswer | null>(null);
@@ -150,16 +159,22 @@ export function DemoPanel({ questions: initial }: { questions: DemoQuestion[] })
   };
 
   return (
-    <section className="w-full space-y-4 rounded-lg border bg-card p-4 md:p-5" aria-labelledby="demo-heading" data-testid="demo-panel">
-      <header className="space-y-1">
-        <h2 id="demo-heading" className="text-base font-semibold">
-          Try it — no login
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          These questions run through the real pipeline as a public tenant. Pick one that shows a contradiction: the
-          product never buries a disagreement between sources.
-        </p>
-      </header>
+    <section
+      className={cn("w-full space-y-4 rounded-lg border bg-card p-4 md:p-5", className)}
+      aria-labelledby={labelledBy ?? "demo-heading"}
+      data-testid="demo-panel"
+    >
+      {!labelledBy && (
+        <header className="space-y-1">
+          <h2 id="demo-heading" className="text-base font-semibold">
+            Try it — no login
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            These questions run through the real pipeline as a public tenant. Pick one that shows a contradiction: the
+            product never buries a disagreement between sources.
+          </p>
+        </header>
+      )}
 
       <div className="flex flex-wrap gap-2" role="group" aria-label="Demo questions">
         {questions.map((q) => (

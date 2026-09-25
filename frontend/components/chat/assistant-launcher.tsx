@@ -5,9 +5,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { LogoMark } from "@/components/brand/logo";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useChat, type UseChatOptions } from "@/hooks/use-chat";
+import { OPEN_ASSISTANT_EVENT } from "@/lib/assistant-events";
 import { cn } from "@/lib/utils";
 
 /**
@@ -38,6 +40,13 @@ export function AssistantLauncher({
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Other parts of the page can open it (lib/assistant-events).
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener(OPEN_ASSISTANT_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_ASSISTANT_EVENT, onOpen);
+  }, []);
+
   if (hideOn.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return null;
 
   return (
@@ -50,9 +59,7 @@ export function AssistantLauncher({
           data-testid="assistant-panel"
         >
           <header className="flex items-center gap-2 border-b px-3 py-2">
-            <span className="grid size-6 place-items-center rounded-full bg-primary font-mono text-[9px] font-bold text-primary-foreground">
-              CC
-            </span>
+            <LogoMark className="size-7" />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold leading-4">Health assistant</p>
               <p className="text-[11px] text-muted-foreground">Answers with sources · not a diagnosis</p>
@@ -92,7 +99,7 @@ export function AssistantLauncher({
         aria-expanded={open}
         data-testid="assistant-launcher"
         className={cn(
-          "fixed right-4 bottom-4 z-50 grid size-13 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+          "fixed right-4 bottom-4 z-50 grid size-13 place-items-center rounded-full bg-[linear-gradient(135deg,#6366f1_0%,#7c3aed_100%)] text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.35),0_14px_30px_-10px_rgb(99_102_241/0.85)] ring-1 ring-white/20 transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
           open && "max-sm:hidden",
         )}
       >

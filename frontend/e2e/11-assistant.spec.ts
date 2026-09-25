@@ -212,6 +212,26 @@ test.describe("the website, signed out", () => {
     expect(stored).toHaveLength(0);
   });
 
+  test("the landing page's hero decides how to draw itself, and its button opens the chatbot", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("traced to the evidence");
+
+    // The 3D layer settles on the scene (a GPU) or the still illustration
+    // (software rendering, as in a headless run) — never stays undecided.
+    const layer = page.locator("[data-hero-3d]");
+    await expect(layer).toHaveAttribute("data-hero-3d", /^(3d|still)$/);
+    if ((await layer.getAttribute("data-hero-3d")) === "still") {
+      await expect(page.getByTestId("hero-still")).toBeVisible();
+    } else {
+      await expect(layer.locator("canvas")).toBeVisible();
+    }
+
+    await page.getByTestId("home-ask").click();
+    const panel = page.getByTestId("assistant-panel");
+    await expect(panel).toBeVisible();
+    await expect(panel.getByTestId("chat-input")).toBeVisible();
+  });
+
   test("the symptom check works without an account", async ({ page }) => {
     await page.goto("/");
     await page.getByTestId("home-check").click();

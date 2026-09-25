@@ -24,6 +24,7 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { LogoMark } from "@/components/brand/logo";
 import { AssistantLauncher } from "@/components/chat/assistant-launcher";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useCommandPalette } from "@/components/shell/command-palette";
@@ -87,9 +88,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         aria-label="Primary"
       >
         <div className="flex h-14 items-center gap-2 border-b px-4">
-          <span className="grid size-6 place-items-center rounded-sm bg-primary font-mono text-xs font-bold text-primary-foreground">
-            CC
-          </span>
+          <LogoMark className="size-6" />
           <span className="font-semibold tracking-tight">ClinicalContext</span>
         </div>
 

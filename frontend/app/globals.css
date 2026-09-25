@@ -7,8 +7,12 @@
 /*
  * ClinicalContext design system.
  *
- * Restraint over flourish: one cool accent for actions, neutral everything
- * else, no gradients. Meaning is carried by a small set of *semantic* scales
+ * Inside the app, restraint over flourish: one indigo accent for actions,
+ * neutral everything else, no gradients. The public pages (the landing page
+ * and the sign-in frame) carry the brand's night-sky indigo, light and
+ * glass; the app stays quiet so the evidence is what stands out.
+ *
+ * Meaning is carried by a small set of *semantic* scales
  * used identically everywhere — a Grade B badge is the same colour on the
  * answer, in the library, on the timeline, and in a binder. Colour is never
  * the only signal: every badge also carries its label, so the palette is a
@@ -114,8 +118,8 @@
 
 :root {
   color-scheme: light;
-  /* Instrument-like: tight radii, cool neutrals, one accent. */
-  --radius: 0.375rem;
+  /* Calm and clinical: soft radii, cool neutrals, one accent. */
+  --radius: 0.5rem;
 
   --background: oklch(0.995 0.002 250);
   --foreground: oklch(0.17 0.015 255);
@@ -123,33 +127,33 @@
   --card-foreground: oklch(0.17 0.015 255);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.17 0.015 255);
-  /* Accent: a desaturated clinical blue — legible, not playful. */
-  --primary: oklch(0.42 0.11 245);
+  /* Accent: the brand indigo — legible on white at better than 5.5:1. */
+  --primary: oklch(0.5 0.2 277);
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.955 0.006 250);
   --secondary-foreground: oklch(0.25 0.02 255);
   --muted: oklch(0.955 0.006 250);
   --muted-foreground: oklch(0.47 0.02 255);
-  --accent: oklch(0.945 0.012 245);
+  --accent: oklch(0.955 0.02 277);
   --accent-foreground: oklch(0.25 0.02 255);
   --destructive: oklch(0.5 0.2 27);
   --destructive-foreground: oklch(0.99 0 0);
   --border: oklch(0.885 0.008 250);
   --input: oklch(0.885 0.008 250);
-  --ring: oklch(0.55 0.1 245);
-  --chart-1: oklch(0.42 0.11 245);
+  --ring: oklch(0.6 0.17 277);
+  --chart-1: oklch(0.5 0.2 277);
   --chart-2: oklch(0.55 0.13 160);
   --chart-3: oklch(0.72 0.14 75);
   --chart-4: oklch(0.58 0.18 27);
   --chart-5: oklch(0.55 0.02 255);
   --sidebar: oklch(0.975 0.004 250);
   --sidebar-foreground: oklch(0.17 0.015 255);
-  --sidebar-primary: oklch(0.42 0.11 245);
+  --sidebar-primary: oklch(0.5 0.2 277);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.945 0.012 245);
+  --sidebar-accent: oklch(0.955 0.02 277);
   --sidebar-accent-foreground: oklch(0.25 0.02 255);
   --sidebar-border: oklch(0.885 0.008 250);
-  --sidebar-ring: oklch(0.55 0.1 245);
+  --sidebar-ring: oklch(0.6 0.17 277);
 
   /* Confidence: how sure the system is. green / amber / grey-red. */
   --conf-high: oklch(0.52 0.15 155);
@@ -199,47 +203,47 @@
 
   --cached-bg: oklch(0.95 0.01 250);
   --cached-fg: oklch(0.42 0.02 255);
-  --citation: oklch(0.42 0.11 245);
-  --citation-bg: oklch(0.935 0.025 245);
-  --citation-fg: oklch(0.3 0.09 245);
+  --citation: oklch(0.5 0.2 277);
+  --citation-bg: oklch(0.94 0.035 277);
+  --citation-fg: oklch(0.36 0.16 277);
   --highlight: oklch(0.93 0.11 95);
 }
 
 .dark {
   color-scheme: dark;
   /* Night shift: true dark surfaces, slightly lifted cards, softened accents. */
-  --background: oklch(0.15 0.01 255);
+  --background: oklch(0.15 0.018 272);
   --foreground: oklch(0.94 0.005 250);
-  --card: oklch(0.19 0.012 255);
+  --card: oklch(0.19 0.022 272);
   --card-foreground: oklch(0.94 0.005 250);
-  --popover: oklch(0.2 0.012 255);
+  --popover: oklch(0.2 0.022 272);
   --popover-foreground: oklch(0.94 0.005 250);
-  --primary: oklch(0.74 0.1 240);
-  --primary-foreground: oklch(0.15 0.02 255);
+  --primary: oklch(0.74 0.13 277);
+  --primary-foreground: oklch(0.16 0.03 277);
   --secondary: oklch(0.25 0.012 255);
   --secondary-foreground: oklch(0.94 0.005 250);
   --muted: oklch(0.25 0.012 255);
   --muted-foreground: oklch(0.7 0.012 250);
-  --accent: oklch(0.27 0.02 250);
+  --accent: oklch(0.28 0.045 277);
   --accent-foreground: oklch(0.94 0.005 250);
   --destructive: oklch(0.68 0.18 25);
   --destructive-foreground: oklch(0.12 0 0);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.62 0.1 240);
-  --chart-1: oklch(0.74 0.1 240);
+  --ring: oklch(0.64 0.14 277);
+  --chart-1: oklch(0.74 0.13 277);
   --chart-2: oklch(0.72 0.14 160);
   --chart-3: oklch(0.8 0.14 80);
   --chart-4: oklch(0.7 0.17 27);
   --chart-5: oklch(0.7 0.012 250);
-  --sidebar: oklch(0.17 0.012 255);
+  --sidebar: oklch(0.17 0.02 272);
   --sidebar-foreground: oklch(0.94 0.005 250);
-  --sidebar-primary: oklch(0.74 0.1 240);
-  --sidebar-primary-foreground: oklch(0.15 0.02 255);
-  --sidebar-accent: oklch(0.27 0.02 250);
+  --sidebar-primary: oklch(0.74 0.13 277);
+  --sidebar-primary-foreground: oklch(0.16 0.03 277);
+  --sidebar-accent: oklch(0.28 0.045 277);
   --sidebar-accent-foreground: oklch(0.94 0.005 250);
   --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.62 0.1 240);
+  --sidebar-ring: oklch(0.64 0.14 277);
 
   --conf-high: oklch(0.72 0.15 155);
   --conf-high-bg: oklch(0.26 0.06 155);
@@ -284,9 +288,9 @@
 
   --cached-bg: oklch(0.25 0.01 250);
   --cached-fg: oklch(0.78 0.012 250);
-  --citation: oklch(0.74 0.1 240);
-  --citation-bg: oklch(0.28 0.05 240);
-  --citation-fg: oklch(0.9 0.05 240);
+  --citation: oklch(0.74 0.13 277);
+  --citation-bg: oklch(0.29 0.07 277);
+  --citation-fg: oklch(0.9 0.06 277);
   --highlight: oklch(0.42 0.1 95);
 }
 
@@ -342,5 +346,145 @@
   }
   .scrollbar-thin {
     scrollbar-width: thin;
+  }
+}
+
+/*
+ * The public pages: a night-sky hero lit by vertical beams, ECG-paper grid,
+ * glass cards and a 3D still life (components/landing). Colours here are
+ * literal on purpose — the hero is dark in both themes.
+ */
+@layer components {
+  .hero-sky {
+    background:
+      radial-gradient(70% 55% at 50% 108%, rgb(124 58 237 / 0.55), transparent 70%),
+      radial-gradient(55% 45% at 50% -8%, rgb(56 189 248 / 0.22), transparent 70%),
+      radial-gradient(40% 40% at 12% 30%, rgb(20 184 166 / 0.12), transparent 70%),
+      linear-gradient(180deg, #050818 0%, #0a0f38 38%, #151865 74%, #231a74 100%);
+  }
+  /* Faint graph paper, the kind an ECG is printed on. */
+  .hero-grid {
+    background-image:
+      linear-gradient(rgb(165 180 252 / 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(165 180 252 / 0.07) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(75% 60% at 50% 45%, #000 30%, transparent 100%);
+  }
+  /* A pillar of light: a soft glow with a thin bright core. */
+  .hero-beam {
+    position: absolute;
+    top: -12%;
+    height: 92%;
+    width: var(--beam-width, 90px);
+    left: var(--beam-x);
+    background: linear-gradient(
+      180deg,
+      rgb(165 180 252 / 0) 0%,
+      rgb(165 180 252 / var(--beam-alpha, 0.22)) 38%,
+      rgb(129 140 248 / calc(var(--beam-alpha, 0.22) * 0.55)) 72%,
+      rgb(129 140 248 / 0) 100%
+    );
+    filter: blur(var(--beam-blur, 18px));
+    mix-blend-mode: screen;
+    animation: beam-breathe var(--beam-period, 9s) ease-in-out infinite;
+    animation-delay: var(--beam-delay, 0s);
+  }
+  .hero-beam::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 50%;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, rgb(255 255 255 / 0.55) 40%, transparent);
+    filter: blur(0.4px);
+  }
+  .glass-card {
+    background: linear-gradient(160deg, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0.05) 60%);
+    border: 1px solid rgb(255 255 255 / 0.16);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.22),
+      0 24px 60px -18px rgb(2 6 23 / 0.75),
+      0 0 0 1px rgb(99 102 241 / 0.08);
+    /* Unprefixed only: Lightning CSS adds the -webkit- copy for Safari, and
+       writing both makes it keep just the prefixed one, which Chrome ignores. */
+    backdrop-filter: blur(20px) saturate(150%);
+  }
+  .text-hero-gradient {
+    background: linear-gradient(95deg, #ffffff 0%, #c7d2fe 42%, #99f6e4 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* Follows the pointer by --depth pixels (set by components/landing/hero-3d). */
+  .parallax {
+    translate: calc(var(--mx, 0) * var(--depth, 10) * 1px) calc(var(--my, 0) * var(--depth, 10) * 0.8px);
+    transition: translate 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .float-slow {
+    animation: float-y 7s ease-in-out infinite;
+  }
+  .float-slower {
+    animation: float-y 9s ease-in-out infinite;
+    animation-delay: -3s;
+  }
+  .ecg-trace {
+    stroke-dasharray: 260 1400;
+    animation: ecg-sweep 4.8s linear infinite;
+  }
+  /* A glossy icon tile with depth: highlight on top, colour pooled below. */
+  .icon-tile {
+    background: linear-gradient(150deg, var(--tile-from) 0%, var(--tile-to) 100%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.65),
+      inset 0 -8px 16px -6px rgb(0 0 0 / 0.18),
+      0 12px 22px -10px var(--tile-shadow);
+  }
+  .tilt-card {
+    transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateY(var(--lift, 0px));
+    transition:
+      transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.45s ease;
+    transform-style: preserve-3d;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .parallax,
+    .tilt-card {
+      translate: none;
+      transform: none;
+    }
+    .hero-beam,
+    .ecg-trace,
+    .float-slow,
+    .float-slower {
+      animation: none;
+    }
+  }
+}
+
+@keyframes beam-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+@keyframes ecg-sweep {
+  from {
+    stroke-dashoffset: 1660;
+  }
+  to {
+    stroke-dashoffset: 0;
   }
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 
+import { Logo } from "@/components/brand/logo";
 import { AssistantLauncher } from "@/components/chat/assistant-launcher";
 import { SymptomCheck } from "@/components/treatment/symptom-check";
 import { buttonVariants } from "@/components/ui/button";
@@ -25,10 +26,10 @@ export default function PublicCheckPage() {
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-5 px-4 pt-8 pb-24 md:px-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <Link href="/" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            ClinicalContext
+          <Link href="/" className="inline-flex rounded-md text-sm">
+            <Logo markClassName="size-6" />
           </Link>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+          <h1 className="mt-4 flex items-center gap-2 text-2xl font-semibold tracking-tight">
             <Stethoscope className="size-6 text-primary" aria-hidden /> Symptom check
           </h1>
           <p className="text-sm text-muted-foreground">

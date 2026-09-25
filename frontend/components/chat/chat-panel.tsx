@@ -3,6 +3,7 @@
 import { Info } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 
+import { LogoMark } from "@/components/brand/logo";
 import { AudienceSwitch, Composer } from "@/components/chat/composer";
 import { DictationButton } from "@/components/chat/dictation";
 import { AssistantBubble, UserBubble } from "@/components/chat/message";
@@ -160,8 +161,9 @@ function Suggestions({
 }) {
   return (
     <div className={cn("flex flex-col items-center text-center", compact ? "gap-3 py-4" : "gap-5 py-10")}>
-      <span className="grid size-10 place-items-center rounded-full bg-primary font-mono text-xs font-bold text-primary-foreground">
-        CC
+      <span className="relative grid place-items-center" aria-hidden>
+        <span className="absolute size-16 rounded-full bg-[radial-gradient(closest-side,rgb(99_102_241/0.35),transparent)] blur-md" />
+        <LogoMark className={cn("relative", compact ? "size-9" : "size-11")} />
       </span>
       <div>
         <h2 className={cn("font-semibold tracking-tight", compact ? "text-base" : "text-2xl")}>
@@ -178,7 +180,7 @@ function Suggestions({
             key={q}
             type="button"
             onClick={() => onPick(q)}
-            className="rounded-lg border bg-card px-3 py-2.5 text-sm transition-colors hover:border-primary/40 hover:bg-muted/50"
+            className="rounded-xl border bg-card px-3.5 py-3 text-sm shadow-[0_10px_24px_-20px_rgb(30_27_75/0.6)] transition-all hover:-translate-y-px hover:border-primary/40 hover:bg-accent/60"
             data-testid="chat-suggestion"
           >
             {q}

@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 
 import { FormAlert } from "@/components/auth/form-alert";
+import { Logo } from "@/components/brand/logo";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -132,15 +133,10 @@ function OnboardingContent() {
 
 export default function OnboardingPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-8 px-4 py-10 sm:px-6">
-      {/* The same mark the sign-up screen ended on, so this reads as the next
-          step rather than a different product. */}
-      <span className="inline-flex items-center gap-2.5">
-        <span className="grid size-7 place-items-center rounded-sm bg-primary font-mono text-xs font-bold text-primary-foreground">
-          CC
-        </span>
-        <span className="font-semibold tracking-tight">ClinicalContext</span>
-      </span>
+    <main className="flex min-h-screen flex-col items-center justify-center gap-8 bg-[#f5f6fb] px-4 py-10 sm:px-6 dark:bg-background [&_[data-slot=card]]:rounded-2xl [&_[data-slot=card]]:shadow-[0_24px_60px_-32px_rgb(30_27_75/0.45)]">
+      {/* The same mark and page the sign-up screen ended on, so this reads as
+          the next step rather than a different product. */}
+      <Logo markClassName="size-8" />
       <Suspense>
         <OnboardingContent />
       </Suspense>

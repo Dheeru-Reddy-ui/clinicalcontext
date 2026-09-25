@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { EvidenceTimeline } from "@/components/answer/evidence-timeline";
+import { LogoMark } from "@/components/brand/logo";
 import { Markdown } from "@/components/chat/markdown";
 import { SourceList } from "@/components/chat/sources";
 import { useOptionalAuth } from "@/components/providers/auth-provider";
@@ -192,12 +193,7 @@ export function AssistantBubble({
 
   return (
     <div className="flex gap-3" data-testid="chat-assistant" data-status={message.status}>
-      <span
-        aria-hidden
-        className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary font-mono text-[10px] font-bold text-primary-foreground"
-      >
-        CC
-      </span>
+      <LogoMark className="mt-0.5 size-7 rounded-full" />
       <div className="min-w-0 flex-1 space-y-3">
         {message.escalation && (
           <div

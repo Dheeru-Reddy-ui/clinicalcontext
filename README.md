@@ -442,13 +442,25 @@ Next.js 15 (App Router) + React 19 + Tailwind v4 + shadcn (Base UI), typed
 against the OpenAPI spec (`pnpm gen:api`) with `@typescript-eslint/no-explicit-any`
 as an error and `tsc --noEmit` clean.
 
-**Design system.** `frontend/app/globals.css` defines a restrained clinical
-palette — one desaturated blue for actions, neutral surfaces — and a small set
-of *semantic* scales used identically everywhere: confidence (high / moderate /
-low), evidence grade (A–D), stance (supports / opposes / neutral), and the
-guardrail states (calm for PHI and scope, unmissable for red flags). Every badge
-carries its label; colour reinforces, never carries, meaning. Light and dark
-are full token sets (`next-themes`, follows `prefers-color-scheme`, persisted).
+**Design system.** `frontend/app/globals.css` defines a restrained palette
+inside the app — one indigo accent for actions, neutral surfaces — and a small
+set of *semantic* scales used identically everywhere: confidence (high /
+moderate / low), evidence grade (A–D), stance (supports / opposes / neutral),
+and the guardrail states (calm for PHI and scope, unmissable for red flags).
+Every badge carries its label; colour reinforces, never carries, meaning. Light
+and dark are full token sets (`next-themes`, follows `prefers-color-scheme`,
+persisted).
+
+**The public pages** carry the brand: a night-sky indigo hero lit by vertical
+light beams over ECG-paper grid, glass cards, and a 3D medical still life — a
+pearl cross, capsules, tablets, a DNA helix and a stethoscope, built from
+geometry in `frontend/components/landing/` with three.js through
+react-three-fiber. The lighting is a studio built in code (softboxes, coloured
+strip lights and a ring light rendered into an environment map) plus key,
+fill and rim lights; nothing is downloaded, so the Content-Security-Policy is
+unchanged. The scene loads after the page is interactive, runs only on a GPU
+(software rendering gets a still illustration of the same composition), stops
+when scrolled out of view, and renders one still frame under reduced motion.
 
 **Screens.** Ask (streaming reasoning steps, the answer growing token by
 token, inline `[n]` chips), the citation panel (the passage with the
