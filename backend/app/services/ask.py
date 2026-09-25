@@ -36,7 +36,7 @@ from app.retrieval.types import RetrievedChunk
 from app.schemas.answer import AnswerResult
 from app.services import cost
 from app.services.comparison import ComparisonBuilder
-from app.services.semantic_cache import SemanticCache
+from app.services.semantic_cache import SemanticCache, cache_namespace
 from app.services.webhooks import enqueue_event
 
 if TYPE_CHECKING:
@@ -214,8 +214,12 @@ class AskService:
 
         # 3. Semantic cache (standard mode only).
         query_vector = await embedder.embed_query(contextualized)
+        # Cached answers are keyed by what wrote them (semantic_cache.py).
+        answer_namespace = cache_namespace(reasoner_name)
         if mode == "standard" and self._redis is not None:
-            hit = await SemanticCache(self._redis).lookup(org_id, query_vector)
+            hit = await SemanticCache(self._redis, namespace=answer_namespace).lookup(
+                org_id, query_vector
+            )
             if hit is not None:
                 # What the stored answer took to produce is what this hit avoided.
                 cost.replay_cached(hit.ledger)
@@ -266,6 +270,7 @@ class AskService:
                 user_id=user_id,
                 query_id=query_id,
                 query_vector=query_vector,
+                answer_namespace=answer_namespace,
                 started=started,
             ):
                 yield await emit(event)
@@ -367,6 +372,7 @@ class AskService:
         user_id: UUID,
         query_id: UUID,
         query_vector: list[float],
+        answer_namespace: str,
         started: float,
     ) -> AsyncIterator[dict[str, Any]]:
         graph = AgentGraph(retrieve_fn, reasoner, pico=pico)
@@ -398,7 +404,7 @@ class AskService:
         # Cache the answer for future semantically-similar queries.
         if self._redis is not None and not result.abstained:
             collector = cost.current()
-            await SemanticCache(self._redis).store(
+            await SemanticCache(self._redis, namespace=answer_namespace).store(
                 org_id,
                 query_vector,
                 _result_payload(result, answer_id),

@@ -3,7 +3,7 @@
 import { Loader2, Mic, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { describeMicError } from "@/components/voice/mic-check";
+import { describeMicError, micConstraints } from "@/components/voice/mic-check";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToken, useVoiceConfig } from "@/hooks/use-api";
@@ -58,9 +58,7 @@ export function DictationButton({ onText }: { onText: (text: string) => void }) 
     setMessage(null);
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: micConstraints() });
     } catch (error) {
       setMessage(describeMicError(error));
       return;

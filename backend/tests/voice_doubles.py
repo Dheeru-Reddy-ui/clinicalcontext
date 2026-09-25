@@ -16,8 +16,14 @@ import math
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 
+from app.config import get_settings
+from app.guardrails.phi import PhiDetector
 from app.voice.audio import FRAME_BYTES, rms
+from app.voice.endpointing import EndpointPolicy, HeuristicCompletenessClassifier
+from app.voice.lasa import default_lasa_table
+from app.voice.runtime import VoiceRuntime
 from app.voice.stt.base import QueueEvents, SttEvent, SttWord
+from app.voice.vocabulary import VocabularyCache
 
 
 @dataclass(slots=True)
@@ -170,9 +176,27 @@ class ScriptedTtsProvider:
         self._kwargs = stream_kwargs
         self.streams: list[ScriptedTtsStream] = []
         self.lexicon_pls: str | None = None
+        self.voices: list[str | None] = []
 
-    async def open(self, *, quality: str, lexicon_pls: str | None) -> ScriptedTtsStream:
+    async def open(
+        self, *, quality: str, lexicon_pls: str | None, voice: str | None = None
+    ) -> ScriptedTtsStream:
         self.lexicon_pls = lexicon_pls
+        self.voices.append(voice)
         stream = ScriptedTtsStream(**self._kwargs)  # type: ignore[arg-type]
         self.streams.append(stream)
         return stream
+
+
+def scripted_runtime(stt: object, tts: object) -> VoiceRuntime:
+    """A voice runtime around the given speech doubles, for app.state.voice_runtime."""
+    return VoiceRuntime(
+        settings=get_settings(),
+        stt=stt,  # type: ignore[arg-type]
+        tts=tts,  # type: ignore[arg-type]
+        lasa=default_lasa_table(),
+        vocabulary_cache=VocabularyCache(default_lasa_table()),
+        completeness=HeuristicCompletenessClassifier(),
+        endpoint_policy=EndpointPolicy(base_ms=300, extended_ms=1500, ceiling_ms=2000),
+        phi_inline=PhiDetector(use_presidio=False),
+    )

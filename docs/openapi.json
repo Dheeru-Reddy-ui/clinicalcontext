@@ -1268,6 +1268,24 @@
         "title": "ComplaintOut",
         "type": "object"
       },
+      "ConversationsDeletedOut": {
+        "properties": {
+          "deleted": {
+            "title": "Deleted",
+            "type": "integer"
+          },
+          "kept": {
+            "title": "Kept",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted",
+          "kept"
+        ],
+        "title": "ConversationsDeletedOut",
+        "type": "object"
+      },
       "CostLine": {
         "description": "One (component, provider, model) line of the ledger over the window.",
         "properties": {
@@ -3092,6 +3110,221 @@
         "title": "PassageSnapshot",
         "type": "object"
       },
+      "PreferencesOut": {
+        "description": "What the assistant, voice and Learn do by default for this person.\n\n``saved`` is False until the person first changes something: until then\nthese are the product's defaults.",
+        "properties": {
+          "audience": {
+            "default": "patient",
+            "enum": [
+              "patient",
+              "clinician",
+              "student"
+            ],
+            "title": "Audience",
+            "type": "string"
+          },
+          "followed_specialties": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Followed Specialties",
+            "type": "array"
+          },
+          "learn_depth": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "mbbs",
+              "pg"
+            ],
+            "title": "Learn Depth",
+            "type": "string"
+          },
+          "learn_scope": {
+            "default": "all",
+            "enum": [
+              "all",
+              "mbbs",
+              "pg"
+            ],
+            "title": "Learn Scope",
+            "type": "string"
+          },
+          "saved": {
+            "default": false,
+            "title": "Saved",
+            "type": "boolean"
+          },
+          "show_timeline": {
+            "default": true,
+            "title": "Show Timeline",
+            "type": "boolean"
+          },
+          "sources_open": {
+            "default": false,
+            "title": "Sources Open",
+            "type": "boolean"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "voice_continuous": {
+            "default": true,
+            "title": "Voice Continuous",
+            "type": "boolean"
+          },
+          "voice_name": {
+            "default": "thalia",
+            "title": "Voice Name",
+            "type": "string"
+          },
+          "voice_rate": {
+            "default": 1.0,
+            "title": "Voice Rate",
+            "type": "number"
+          }
+        },
+        "title": "PreferencesOut",
+        "type": "object"
+      },
+      "PreferencesUpdate": {
+        "additionalProperties": false,
+        "description": "Only the fields sent change; send ``[]`` to clear followed specialties.",
+        "properties": {
+          "audience": {
+            "anyOf": [
+              {
+                "enum": [
+                  "patient",
+                  "clinician",
+                  "student"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audience"
+          },
+          "followed_specialties": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 60,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Followed Specialties"
+          },
+          "learn_depth": {
+            "anyOf": [
+              {
+                "enum": [
+                  "auto",
+                  "mbbs",
+                  "pg"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Learn Depth"
+          },
+          "learn_scope": {
+            "anyOf": [
+              {
+                "enum": [
+                  "all",
+                  "mbbs",
+                  "pg"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Learn Scope"
+          },
+          "show_timeline": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Show Timeline"
+          },
+          "sources_open": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sources Open"
+          },
+          "voice_continuous": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Continuous"
+          },
+          "voice_name": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Name"
+          },
+          "voice_rate": {
+            "anyOf": [
+              {
+                "maximum": 1.5,
+                "minimum": 0.75,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Rate"
+          }
+        },
+        "title": "PreferencesUpdate",
+        "type": "object"
+      },
       "Profile": {
         "description": "Who the symptom check is for. No name, no date of birth: age is all\nthe dosing needs, and identifiers are never collected.",
         "properties": {
@@ -3180,6 +3413,38 @@
           "age_years"
         ],
         "title": "Profile",
+        "type": "object"
+      },
+      "ProfileUpdate": {
+        "additionalProperties": false,
+        "description": "A person's own name and specialty. An empty string clears the field.",
+        "properties": {
+          "full_name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "specialty": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Specialty"
+          }
+        },
+        "title": "ProfileUpdate",
         "type": "object"
       },
       "PublicAnswerOut": {
@@ -4207,6 +4472,19 @@
             "minLength": 1,
             "title": "Text",
             "type": "string"
+          },
+          "voice": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "pattern": "^[a-z]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice"
           }
         },
         "required": [
@@ -4844,6 +5122,43 @@
         "title": "VoiceAnalyticsOut",
         "type": "object"
       },
+      "VoiceChoiceOut": {
+        "properties": {
+          "accent": {
+            "title": "Accent",
+            "type": "string"
+          },
+          "gender": {
+            "enum": [
+              "female",
+              "male"
+            ],
+            "title": "Gender",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "tone": {
+            "title": "Tone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "gender",
+          "accent",
+          "tone"
+        ],
+        "title": "VoiceChoiceOut",
+        "type": "object"
+      },
       "VoiceConfigOut": {
         "properties": {
           "available": {
@@ -5135,6 +5450,38 @@
           "created_at"
         ],
         "title": "VoiceTurnOut",
+        "type": "object"
+      },
+      "VoicesOut": {
+        "description": "The read-aloud voices Settings offers, and whether this server honours\nthe choice (only the Deepgram speech service has one).",
+        "properties": {
+          "default": {
+            "title": "Default",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "selectable": {
+            "title": "Selectable",
+            "type": "boolean"
+          },
+          "voices": {
+            "items": {
+              "$ref": "#/components/schemas/VoiceChoiceOut"
+            },
+            "title": "Voices",
+            "type": "array"
+          }
+        },
+        "required": [
+          "provider",
+          "selectable",
+          "default",
+          "voices"
+        ],
+        "title": "VoicesOut",
         "type": "object"
       },
       "WebhookCreateRequest": {
@@ -7167,6 +7514,69 @@
       }
     },
     "/api/v1/chat/sessions/{session_id}": {
+      "delete": {
+        "description": "Delete one of your own conversations. ``kept`` is 1 when it stays\nbecause an answer in it is in a binder, shared, or has recorded versions.",
+        "operationId": "delete_chat_session_api_v1_chat_sessions__session_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationsDeletedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Chat Session",
+        "tags": [
+          "assistant"
+        ]
+      },
       "get": {
         "operationId": "get_chat_session_api_v1_chat_sessions__session_id__get",
         "parameters": [
@@ -8129,6 +8539,297 @@
         "summary": "Specialty Latest",
         "tags": [
           "assistant"
+        ]
+      }
+    },
+    "/api/v1/me/conversations": {
+      "delete": {
+        "description": "Delete all your assistant conversations (Chat, Learn, Treatment, voice).\n\nEvidence searches stay: they are your organization's record. So does any\nconversation with an answer saved to a binder, shared publicly, or with\nrecorded versions; ``kept`` counts them.",
+        "operationId": "delete_my_conversations_api_v1_me_conversations_delete",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationsDeletedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete My Conversations",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/me/export": {
+      "get": {
+        "description": "A JSON copy of your profile, preferences, conversations and feedback.",
+        "operationId": "export_my_data_api_v1_me_export_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Export My Data",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/me/preferences": {
+      "get": {
+        "description": "This person's defaults for the assistant, voice and Learn.",
+        "operationId": "get_preferences_api_v1_me_preferences_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferencesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Preferences",
+        "tags": [
+          "settings"
+        ]
+      },
+      "patch": {
+        "description": "Change some preferences; the fields not sent keep their values.",
+        "operationId": "update_preferences_api_v1_me_preferences_patch",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferencesUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferencesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Preferences",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/me/profile": {
+      "patch": {
+        "description": "Change your name or specialty. Role and organization are not yours to set.",
+        "operationId": "update_profile_api_v1_me_profile_patch",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Profile",
+        "tags": [
+          "settings"
         ]
       }
     },
@@ -10205,6 +10906,61 @@
           }
         ],
         "summary": "List Turns",
+        "tags": [
+          "voice"
+        ]
+      }
+    },
+    "/api/v1/voice/voices": {
+      "get": {
+        "description": "The read-aloud voices a person can choose in Settings. Only the\nDeepgram speech service offers a choice; elsewhere the list is shown but\nthe server's own voice speaks, and ``selectable`` says so.",
+        "operationId": "list_voices_api_v1_voice_voices_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoicesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Voices",
         "tags": [
           "voice"
         ]

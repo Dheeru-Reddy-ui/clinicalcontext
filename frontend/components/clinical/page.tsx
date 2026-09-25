@@ -24,7 +24,11 @@ export function PageHeader({
         <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
         {description && <p className="text-sm text-muted-foreground">{description}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && (
+        <div className="scrollbar-thin -mx-1 flex max-w-[calc(100%+0.5rem)] items-center gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:max-w-full sm:px-0 sm:pb-0">
+          {actions}
+        </div>
+      )}
     </div>
   );
 }

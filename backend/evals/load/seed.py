@@ -61,6 +61,7 @@ async def cleanup(org_id: UUID, user_id: UUID) -> None:
     from redis.asyncio import Redis
 
     from app.config import get_settings
+    from app.services.semantic_cache import clear_semantic_cache
 
     settings = get_settings()
     conn = await asyncpg.connect(settings.database_url)
@@ -75,7 +76,8 @@ async def cleanup(org_id: UUID, user_id: UUID) -> None:
         await conn.close()
     redis = Redis.from_url(settings.redis_url, socket_connect_timeout=5, socket_timeout=5)
     try:
-        await redis.delete(f"semcache:{org_id}", f"rl:t:{org_id}")
+        await clear_semantic_cache(redis, org_id)
+        await redis.delete(f"rl:t:{org_id}")
     finally:
         await redis.aclose()
 

@@ -546,7 +546,12 @@ export interface paths {
         get: operations["get_chat_session_api_v1_chat_sessions__session_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Chat Session
+         * @description Delete one of your own conversations. ``kept`` is 1 when it stays
+         *     because an answer in it is in a binder, shared, or has recorded versions.
+         */
+        delete: operations["delete_chat_session_api_v1_chat_sessions__session_id__delete"];
         options?: never;
         head?: never;
         /** Rename Chat Session */
@@ -745,6 +750,94 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete My Conversations
+         * @description Delete all your assistant conversations (Chat, Learn, Treatment, voice).
+         *
+         *     Evidence searches stay: they are your organization's record. So does any
+         *     conversation with an answer saved to a binder, shared publicly, or with
+         *     recorded versions; ``kept`` counts them.
+         */
+        delete: operations["delete_my_conversations_api_v1_me_conversations_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export My Data
+         * @description A JSON copy of your profile, preferences, conversations and feedback.
+         */
+        get: operations["export_my_data_api_v1_me_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Preferences
+         * @description This person's defaults for the assistant, voice and Learn.
+         */
+        get: operations["get_preferences_api_v1_me_preferences_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Preferences
+         * @description Change some preferences; the fields not sent keep their values.
+         */
+        patch: operations["update_preferences_api_v1_me_preferences_patch"];
+        trace?: never;
+    };
+    "/api/v1/me/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Profile
+         * @description Change your name or specialty. Role and organization are not yours to set.
+         */
+        patch: operations["update_profile_api_v1_me_profile_patch"];
         trace?: never;
     };
     "/api/v1/notifications": {
@@ -1220,6 +1313,28 @@ export interface paths {
          * @description Per-turn waterfalls (the session view's debug surface).
          */
         get: operations["list_turns_api_v1_voice_turns_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/voice/voices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Voices
+         * @description The read-aloud voices a person can choose in Settings. Only the
+         *     Deepgram speech service offers a choice; elsewhere the list is shown but
+         *     the server's own voice speaks, and ``selectable`` says so.
+         */
+        get: operations["list_voices_api_v1_voice_voices_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1763,6 +1878,13 @@ export interface components {
             name: string;
             /** Summary */
             summary: string;
+        };
+        /** ConversationsDeletedOut */
+        ConversationsDeletedOut: {
+            /** Deleted */
+            deleted: number;
+            /** Kept */
+            kept: number;
         };
         /**
          * CostLine
@@ -2432,6 +2554,91 @@ export interface components {
             study_type: string | null;
         };
         /**
+         * PreferencesOut
+         * @description What the assistant, voice and Learn do by default for this person.
+         *
+         *     ``saved`` is False until the person first changes something: until then
+         *     these are the product's defaults.
+         */
+        PreferencesOut: {
+            /**
+             * Audience
+             * @default patient
+             * @enum {string}
+             */
+            audience: "patient" | "clinician" | "student";
+            /** Followed Specialties */
+            followed_specialties?: string[];
+            /**
+             * Learn Depth
+             * @default auto
+             * @enum {string}
+             */
+            learn_depth: "auto" | "mbbs" | "pg";
+            /**
+             * Learn Scope
+             * @default all
+             * @enum {string}
+             */
+            learn_scope: "all" | "mbbs" | "pg";
+            /**
+             * Saved
+             * @default false
+             */
+            saved: boolean;
+            /**
+             * Show Timeline
+             * @default true
+             */
+            show_timeline: boolean;
+            /**
+             * Sources Open
+             * @default false
+             */
+            sources_open: boolean;
+            /** Updated At */
+            updated_at?: string | null;
+            /**
+             * Voice Continuous
+             * @default true
+             */
+            voice_continuous: boolean;
+            /**
+             * Voice Name
+             * @default thalia
+             */
+            voice_name: string;
+            /**
+             * Voice Rate
+             * @default 1
+             */
+            voice_rate: number;
+        };
+        /**
+         * PreferencesUpdate
+         * @description Only the fields sent change; send ``[]`` to clear followed specialties.
+         */
+        PreferencesUpdate: {
+            /** Audience */
+            audience?: ("patient" | "clinician" | "student") | null;
+            /** Followed Specialties */
+            followed_specialties?: string[] | null;
+            /** Learn Depth */
+            learn_depth?: ("auto" | "mbbs" | "pg") | null;
+            /** Learn Scope */
+            learn_scope?: ("all" | "mbbs" | "pg") | null;
+            /** Show Timeline */
+            show_timeline?: boolean | null;
+            /** Sources Open */
+            sources_open?: boolean | null;
+            /** Voice Continuous */
+            voice_continuous?: boolean | null;
+            /** Voice Name */
+            voice_name?: string | null;
+            /** Voice Rate */
+            voice_rate?: number | null;
+        };
+        /**
          * Profile
          * @description Who the symptom check is for. No name, no date of birth: age is all
          *     the dosing needs, and identifiers are never collected.
@@ -2459,6 +2666,16 @@ export interface components {
             sex?: ("female" | "male" | "other") | null;
             /** Weight Kg */
             weight_kg?: number | null;
+        };
+        /**
+         * ProfileUpdate
+         * @description A person's own name and specialty. An empty string clears the field.
+         */
+        ProfileUpdate: {
+            /** Full Name */
+            full_name?: string | null;
+            /** Specialty */
+            specialty?: string | null;
         };
         /**
          * PublicAnswerOut
@@ -2862,6 +3079,8 @@ export interface components {
         SpeakRequest: {
             /** Text */
             text: string;
+            /** Voice */
+            voice?: string | null;
         };
         /** SpecialtyFeedOut */
         SpecialtyFeedOut: {
@@ -3086,6 +3305,22 @@ export interface components {
             /** Wasted Output Tokens */
             wasted_output_tokens: number;
         };
+        /** VoiceChoiceOut */
+        VoiceChoiceOut: {
+            /** Accent */
+            accent: string;
+            /**
+             * Gender
+             * @enum {string}
+             */
+            gender: "female" | "male";
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Tone */
+            tone: string;
+        };
         /** VoiceConfigOut */
         VoiceConfigOut: {
             /**
@@ -3221,6 +3456,21 @@ export interface components {
             waste?: {
                 [key: string]: unknown;
             };
+        };
+        /**
+         * VoicesOut
+         * @description The read-aloud voices Settings offers, and whether this server honours
+         *     the choice (only the Deepgram speech service has one).
+         */
+        VoicesOut: {
+            /** Default */
+            default: string;
+            /** Provider */
+            provider: string;
+            /** Selectable */
+            selectable: boolean;
+            /** Voices */
+            voices: components["schemas"]["VoiceChoiceOut"][];
         };
         /** WebhookCreateRequest */
         WebhookCreateRequest: {
@@ -4368,6 +4618,39 @@ export interface operations {
             };
         };
     };
+    delete_chat_session_api_v1_chat_sessions__session_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationsDeletedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     rename_chat_session_api_v1_chat_sessions__session_id__patch: {
         parameters: {
             query?: never;
@@ -4771,6 +5054,169 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SpecialtyFeedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_my_conversations_api_v1_me_conversations_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationsDeletedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_my_data_api_v1_me_export_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_preferences_api_v1_me_preferences_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferencesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_preferences_api_v1_me_preferences_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreferencesUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferencesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_profile_api_v1_me_profile_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeOut"];
                 };
             };
             /** @description Validation Error */
@@ -5814,6 +6260,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VoiceTurnList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_voices_api_v1_voice_voices_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoicesOut"];
                 };
             };
             /** @description Validation Error */

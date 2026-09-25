@@ -105,8 +105,10 @@ class DeepgramTtsProvider:
     def unavailable_reason(self) -> str | None:
         return None if key_configured(self._api_key) else CLOUD_SETUP
 
-    async def open(self, *, quality: str, lexicon_pls: str | None) -> DeepgramTtsStream:
+    async def open(
+        self, *, quality: str, lexicon_pls: str | None, voice: str | None = None
+    ) -> DeepgramTtsStream:
         # One client per voice session: its connection pool keeps the TLS
         # session to Deepgram open between sentences.
         client = httpx.AsyncClient(timeout=_TIMEOUT, http2=False)
-        return DeepgramTtsStream(client, api_key=self._api_key, model=self.model)
+        return DeepgramTtsStream(client, api_key=self._api_key, model=voice or self.model)

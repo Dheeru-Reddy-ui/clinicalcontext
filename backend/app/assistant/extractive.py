@@ -15,50 +15,35 @@ import re
 from collections.abc import Sequence
 from typing import Protocol
 
-from app.graph.reasoner import is_generic_word
-from app.guardrails.grounding import split_sentences
-from app.knowledge.terms import search_term
+from app.graph.relevance import (
+    POPULATION,
+    about,
+    best_sentence,
+    core_words,
+    required_hits,
+    us_spelling,
+    word_relevance,
+)
 from app.retrieval.types import RetrievedChunk
+
+# The relevance helpers live in app/graph/relevance.py, shared with the
+# evidence-search graph; they are re-exported here for the assistant.
+__all__ = [
+    "POPULATION",
+    "about",
+    "best_sentence",
+    "core_words",
+    "extractive_answer",
+    "pick_passages",
+    "required_hits",
+    "us_spelling",
+    "word_relevance",
+]
 
 
 class HasSection(Protocol):
     @property
     def section(self) -> str | None: ...
-
-
-# British and American spellings meet ("diarrhoea" finds "diarrhea").
-_SPELLINGS = (
-    ("oea", "ea"),
-    ("haem", "hem"),
-    ("paed", "ped"),
-    ("oedem", "edem"),
-    ("oesoph", "esoph"),
-    ("oestr", "estr"),
-    ("ischaem", "ischem"),
-    ("anaem", "anem"),
-    ("leukaem", "leukem"),
-    ("tumour", "tumor"),
-    ("foet", "fet"),
-)
-_FINDING = re.compile(
-    r"\b(?:conclu\w*|recommend\w*|first[-\s]?line|effective|efficacy|reduc\w*|improv\w*|"
-    r"should|superior|non-?inferior|preferred|treated\s+with|treatment\s+of\s+choice|"
-    r"dose|dosage|mg\b|associated\s+with|increase\w*|decrease\w*|safe|well[-\s]tolerated|"
-    r"indicated|is\s+(?:a|the)\s+(?:common|leading|major))\b",
-    re.I,
-)
-_METHOD = re.compile(
-    r"\b(?:we\s+(?:conducted|searched|performed|aimed|included|analy[sz]ed|investigated)|"
-    r"this\s+(?:study|review|trial)\s+(?:aims|aimed|was)|were\s+(?:included|searched|enrolled|"
-    r"randomi[sz]ed)|databases?|methods?:|objective\w*:|background:|aim\w*:)\b",
-    re.I,
-)
-_LABEL = re.compile(
-    r"^(?:background(?:\s+and\s+objectives?)?|objectives?|aims?|purpose|methods?|results?|"
-    r"conclusions?|findings|interpretation|importance|context|introduction)\s*[:.\-]?\s+",
-    re.I,
-)
-_WORD = re.compile(r"[a-z0-9]+")
 
 
 _CONCLUSION = re.compile(r"conclu|interpret|finding|implication", re.I)
@@ -81,90 +66,6 @@ def pick_passages[T: HasSection](passages: Sequence[T], limit: int = 2) -> list[
         if len(chosen) == limit:
             break
     return chosen
-
-
-def us_spelling(text: str) -> str:
-    lowered = text.lower()
-    for british, american in _SPELLINGS:
-        lowered = lowered.replace(british, american)
-    return lowered
-
-
-# Who a question is about, not what: "in adults", "for children". Every
-# second abstract mentions adults, so these must not make a passage count
-# as on-topic (they did: psychiatry papers answered "scrub typhus in adults").
-POPULATION = frozenset(
-    """
-    adult adults child children kid kids infant infants baby babies newborn newborns neonate
-    neonates elderly older old aged age young adolescent adolescents teen teens teenager
-    teenagers women woman men man male males female females people person persons patient
-    patients individual individuals subject subjects population populations year years
-    """.split()  # noqa: SIM905 — a word list reads as prose
-)
-
-
-def core_words(term: str) -> list[str]:
-    """The words of ``term`` that carry its topic: not boilerplate
-    ("treatment", "first-line", "recommended") and not the population."""
-    words: list[str] = []
-    for raw in term.lower().split():
-        word = raw.strip(".,;:?!()\"'")
-        if len(word) <= 2 or word in POPULATION or is_generic_word(word):
-            continue
-        spelled = us_spelling(word)
-        if spelled not in words:
-            words.append(spelled)
-    return words
-
-
-def required_hits(n: int) -> int:
-    """How many topic words a passage must carry: all of one or two, and
-    three in five of a longer topic."""
-    return n if n <= 2 else -(-n * 3 // 5)
-
-
-def word_relevance(term: str, chunk: RetrievedChunk) -> float:
-    """The share of ``term``'s topic words the passage contains,
-    spelling-blind (0.0 when the term has none)."""
-    words = core_words(term)
-    if not words:
-        return 0.0
-    haystack = us_spelling(f"{chunk.title or ''} {chunk.content}")
-    return sum(1 for w in words if w in haystack) / len(words)
-
-
-def about(term: str, chunk: RetrievedChunk) -> bool:
-    """Does the passage carry enough of ``term``'s topic to be used?"""
-    words = core_words(term)
-    if not words:
-        return True  # nothing to judge by: keep the retrieval's own ranking
-    haystack = us_spelling(f"{chunk.title or ''} {chunk.content}")
-    return sum(1 for w in words if w in haystack) >= required_hits(len(words))
-
-
-def _topic_words(question: str) -> set[str]:
-    return {us_spelling(w) for w in _WORD.findall(search_term(question).lower()) if len(w) > 2}
-
-
-def best_sentence(question: str, chunk: RetrievedChunk) -> str | None:
-    topic = _topic_words(question)
-    best: tuple[float, str] | None = None
-    for sentence in split_sentences(chunk.content):
-        text = _LABEL.sub("", sentence.strip())
-        if len(text) < 40 or text.endswith("?"):
-            continue
-        words = set(_WORD.findall(us_spelling(text)))
-        overlap = len(topic & words)
-        score = (
-            overlap
-            + (1.5 if _FINDING.search(text) else 0.0)
-            - (2.0 if _METHOD.search(text) else 0.0)
-        )
-        if overlap == 0 and not _FINDING.search(text):
-            continue
-        if best is None or score > best[0]:
-            best = (score, text)
-    return best[1] if best and best[0] > 0 else None
 
 
 def extractive_answer(question: str, chunks: Sequence[RetrievedChunk]) -> tuple[str, list[int]]:

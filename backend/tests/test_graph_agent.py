@@ -125,8 +125,10 @@ async def test_multihop_decomposes_and_retrieves_per_subquestion() -> None:
     result = await graph.run("Is apixaban preferred over warfarin in AF with CKD stage 4?")
     assert result.is_multi_hop
     assert len(result.sub_questions) >= 3
-    # Retrieval ran once per sub-question (not once for the whole query).
-    assert len(seen_queries) == len(result.sub_questions)
+    # Retrieval ran once per sub-question (not once for the whole query),
+    # plus one search on the question's topic words alone (graph.retrieve).
+    assert len(seen_queries) == len(result.sub_questions) + 1
+    assert seen_queries[-1] not in result.sub_questions
     assert not result.abstained
 
 
@@ -157,8 +159,10 @@ async def test_retrieval_failure_rewrites_then_abstains_without_looping() -> Non
 
     assert result.abstained
     assert result.rewrite_count == MAX_REWRITES
-    # initial retrieval + exactly MAX_REWRITES retries — bounded, no infinite loop.
-    assert calls["n"] == MAX_REWRITES + 1
+    # The initial retrieval, one search on the topic words alone (nothing on
+    # the first pass was on topic), then exactly MAX_REWRITES retries —
+    # bounded, no infinite loop.
+    assert calls["n"] == MAX_REWRITES + 2
 
 
 async def test_rewrite_events_are_streamed() -> None:
@@ -229,7 +233,11 @@ async def test_features_off_make_each_stage_disappear() -> None:
         return list(_CONFLICT)
 
     bare = GraphFeatures(
-        decompose=False, grade_and_rewrite=False, contradiction=False, grounding=False
+        decompose=False,
+        grade_and_rewrite=False,
+        contradiction=False,
+        grounding=False,
+        topic_filter=False,
     )
     result = await AgentGraph(retrieve, HeuristicReasoner(), features=bare).run(
         "Is apixaban preferred over warfarin in AF with CKD stage 4?"

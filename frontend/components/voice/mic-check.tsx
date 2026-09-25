@@ -33,6 +33,21 @@ export function readSavedMicId(): string | undefined {
   }
 }
 
+/**
+ * What to ask the browser for when voice starts: the microphone chosen in
+ * Settings (as a preference — if it has been unplugged the default is used),
+ * with the browser's cleanup that speech recognition does best with.
+ */
+export function micConstraints(): MediaTrackConstraints {
+  const saved = readSavedMicId();
+  return {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+    ...(saved ? { deviceId: { ideal: saved } } : {}),
+  };
+}
+
 function saveMicId(id: string): void {
   try {
     window.localStorage.setItem(DEVICE_KEY, id);

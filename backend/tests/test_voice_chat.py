@@ -16,15 +16,9 @@ from pathlib import Path
 
 import pytest
 
-from app.config import get_settings
-from app.guardrails.phi import PhiDetector
-from app.voice.endpointing import EndpointPolicy, HeuristicCompletenessClassifier
-from app.voice.lasa import default_lasa_table
-from app.voice.runtime import VoiceRuntime
 from app.voice.stt.whisper_local import WhisperProvider
-from app.voice.vocabulary import VocabularyCache
 from tests.conftest import ApiEnv
-from tests.voice_doubles import ScriptedSttProvider, ScriptedTtsProvider
+from tests.voice_doubles import ScriptedSttProvider, ScriptedTtsProvider, scripted_runtime
 
 pytestmark = pytest.mark.skipif(
     not (os.environ.get("TEST_DATABASE_URL") and os.environ.get("TEST_REDIS_URL")),
@@ -34,22 +28,9 @@ pytestmark = pytest.mark.skipif(
 SPEECH = Path(__file__).resolve().parents[2] / "frontend/e2e/fixtures/audio/golden-01-padded.wav"
 
 
-def _runtime(stt: object, tts: object) -> VoiceRuntime:
-    return VoiceRuntime(
-        settings=get_settings(),
-        stt=stt,  # type: ignore[arg-type]
-        tts=tts,  # type: ignore[arg-type]
-        lasa=default_lasa_table(),
-        vocabulary_cache=VocabularyCache(default_lasa_table()),
-        completeness=HeuristicCompletenessClassifier(),
-        endpoint_policy=EndpointPolicy(base_ms=300, extended_ms=1500, ceiling_ms=2000),
-        phi_inline=PhiDetector(use_presidio=False),
-    )
-
-
 async def test_an_answer_is_spoken_as_a_playable_wav(env: ApiEnv) -> None:
     tts = ScriptedTtsProvider()
-    env.app.state.voice_runtime = _runtime(ScriptedSttProvider([]), tts)
+    env.app.state.voice_runtime = scripted_runtime(ScriptedSttProvider([]), tts)
     _org, user_id, token = await env.new_org_with_owner()
     await env.redis.delete(f"rl:speak:{user_id}")
     response = await env.client.post(
@@ -66,7 +47,7 @@ async def test_an_answer_is_spoken_as_a_playable_wav(env: ApiEnv) -> None:
 
 
 async def test_speaking_needs_a_session_and_sensible_text(env: ApiEnv) -> None:
-    env.app.state.voice_runtime = _runtime(ScriptedSttProvider([]), ScriptedTtsProvider())
+    env.app.state.voice_runtime = scripted_runtime(ScriptedSttProvider([]), ScriptedTtsProvider())
     anonymous = await env.client.post("/api/v1/voice/speak", json={"text": "hello"})
     assert anonymous.status_code == 401
     _org, _user, token = await env.new_org_with_owner()
@@ -81,7 +62,7 @@ async def test_a_server_that_cannot_speak_says_why(env: ApiEnv) -> None:
         def unavailable_reason(self) -> str:
             return "No speech service is configured."
 
-    env.app.state.voice_runtime = _runtime(ScriptedSttProvider([]), Mute())
+    env.app.state.voice_runtime = scripted_runtime(ScriptedSttProvider([]), Mute())
     _org, _user, token = await env.new_org_with_owner()
     response = await env.client.post(
         "/api/v1/voice/speak", json={"text": "hello"}, headers=env.auth(token)
@@ -91,7 +72,7 @@ async def test_a_server_that_cannot_speak_says_why(env: ApiEnv) -> None:
 
 
 async def test_voice_has_its_own_rate_limit_bucket(env: ApiEnv) -> None:
-    env.app.state.voice_runtime = _runtime(ScriptedSttProvider([]), ScriptedTtsProvider())
+    env.app.state.voice_runtime = scripted_runtime(ScriptedSttProvider([]), ScriptedTtsProvider())
     _org, user_id, token = await env.new_org_with_owner()
     await env.redis.set(f"rl:speak:{user_id}", 90, ex=60)
     limited = await env.client.post(
@@ -108,7 +89,9 @@ async def test_voice_has_its_own_rate_limit_bucket(env: ApiEnv) -> None:
     importlib.util.find_spec("faster_whisper") is None, reason="needs the local Whisper engine"
 )
 async def test_a_spoken_question_becomes_text_with_the_local_engine(env: ApiEnv) -> None:
-    env.app.state.voice_runtime = _runtime(WhisperProvider(model="tiny.en"), ScriptedTtsProvider())
+    env.app.state.voice_runtime = scripted_runtime(
+        WhisperProvider(model="tiny.en"), ScriptedTtsProvider()
+    )
     _org, user_id, token = await env.new_org_with_owner()
     await env.redis.delete(f"rl:transcribe:{user_id}")
     response = await env.client.post(

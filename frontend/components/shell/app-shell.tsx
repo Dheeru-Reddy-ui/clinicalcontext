@@ -63,7 +63,7 @@ const NAV: NavItem[] = [
   { href: "/app/library", label: "Library", icon: Library },
   { href: "/app/binders", label: "Binders", icon: BookMarked },
   { href: "/app/dashboard", label: "Dashboard", icon: BarChart3, roles: ["owner", "clinician"] },
-  { href: "/app/admin", label: "Admin", icon: Settings2, roles: ["owner"] },
+  { href: "/app/settings", label: "Settings", icon: Settings2 },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -155,6 +155,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </DropdownMenuLabel>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem render={<Link href="/app/settings" />}>
+                  <Settings2 /> Settings
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => void signOut()}>
                   <LogOut /> Sign out
                 </DropdownMenuItem>
@@ -176,7 +179,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Menu className="size-4" />
           </Button>
-          <Link href="/app/chat" className="font-semibold tracking-tight">
+          <Link href="/app/chat" className="inline-flex items-center gap-2 font-semibold tracking-tight">
+            <LogoMark className="size-6" />
             ClinicalContext
           </Link>
           <Button variant="ghost" size="sm" onClick={palette.open} aria-label="Open command palette">
@@ -195,7 +199,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               className="absolute inset-y-0 left-0 flex w-64 flex-col gap-0.5 bg-sidebar p-2 shadow-xl"
               aria-label="Sections"
             >
-              <p className="px-2.5 py-3 font-semibold tracking-tight">ClinicalContext</p>
+              <p className="flex items-center gap-2 px-2.5 py-3 font-semibold tracking-tight">
+                <LogoMark className="size-6" /> ClinicalContext
+              </p>
               {visibleNav.map((item) => {
                 const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
                 const Icon = item.icon;

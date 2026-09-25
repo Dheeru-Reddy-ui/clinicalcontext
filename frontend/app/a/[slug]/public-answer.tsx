@@ -31,13 +31,15 @@ export function PublicAnswer({ page }: { page: Schemas["PublicAnswerOut"] }) {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 md:px-6">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 md:px-6">
           <LogoMark className="size-6" />
           <span className="font-semibold tracking-tight">ClinicalContext</span>
-          <span className="text-sm text-muted-foreground">· shared by {page.organization}</span>
-          <Button size="sm" variant="outline" className="ml-auto" nativeButton={false} render={<Link href="/login" />}>
+          <Button size="sm" variant="outline" className="ml-auto sm:order-last" nativeButton={false} render={<Link href="/login" />}>
             Sign in
           </Button>
+          <span className="basis-full text-sm text-muted-foreground sm:basis-auto">
+            <span className="hidden sm:inline">· </span>shared by {page.organization}
+          </span>
         </div>
       </header>
 

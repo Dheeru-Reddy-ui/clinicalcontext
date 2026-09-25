@@ -14,6 +14,7 @@ from app.api.v1 import (
     digest,
     documents,
     feedback,
+    me,
     notifications,
     orgs,
     queries,
@@ -44,3 +45,4 @@ router.include_router(webhooks.router)
 router.include_router(voice.router)
 router.include_router(api_keys.router)
 router.include_router(assistant.router)
+router.include_router(me.router)

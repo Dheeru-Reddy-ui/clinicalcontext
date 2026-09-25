@@ -8,6 +8,7 @@ from collections.abc import AsyncIterator
 import pytest
 
 from app.services.demo import DEMO_ORG_ID, DEMO_QUESTIONS, DEMO_USER_ID
+from app.services.semantic_cache import clear_semantic_cache
 from tests.conftest import ApiEnv
 
 
@@ -16,9 +17,8 @@ async def _reset_demo_limits(env: ApiEnv) -> None:
     # semantic cache) are shared with any other environment on this Redis —
     # cleared before and after so a test never leaks an answer computed on
     # the test corpus into a development server, or the other way round.
-    await env.redis.delete(
-        "rl:demo:testclient", "rl:demo:127.0.0.1", "rl:demo:all", f"semcache:{DEMO_ORG_ID}"
-    )
+    await env.redis.delete("rl:demo:testclient", "rl:demo:127.0.0.1", "rl:demo:all")
+    await clear_semantic_cache(env.redis, DEMO_ORG_ID)
 
 
 @pytest.fixture(autouse=True)

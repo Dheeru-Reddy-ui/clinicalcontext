@@ -198,6 +198,14 @@ export class SentenceChunker {
 
 type Clip = { kind: "audio"; blob: Blob } | { kind: "browser"; text: string };
 
+/** How answers are read aloud: the Settings choice of voice and pace. */
+export interface SpeechOptions {
+  /** A voice name the server offers (/voice/voices); absent, the server's own. */
+  voice?: string;
+  /** Playback pace, 0.75–1.5; pitch is kept. */
+  rate?: number;
+}
+
 /**
  * Plays chunks in order, fetching the next while the current one plays.
  * `onIdle` fires when everything queued has been heard.
@@ -217,6 +225,7 @@ export class SpeechQueue {
       onIdle?: () => void;
       onLevel?: (level: number) => void;
     },
+    private readonly speech: SpeechOptions = {},
   ) {
     // Signed out (the website's chatbot) the server will not speak: use the
     // browser's voice from the start instead of failing each chunk.
@@ -233,7 +242,10 @@ export class SpeechQueue {
         const response = await fetch(apiUrl("/api/v1/voice/speak"), {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.token}` },
-          body: JSON.stringify({ text: text.slice(0, 1200) }),
+          body: JSON.stringify({
+            text: text.slice(0, 1200),
+            ...(this.speech.voice ? { voice: this.speech.voice } : {}),
+          }),
         });
         if (response.ok) return { kind: "audio", blob: await response.blob() };
         // The server cannot speak at all: stop asking for this conversation.
@@ -273,6 +285,7 @@ export class SpeechQueue {
     return new Promise((resolve) => {
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
+      audio.playbackRate = this.speech.rate ?? 1;
       this.audio = audio;
       const end = () => {
         URL.revokeObjectURL(url);
@@ -291,6 +304,7 @@ export class SpeechQueue {
       if (typeof window === "undefined" || !("speechSynthesis" in window)) return resolve();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "en-IN";
+      utterance.rate = this.speech.rate ?? 1;
       utterance.onend = () => resolve();
       utterance.onerror = () => resolve();
       window.speechSynthesis.speak(utterance);

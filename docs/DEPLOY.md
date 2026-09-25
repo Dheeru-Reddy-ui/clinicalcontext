@@ -330,6 +330,7 @@ Either way, the website updates a few minutes before the API does. During those 
 | The microphone test bar does not move | The browser blocked the mic, or the wrong one is chosen | Read the message under the bar; pick another microphone from the list |
 | Voice worked, then says it is unavailable | The Deepgram key was deleted, or the $200 credit ran out | Deepgram console → **Usage**; make a new key ([Part 4a](#4a-get-a-deepgram-key)) |
 | A feature that worked disappears right after a deploy you approved | An **older** Deploy run was approved after a newer one: it ships its own, older commit | Actions → **Deploy**: approve only the newest run (top of the list); cancel older waiting runs with **Cancel workflow** |
+| Settings says *"These settings can't be saved on this server yet"* | The website updated (Vercel deploys on every push) but the server has not: its Deploy run is still waiting | Actions → **Deploy** → approve the newest run; it also applies the database update |
 | Chat badge says *Quoting sources (no AI writer configured)* | No `GROQ_API_KEY` on Render | [Part 5](#part-5--turn-on-the-ai-writer-optional) |
 | Chat answers say *"The AI writer is busy right now"* | The free per-minute limit was reached | Wait a minute, or add `CEREBRAS_API_KEY` ([Part 5](#part-5--turn-on-the-ai-writer-optional)) |
 

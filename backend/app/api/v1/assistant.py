@@ -49,6 +49,7 @@ from app.schemas.assistant import (
     TreatmentStepOut,
     TreatmentStepRequest,
 )
+from app.schemas.settings import ConversationsDeletedOut
 from app.treatment.engine import ACTIONS, HEADLINES, UnknownComplaint, step
 from app.treatment.formulary import Profile
 from app.treatment.model import Assessment, Question
@@ -183,6 +184,19 @@ async def rename_chat_session(
     if not renamed:
         raise NotFoundError("conversation not found")
     return {"renamed": True}
+
+
+@router.delete("/chat/sessions/{session_id}")
+async def delete_chat_session(
+    session_id: UUID,
+    user: Annotated[CurrentUser, Depends(enforce_rate_limit)],
+    pool: Annotated[DbPool, Depends(get_asyncpg_pool)],
+) -> ConversationsDeletedOut:
+    """Delete one of your own conversations. ``kept`` is 1 when it stays
+    because an answer in it is in a binder, shared, or has recorded versions."""
+    from app.services.settings import SettingsService
+
+    return await SettingsService(pool).delete_conversations(user, session_id=session_id)
 
 
 # -- learn ----------------------------------------------------------------------------------

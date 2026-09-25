@@ -34,9 +34,11 @@ from app.repositories.voice import VoiceRepository
 from app.schemas.voice import (
     TtsQuality,
     VoiceAnalyticsOut,
+    VoiceChoiceOut,
     VoiceConfigOut,
     VoiceSettingsIn,
     VoiceSettingsOut,
+    VoicesOut,
     VoiceTurnList,
     VoiceTurnOut,
 )
@@ -47,6 +49,7 @@ from app.voice.availability import provider_unavailable_reason
 from app.voice.registry import SessionRegistry, get_registry
 from app.voice.runtime import BOOST_TERMS, VoiceRuntime, get_voice_runtime
 from app.voice.session import VoiceSession
+from app.voice.voices import DEFAULT_VOICE, VOICES, deepgram_model_for
 
 logger = structlog.stdlib.get_logger("app.api.voice")
 
@@ -293,6 +296,9 @@ async def transcribe(
 
 class SpeakRequest(BaseModel):
     text: str = Field(min_length=1, max_length=_SPEAK_MAX_CHARS)
+    # A voice name from app/voice/voices.py (the listener's Settings choice).
+    # Absent, or no longer offered, means the server's own voice.
+    voice: str | None = Field(default=None, max_length=20, pattern=r"^[a-z]+$")
 
 
 @router.post("/speak")
@@ -310,7 +316,8 @@ async def speak(
     reason = provider_unavailable_reason(runtime.tts)
     if reason is not None:
         raise ServiceUnavailableError(reason)
-    stream = await runtime.tts.open(quality="flash", lexicon_pls=None)
+    model = deepgram_model_for(body.voice) if runtime.tts.name == "deepgram" else None
+    stream = await runtime.tts.open(quality="flash", lexicon_pls=None, voice=model)
     try:
         pcm = b"".join([chunk async for chunk in stream.synthesize(body.text)])
     finally:
@@ -318,6 +325,26 @@ async def speak(
     if not pcm:
         raise ServiceUnavailableError("The speech service returned no audio — try again.")
     return Response(content=write_wav(pcm), media_type="audio/wav")
+
+
+@router.get("/voices")
+async def list_voices(
+    request_user: Annotated[CurrentUser, Depends(get_current_org)],
+    socket_app: Annotated[Any, Depends(_app_state)],
+) -> VoicesOut:
+    """The read-aloud voices a person can choose in Settings. Only the
+    Deepgram speech service offers a choice; elsewhere the list is shown but
+    the server's own voice speaks, and ``selectable`` says so."""
+    runtime = get_voice_runtime(socket_app)
+    return VoicesOut(
+        provider=runtime.tts.name,
+        selectable=runtime.tts.name == "deepgram",
+        default=DEFAULT_VOICE,
+        voices=[
+            VoiceChoiceOut(id=v.id, label=v.label, gender=v.gender, accent=v.accent, tone=v.tone)
+            for v in VOICES
+        ],
+    )
 
 
 @router.get("/config")

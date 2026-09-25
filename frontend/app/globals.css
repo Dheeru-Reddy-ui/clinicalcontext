@@ -302,6 +302,14 @@
     /* Numbers line up in tables, footers and charts. */
     font-variant-numeric: tabular-nums;
   }
+  /* Settings → Appearance → Text size (lib/text-size.ts). Everything is in
+     rem, so the root size scales the whole app. */
+  html[data-text-size="large"] {
+    font-size: 112.5%;
+  }
+  html[data-text-size="larger"] {
+    font-size: 125%;
+  }
   body {
     /* The Geist variables are set on <body> by next/font, so the family
        must be applied here, not on <html>. */

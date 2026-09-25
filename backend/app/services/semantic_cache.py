@@ -5,6 +5,12 @@ recent queries for the *same tenant*. On a hit above the threshold, the prior
 answer is returned with ``cached=True`` and the provider cost it saved is
 recorded, so the dashboard can show the saving. Strictly tenant-scoped: the
 Redis key includes the org id, so one tenant never sees another's cache.
+
+An answer is only as good as what wrote it, so the key also names the
+writer — the reasoner and ANSWER_FORMAT_VERSION. Without that, an answer
+quoted from passages while no language model was configured kept being
+served for a week after one was, and every change to how answers are built
+waited out the old entries. Bump the version whenever that changes.
 """
 
 from __future__ import annotations
@@ -27,6 +33,22 @@ SIMILARITY_THRESHOLD = 0.97
 _MAX_ENTRIES = 200
 _TTL_SECONDS = 7 * 24 * 3600
 
+#: 2 — off-topic passages are kept out of answers and out of the
+#: contradiction check; extractive answers quote each source's finding.
+ANSWER_FORMAT_VERSION = 2
+
+
+def cache_namespace(writer: str) -> str:
+    """The key segment for answers written by ``writer`` in today's format."""
+    return f"{writer}.v{ANSWER_FORMAT_VERSION}"
+
+
+async def clear_semantic_cache(redis: Redis, org_id: UUID) -> None:
+    """Drop every cached answer for one tenant, whichever writer made it."""
+    keys = [key async for key in redis.scan_iter(match=f"semcache:{org_id}*", count=100)]
+    if keys:
+        await redis.delete(*keys)
+
 
 @dataclass(slots=True)
 class CacheHit:
@@ -46,12 +68,19 @@ def _cosine(a: list[float], b: list[float]) -> float:
 
 
 class SemanticCache:
-    def __init__(self, redis: Redis, *, threshold: float = SIMILARITY_THRESHOLD) -> None:
+    def __init__(
+        self,
+        redis: Redis,
+        *,
+        namespace: str = "default",
+        threshold: float = SIMILARITY_THRESHOLD,
+    ) -> None:
         self._redis = redis
+        self._namespace = namespace
         self._threshold = threshold
 
     def _key(self, org_id: UUID) -> str:
-        return f"semcache:{org_id}"
+        return f"semcache:{org_id}:{self._namespace}"
 
     async def lookup(self, org_id: UUID, query_vector: list[float]) -> CacheHit | None:
         # redis-py types list commands as ``Awaitable[T] | T``; on the async

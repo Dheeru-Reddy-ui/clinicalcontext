@@ -339,6 +339,50 @@ export const api = {
   markAllRead: (token: string) =>
     apiFetch<void>("/api/v1/notifications/read-all", { method: "POST", accessToken: token }),
 
+  // -- settings: the person's own ---------------------------------------------------
+  preferences: (token: string) =>
+    apiFetch<Schemas["PreferencesOut"]>("/api/v1/me/preferences", { accessToken: token }),
+  updatePreferences: (token: string, body: Schemas["PreferencesUpdate"]) =>
+    apiFetch<Schemas["PreferencesOut"]>("/api/v1/me/preferences", {
+      method: "PATCH",
+      body,
+      accessToken: token,
+    }),
+  updateProfile: (token: string, body: Schemas["ProfileUpdate"]) =>
+    apiFetch<Schemas["MeOut"]>("/api/v1/me/profile", { method: "PATCH", body, accessToken: token }),
+  deleteConversations: (token: string) =>
+    apiFetch<Schemas["ConversationsDeletedOut"]>("/api/v1/me/conversations", {
+      method: "DELETE",
+      accessToken: token,
+    }),
+  deleteConversation: (token: string, sessionId: string) =>
+    apiFetch<Schemas["ConversationsDeletedOut"]>(`/api/v1/chat/sessions/${sessionId}`, {
+      method: "DELETE",
+      accessToken: token,
+    }),
+  voices: (token: string) =>
+    apiFetch<Schemas["VoicesOut"]>("/api/v1/voice/voices", { accessToken: token }),
+  /** A copy of the person's data as a JSON file, and the name the server gave it. */
+  exportData: async (token: string): Promise<{ blob: Blob; filename: string }> => {
+    const response = await fetch(apiUrl("/api/v1/me/export"), {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      let message = response.statusText;
+      try {
+        const body = (await response.json()) as { error?: { message?: string } };
+        message = body.error?.message ?? message;
+      } catch {
+        /* not JSON */
+      }
+      throw new ApiError(response.status, "export_failed", message, null);
+    }
+    const disposition = response.headers.get("Content-Disposition") ?? "";
+    const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "clinicalcontext-export.json";
+    return { blob: await response.blob(), filename };
+  },
+
   // -- api keys (admin) -----------------------------------------------------------
   apiKeys: (token: string) =>
     apiFetch<Schemas["ApiKeysOut"]>("/api/v1/api-keys", { accessToken: token }),

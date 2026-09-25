@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useOptionalAuth } from "@/components/providers/auth-provider";
+import { usePreferences } from "@/hooks/use-preferences";
 import { apiFetch } from "@/lib/api";
 import {
   asChatResult,
@@ -93,7 +94,20 @@ export function useChat(options: UseChatOptions = {}) {
   // Optional: the website's chatbot runs outside the signed-in app.
   const token = useOptionalAuth()?.session?.access_token ?? "";
   const queryClient = useQueryClient();
-  const [audience, setAudience] = useState<Audience>(options.audience ?? "patient");
+  // Who answers are written for: the screen's own choice (Learn, prescribing
+  // support), else the person's Settings default — until they switch it in
+  // this conversation, which then wins until the next new conversation.
+  const { preferences } = usePreferences();
+  const preferred: Audience = options.audience ?? (mode === "app" ? preferences.audience : "patient");
+  const [audience, setAudienceState] = useState<Audience>(preferred);
+  const chosen = useRef(false);
+  useEffect(() => {
+    if (!chosen.current) setAudienceState(preferred);
+  }, [preferred]);
+  const setAudience = useCallback((next: Audience) => {
+    chosen.current = true;
+    setAudienceState(next);
+  }, []);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(options.sessionId ?? null);
   const [busy, setBusy] = useState(false);
@@ -183,7 +197,9 @@ export function useChat(options: UseChatOptions = {}) {
     abort.current?.abort();
     setMessages([]);
     setSessionId(null);
-  }, []);
+    chosen.current = false;
+    setAudienceState(preferred);
+  }, [preferred]);
 
   const open = useCallback(
     async (id: string) => {
@@ -226,7 +242,9 @@ export function useChat(options: UseChatOptions = {}) {
         setSessionId(detail.id);
         const last = detail.turns[detail.turns.length - 1];
         if (last?.audience === "patient" || last?.audience === "clinician" || last?.audience === "student") {
-          setAudience(last.audience);
+          // Reopening a conversation keeps the voice it was held in.
+          chosen.current = true;
+          setAudienceState(last.audience);
         }
       } finally {
         setLoading(false);

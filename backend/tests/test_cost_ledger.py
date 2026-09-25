@@ -147,7 +147,9 @@ async def test_a_query_writes_its_provider_calls_to_the_ledger(env: ApiEnv) -> N
     assert report["semantic_cache_saved_projected_usd"] > 0
     assert report["month_semantic_cache_saved_projected_usd"] > 0
     lines = {(line["component"], line["model"]): line for line in report["lines"]}
-    assert lines[("rerank", "bm25-local")]["cached_units"] == 1.0
+    # Two searches per question — its own words, then its topic words alone
+    # (graph.retrieve) — so the cache hit avoided both.
+    assert lines[("rerank", "bm25-local")]["cached_units"] == 2.0
     assert lines[("rerank", "bm25-local")]["calls"] >= 1
     assert len(report["series"]) == 7
     assert sum(p["saved_projected_usd"] for p in report["series"]) == pytest.approx(

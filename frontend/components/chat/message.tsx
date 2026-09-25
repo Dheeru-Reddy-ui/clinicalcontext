@@ -24,6 +24,7 @@ import { SourceList } from "@/components/chat/sources";
 import { useOptionalAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import type { AssistantMessage, UserMessage } from "@/hooks/use-chat";
+import { usePreferences } from "@/hooks/use-preferences";
 import { PROGRESS_LABELS, type ChatResult } from "@/lib/chat";
 import { EMPTY_CONTRADICTION } from "@/lib/domain";
 import { SentenceChunker, SpeechQueue } from "@/lib/voice-chat";
@@ -42,6 +43,7 @@ const COMPLAINT_NAMES: Record<string, string> = {
 /** Read one answer aloud (again). The server's voice when signed in. */
 function ReadAloudButton({ text }: { text: string }) {
   const token = useOptionalAuth()?.session?.access_token ?? "";
+  const { preferences } = usePreferences();
   const [playing, setPlaying] = useState(false);
   const queue = useRef<SpeechQueue | null>(null);
   useEffect(() => () => queue.current?.stop(), []);
@@ -53,7 +55,11 @@ function ReadAloudButton({ text }: { text: string }) {
       return;
     }
     queue.current?.stop();
-    const q = new SpeechQueue(token, { onIdle: () => setPlaying(false) });
+    const q = new SpeechQueue(
+      token,
+      { onIdle: () => setPlaying(false) },
+      { voice: preferences.voice_name, rate: preferences.voice_rate },
+    );
     queue.current = q;
     for (const chunk of new SentenceChunker().take(text, true)) q.enqueue(chunk);
     setPlaying(true);
@@ -162,8 +168,9 @@ export function AssistantBubble({
   showTimeline?: boolean;
   checkHref?: string;
 }) {
+  const { preferences } = usePreferences();
   const [active, setActive] = useState<number | null>(null);
-  const [showSources, setShowSources] = useState(false);
+  const [showSources, setShowSources] = useState(preferences.sources_open);
   const [copied, setCopied] = useState(false);
   const sourcesRef = useRef<HTMLOListElement>(null);
   const result = message.result;
@@ -299,7 +306,7 @@ export function AssistantBubble({
           <SourceList ref={sourcesRef} citations={citations} activeMarker={active} />
         )}
 
-        {showTimeline && showSources && citations.length >= 2 && (
+        {showTimeline && preferences.show_timeline && showSources && citations.length >= 2 && (
           <EvidenceTimeline
             citations={citations}
             contradiction={EMPTY_CONTRADICTION}

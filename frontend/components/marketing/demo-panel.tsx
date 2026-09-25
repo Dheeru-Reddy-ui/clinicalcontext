@@ -189,6 +189,7 @@ export function DemoPanel({
               void run(q);
             }}
             title={q.why}
+            className="h-auto min-h-8 max-w-full justify-start py-1.5 text-left leading-snug whitespace-normal"
           >
             {q.shows === "contradiction" && <Scale className="size-3.5" aria-hidden />}
             {q.question}

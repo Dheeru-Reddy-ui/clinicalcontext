@@ -156,11 +156,11 @@ export default async function Home() {
             disagreement between sources is never buried.
           </p>
         </div>
-        <div className="mt-10 rounded-[30px] border border-white bg-white/60 p-2 shadow-[0_30px_70px_-40px_rgb(30_27_75/0.55)] backdrop-blur dark:border-white/10 dark:bg-white/[0.03]">
+        <div className="mt-10 rounded-[26px] border border-white bg-white/60 p-1.5 shadow-[0_30px_70px_-40px_rgb(30_27_75/0.55)] backdrop-blur sm:rounded-[30px] sm:p-2 dark:border-white/10 dark:bg-white/[0.03]">
           <DemoPanel
             questions={questions}
             labelledBy="demo-section-heading"
-            className="rounded-[24px] border-slate-200/70 p-5 md:p-7 dark:border-white/10"
+            className="rounded-[22px] border-slate-200/70 p-4 sm:rounded-[24px] sm:p-5 md:p-7 dark:border-white/10"
           />
         </div>
       </section>

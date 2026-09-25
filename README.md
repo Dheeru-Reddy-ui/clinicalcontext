@@ -347,6 +347,18 @@ classify → [decompose] → retrieve → grade → (rewrite ↺ cap 2) →
   the 2023 guideline recommends B [2]…"), never smoothed into false consensus.
 - **Abstention is a feature**: an honest non-answer that says what was searched,
   what was found, and why it's insufficient.
+- **Only on-topic passages are used** ([relevance.py](backend/app/graph/relevance.py)):
+  after retrieval, a passage must carry the question's topic words — not its
+  boilerplate ("recommended", "treatment") or population ("adults") — to be
+  cited, graded or set against another. A second search on the topic words
+  alone runs first, because a question's wording ranks general papers
+  above the trials; "the sources disagree" is only said between sources
+  each about the whole question, each side quoted in its own source's words.
+  Against the committed golden-set baseline: cited-gold 62% → 74%,
+  contradiction precision 34% → 47% and recall 33% → 40%, calibration
+  Brier 0.27 → 0.19, grounding support 0.87 → 0.88; the costs are
+  abstention on answerable questions 7% → 10% and about 90 ms of median
+  latency for the second search.
 - **Confidence** (`high`/`moderate`/`low`) and an evidence grade are derived
   from the cited sources' grades, recency, retrieval scores, and whether a
   conflict was found.
@@ -470,8 +482,27 @@ guardrail views, sessions (multi-turn threads), history with the full trace,
 the library and document pages, Evidence Binders (highlight-and-annotate with
 threaded replies, present mode, PDF), notifications and the Living Answer
 diff, the owner/clinician dashboard (Recharts, every number from
-`/analytics`), and Admin (members, private-corpus upload, sharing policy,
-API keys, plan).
+`/analytics`), and Settings.
+
+**Settings** (`/app/settings`, one URL per section) holds what a person sets
+for themselves — profile, password and signed-in devices, theme and text size
+(per device), who the assistant writes for by default, how answers open, the
+read-aloud voice (a curated set of Deepgram Aura-2 voices), its pace and
+whether a spoken conversation keeps listening, Learn's subjects and depth,
+the weekly digest, a JSON copy of their data, and deleting their
+conversations — and, for owners, what used to be Admin: members, public
+sharing, API keys, the private library and the plan. Personal choices live
+in `user_preferences` (026) so they follow a person from laptop to phone; on
+a phone the section list is the page and each section opens full width.
+
+The same migration moved owner-only rules into the database: the API always
+required the owner role to change the organization, invite, or mint API keys
+and webhooks, but the grants underneath let any member do those writes
+directly through the Supabase Data API (a viewer could have made themselves
+an owner). Now a person can update only their own name and specialty, only
+owners can change the organization (never its plan), invite, or manage keys
+and webhooks, and members cannot read a webhook's signing secret —
+`backend/tests/test_owner_writes.py` proves each at the SQL level.
 
 **Signature pieces.** ⌘K / Ctrl+K command palette (`cmdk`) reaches every
 screen and live-searches sessions and the library; the Evidence Timeline plots

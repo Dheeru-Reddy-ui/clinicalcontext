@@ -23,6 +23,12 @@ class TtsStream(Protocol):
 class TtsProvider(Protocol):
     name: str
 
-    async def open(self, *, quality: str, lexicon_pls: str | None) -> TtsStream:
-        """Pre-warm a connection so the TLS/auth handshake is off the critical path."""
+    async def open(
+        self, *, quality: str, lexicon_pls: str | None, voice: str | None = None
+    ) -> TtsStream:
+        """Pre-warm a connection so the TLS/auth handshake is off the critical path.
+
+        ``voice`` is a provider-specific voice id chosen by the listener
+        (app/voice/voices.py); a provider with no choice of voice ignores it,
+        and None means the server's configured voice."""
         ...

@@ -147,7 +147,10 @@ class LocalTtsProvider:
     def set_respeller(self, respell: Any) -> None:
         self._respell = respell
 
-    async def open(self, *, quality: str, lexicon_pls: str | None) -> LocalTtsStream:
+    async def open(
+        self, *, quality: str, lexicon_pls: str | None, voice: str | None = None
+    ) -> LocalTtsStream:
+        # The operating system's voice; the listener's Aura-2 choice does not apply.
         # Warm the engine: the first WinRT synthesis in a process is slow.
         try:
             await synthesize("Ready.", self._voice)

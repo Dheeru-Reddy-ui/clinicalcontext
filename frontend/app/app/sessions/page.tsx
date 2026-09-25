@@ -66,13 +66,15 @@ export default function SessionsPage() {
               <li key={s.id}>
                 <Link
                   href={`/app/sessions/${s.id}`}
-                  className="flex items-center gap-4 px-4 py-3 hover:bg-accent/50 focus-visible:bg-accent/50"
+                  className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 hover:bg-accent/50 focus-visible:bg-accent/50"
                 >
-                  <span className="min-w-0 flex-1 truncate text-sm">{s.title ?? "Untitled session"}</span>
+                  <span className="min-w-0 basis-full truncate text-sm sm:basis-auto sm:flex-1">
+                    {s.title ?? "Untitled session"}
+                  </span>
                   <span className="font-mono text-[11px] text-muted-foreground">
                     {s.query_count} turn{s.query_count === 1 ? "" : "s"}
                   </span>
-                  <time dateTime={s.last_query_at ?? s.created_at} className="w-28 text-right font-mono text-[11px] text-muted-foreground">
+                  <time dateTime={s.last_query_at ?? s.created_at} className="font-mono text-[11px] text-muted-foreground sm:w-28 sm:text-right">
                     {formatDate(s.last_query_at ?? s.created_at, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </time>
                 </Link>

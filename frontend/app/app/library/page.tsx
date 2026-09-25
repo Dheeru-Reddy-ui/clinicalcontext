@@ -68,7 +68,7 @@ export default function LibraryPage() {
         }
       />
 
-      <div className="grid gap-2 rounded-lg border bg-card p-3 md:grid-cols-[1fr_auto_auto_auto_auto]">
+      <div className="grid gap-2 rounded-lg border bg-card p-3 sm:grid-cols-2 xl:grid-cols-[1fr_auto_auto_auto_auto]">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input
@@ -93,7 +93,7 @@ export default function LibraryPage() {
           <Button
             variant="ghost"
             size="sm"
-            className="md:col-span-5 md:justify-self-start"
+            className="sm:col-span-2 sm:justify-self-start xl:col-span-5"
             onClick={() => { setSearch(""); setGrade(""); setStudyType(""); setSource(""); setScope("all"); setOffset(0); }}
           >
             <X /> Clear filters
@@ -155,15 +155,15 @@ function Select({
 }) {
   const id = `lib-${label.toLowerCase()}`;
   return (
-    <div className="flex items-center gap-1.5">
-      <Label htmlFor={id} className="text-xs text-muted-foreground">
+    <div className="flex min-w-0 items-center gap-1.5">
+      <Label htmlFor={id} className="w-14 shrink-0 text-xs text-muted-foreground xl:w-auto">
         {label}
       </Label>
       <select
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-8 rounded-md border bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring"
+        className="h-8 min-w-0 flex-1 rounded-md border bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring xl:max-w-56 xl:flex-none"
       >
         <option value="">{allLabel}</option>
         {options.map(([v, l]) => (

@@ -47,6 +47,24 @@ class VoiceSettingsOut(BaseModel):
     tts_quality: TtsQuality
 
 
+class VoiceChoiceOut(BaseModel):
+    id: str
+    label: str
+    gender: Literal["female", "male"]
+    accent: str
+    tone: str
+
+
+class VoicesOut(BaseModel):
+    """The read-aloud voices Settings offers, and whether this server honours
+    the choice (only the Deepgram speech service has one)."""
+
+    provider: str
+    selectable: bool
+    default: str
+    voices: list[VoiceChoiceOut]
+
+
 class VoiceTurnOut(BaseModel):
     id: UUID
     voice_session_id: UUID

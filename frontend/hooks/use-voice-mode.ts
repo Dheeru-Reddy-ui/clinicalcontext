@@ -4,8 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useOptionalAuth } from "@/components/providers/auth-provider";
-import { describeMicError } from "@/components/voice/mic-check";
+import { describeMicError, micConstraints } from "@/components/voice/mic-check";
 import type { ChatController } from "@/hooks/use-chat";
+import { usePreferences } from "@/hooks/use-preferences";
 import { apiFetch } from "@/lib/api";
 import type { Schemas } from "@/lib/domain";
 import { listenForUtterance, SentenceChunker, SpeechQueue, transcribe } from "@/lib/voice-chat";
@@ -36,12 +37,17 @@ export function useVoiceMode(chat: ChatController, enabled: boolean) {
   const [heard, setHeard] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [readAloud, setReadAloud] = useState(true);
+  // Settings: the voice and pace answers are read in, and whether the
+  // conversation keeps listening after each answer or waits for Talk.
+  const { preferences } = usePreferences();
 
   const chatRef = useRef(chat);
   const readAloudRef = useRef(readAloud);
+  const continuousRef = useRef(preferences.voice_continuous);
   useEffect(() => {
     chatRef.current = chat;
     readAloudRef.current = readAloud;
+    continuousRef.current = preferences.voice_continuous;
   });
   const active = useRef(false);
   const stream = useRef<MediaStream | null>(null);
@@ -113,6 +119,9 @@ export function useVoiceMode(chat: ChatController, enabled: boolean) {
     return null;
   }, [token]);
 
+  /** After an answer: listen again, or — when Settings says so — wait for Talk. */
+  const afterAnswer = useRef<() => void>(() => undefined);
+
   /** Listen for a question and send it; the answer effect takes it from there. */
   const listen = useCallback(async (): Promise<void> => {
     if (!active.current || inFlight.current) return;
@@ -134,9 +143,23 @@ export function useVoiceMode(chat: ChatController, enabled: boolean) {
     // No answer came back at all (the send was refused before streaming).
     if (awaiting.current) {
       awaiting.current = false;
-      if (!queue.current?.busy) void listen();
+      if (!queue.current?.busy) afterAnswer.current();
     }
   }, [captureQuestion]);
+
+  useEffect(() => {
+    afterAnswer.current = () => {
+      if (!active.current) return;
+      if (continuousRef.current) {
+        void listen();
+        return;
+      }
+      active.current = false;
+      releaseMic();
+      setLevel(0);
+      setPhase("ready");
+    };
+  }, [listen]);
 
   // Speak the streaming answer a few sentences at a time; listen when done.
   useEffect(() => {
@@ -155,9 +178,9 @@ export function useVoiceMode(chat: ChatController, enabled: boolean) {
     if (chunks.length) setPhase("speaking");
     if (finished) {
       awaiting.current = false;
-      if (!queue.current?.busy) void listen();
+      if (!queue.current?.busy) afterAnswer.current();
     }
-  }, [chat.messages, listen]);
+  }, [chat.messages]);
 
   const start = useCallback(async () => {
     if (active.current) return;
@@ -173,24 +196,26 @@ export function useVoiceMode(chat: ChatController, enabled: boolean) {
       return;
     }
     try {
-      stream.current = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      });
+      stream.current = await navigator.mediaDevices.getUserMedia({ audio: micConstraints() });
     } catch (error) {
       setPhase("ready");
       setNotice(describeMicError(error));
       return;
     }
     active.current = true;
-    queue.current = new SpeechQueue(token, {
-      onLevel: setLevel,
-      onIdle: () => {
-        // The answer has been heard in full: the floor is the person's again.
-        if (active.current && !awaiting.current) void listen();
+    queue.current = new SpeechQueue(
+      token,
+      {
+        onLevel: setLevel,
+        onIdle: () => {
+          // The answer has been heard in full: the floor is the person's again.
+          if (active.current && !awaiting.current) afterAnswer.current();
+        },
       },
-    });
+      { voice: preferences.voice_name, rate: preferences.voice_rate },
+    );
     void listen();
-  }, [listen, token, unavailable]);
+  }, [listen, preferences.voice_name, preferences.voice_rate, token, unavailable]);
 
   /** Cut the answer short and listen for the next question. */
   const interrupt = useCallback(() => {

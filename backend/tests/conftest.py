@@ -61,6 +61,7 @@ from fastapi import FastAPI  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
 
 from app.main import create_app  # noqa: E402
+from app.services.semantic_cache import clear_semantic_cache  # noqa: E402
 
 
 @pytest.fixture
@@ -182,7 +183,8 @@ async def env(migrated_database: str) -> AsyncIterator[ApiEnv]:
             yield environment
         finally:
             for org_id in environment.org_ids:
-                await redis.delete(f"semcache:{org_id}", f"rl:t:{org_id}")
+                await clear_semantic_cache(redis, org_id)
+                await redis.delete(f"rl:t:{org_id}")
             for user_id in environment.user_ids:
                 await redis.delete(f"rl:u:{user_id}")
             if environment.org_ids:

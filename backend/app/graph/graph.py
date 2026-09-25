@@ -31,6 +31,7 @@ from langgraph.graph import END, START, StateGraph
 
 from app.core.telemetry import span
 from app.graph.reasoner import LLM_PROMPTS, GenerationOutput, Reasoner, StreamingReasoner
+from app.graph.relevance import on_topic, topic_query
 from app.graph.state import GraphEvent, GraphState
 from app.guardrails.grounding import GroundingVerifier, verify_grounding
 from app.retrieval.types import RetrievedChunk
@@ -60,12 +61,14 @@ class GraphFeatures:
     what each buys. With a stage off the graph behaves as if it never
     existed: no decomposition means one retrieval; no grading means every
     retrieval is taken as sufficient; no contradiction check means none is
-    ever surfaced; no grounding means the generated answer ships as is."""
+    ever surfaced; no grounding means the generated answer ships as is; no
+    topic filter means every retrieved passage is used, on topic or not."""
 
     decompose: bool = True
     grade_and_rewrite: bool = True
     contradiction: bool = True
     grounding: bool = True
+    topic_filter: bool = True
 
 
 async def _emit(config: RunnableConfig | None, event: GraphEvent) -> None:
@@ -162,10 +165,34 @@ class AgentGraph:
                 if key not in merged or chunk.score > merged[key].score:
                     merged[key] = chunk
         ranked = sorted(merged.values(), key=lambda c: c.score, reverse=True)
+        first_pass = state.get("rewrite_count", 0) == 0
+        if self._features.topic_filter and first_pass:
+            # The question's wording ranks general papers first ("should X be
+            # used after Y" brings reviews that mention X in passing before
+            # the trials of X; "primary prevention of cardiovascular disease"
+            # brings statins before aspirin): search once more on its topic
+            # words alone, and choose from both.
+            focused = topic_query(state["query"])
+            if focused and focused.lower() not in {q.lower() for q in questions}:
+                for chunk in await self._retrieve(focused):
+                    key = str(chunk.chunk_id)
+                    if key not in merged or chunk.score > merged[key].score:
+                        merged[key] = chunk
+                ranked = sorted(merged.values(), key=lambda c: c.score, reverse=True)
+        # Off-topic passages go before anything reads them: a paper that only
+        # shares a population word or a generic term with the question would
+        # otherwise be cited, and could even manufacture a "disagreement".
+        # Judged against the question as asked, not a rewrite of it.
+        kept = on_topic(state["query"], ranked) if self._features.topic_filter else ranked
+        set_aside = len(ranked) - len(kept)
+        message = f"Found {len(kept)} sources."
+        if set_aside:
+            message = f"Found {len(kept)} sources on the question; {set_aside} off-topic set aside."
         await _emit(
-            config, GraphEvent("searched", f"Found {len(ranked)} sources.", {"count": len(ranked)})
+            config,
+            GraphEvent("searched", message, {"count": len(kept), "set_aside": set_aside}),
         )
-        return {"retrieved": ranked, "per_subquestion": per_sub}
+        return {"retrieved": kept, "per_subquestion": per_sub}
 
     async def grade_retrieval(self, state: GraphState, config: RunnableConfig) -> GraphState:
         if not self._features.grade_and_rewrite:

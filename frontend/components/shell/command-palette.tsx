@@ -171,9 +171,21 @@ function Palette({ open, onOpenChange }: { open: boolean; onOpenChange: (v: bool
                 <BarChart3 /> Dashboard
               </CommandItem>
             )}
+            <CommandItem onSelect={() => go("/app/settings")} value="settings preferences account profile">
+              <Settings2 /> Settings
+            </CommandItem>
+            <CommandItem onSelect={() => go("/app/settings?section=security")} value="password sign out devices security">
+              <Settings2 /> Password &amp; sign-in
+            </CommandItem>
+            <CommandItem onSelect={() => go("/app/settings?section=voice")} value="voice read aloud speed microphone">
+              <Settings2 /> Voice settings
+            </CommandItem>
+            <CommandItem onSelect={() => go("/app/settings?section=appearance")} value="theme dark light text size">
+              <Settings2 /> Appearance
+            </CommandItem>
             {isOwner && (
-              <CommandItem onSelect={() => go("/app/admin")} value="admin members roles invites uploads plan settings">
-                <Settings2 /> Admin
+              <CommandItem onSelect={() => go("/app/settings?section=members")} value="admin members roles invites">
+                <Settings2 /> Members &amp; invites
               </CommandItem>
             )}
           </CommandGroup>

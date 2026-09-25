@@ -40,7 +40,7 @@ import {
 
 const ROLES: OrgRole[] = ["owner", "clinician", "viewer"];
 
-export function MembersPanel() {
+export function MembersPanel({ embedded = false }: { embedded?: boolean } = {}) {
   const { session, me, role } = useAuth();
   const [members, setMembers] = useState<MemberOut[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -120,7 +120,7 @@ export function MembersPanel() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Members</h1>
+        {!embedded && <h1 className="text-2xl font-semibold tracking-tight">Members</h1>}
         <p className="text-sm text-muted-foreground">
           Everyone in your organization. Roles: owner (admin), clinician (can
           ask), viewer (read-only).
@@ -205,24 +205,27 @@ export function MembersPanel() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Joined</TableHead>
+                  <TableHead className="hidden md:table-cell">Email</TableHead>
+                  <TableHead className="hidden sm:table-cell">Joined</TableHead>
                   <TableHead>Role</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {members.map((member) => (
                   <TableRow key={member.user_id}>
-                    <TableCell className="font-medium">
+                    <TableCell className="max-w-[12rem] font-medium whitespace-normal sm:max-w-none">
                       {member.full_name ?? "—"}
                       {member.user_id === me?.user_id && (
                         <span className="ml-2 text-xs text-muted-foreground">
                           (you)
                         </span>
                       )}
+                      <span className="block truncate text-xs font-normal text-muted-foreground md:hidden">
+                        {member.email ?? ""}
+                      </span>
                     </TableCell>
-                    <TableCell>{member.email ?? "—"}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">{member.email ?? "—"}</TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       {new Date(member.joined_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell>

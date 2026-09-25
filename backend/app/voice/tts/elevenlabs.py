@@ -131,7 +131,11 @@ class ElevenLabsProvider:
             return None
         return "Voice is set to speak through ElevenLabs, but ELEVENLABS_API_KEY is not set."
 
-    async def open(self, *, quality: str, lexicon_pls: str | None) -> ElevenLabsStream:
+    async def open(
+        self, *, quality: str, lexicon_pls: str | None, voice: str | None = None
+    ) -> ElevenLabsStream:
+        # The voice is fixed per deployment (ELEVENLABS_VOICE_ID); the
+        # listener's Aura-2 choice does not apply here.
         model = self._quality if quality == "multilingual" else self._flash
         if lexicon_pls:
             try:

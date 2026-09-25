@@ -28,6 +28,13 @@ from typing import Protocol, cast, runtime_checkable
 import structlog
 
 from app.graph.cost import UsageAccumulator
+from app.graph.relevance import GENERIC_STEMS as _GENERIC_STEMS
+from app.graph.relevance import LABEL as _LABEL
+from app.graph.relevance import STOPWORDS as _STOP
+from app.graph.relevance import WORD as _WORD
+from app.graph.relevance import best_sentence, covers_topic, topic_hits
+from app.graph.relevance import stem as _stem
+from app.guardrails.grounding import split_sentences
 from app.llm.chat import ChatMessage, ChatModel, ChatResult, LLMUnavailable
 from app.retrieval.types import RetrievedChunk
 from app.schemas.answer import Contradiction, ContradictionPosition, QueryType, RetrievalGrade
@@ -35,71 +42,11 @@ from app.services import cost
 
 logger = structlog.stdlib.get_logger("app.graph.reasoner")
 
-_WORD = re.compile(r"[a-z0-9]+")
-_STOP = frozenset(
-    [
-        "the",
-        "a",
-        "an",
-        "of",
-        "to",
-        "in",
-        "and",
-        "or",
-        "for",
-        "with",
-        "is",
-        "are",
-        "was",
-        "were",
-        "be",
-        "on",
-        "at",
-        "by",
-        "as",
-        "that",
-        "this",
-        "does",
-        "do",
-        "what",
-        "which",
-        "how",
-        "much",
-        "many",
-        "should",
-        "i",
-        "my",
-        "patient",
-        "given",
-        "these",
-        "vs",
-        "versus",
-    ]
-)
-
 # Retrieval-grade thresholds on the top boosted score (cosine-ish, 0..1-ish).
 _SUFFICIENT_TOP = 0.45
 _IRRELEVANT_TOP = 0.18
 _MIN_CHUNKS = 3
-# The topic of a clinical question is what is left once its boilerplate is
-# removed: "What antibiotics are recommended for Lyme disease?" is about
-# antibiotics and Lyme, not about being recommended or being a disease. A
-# retrieval is only sufficient when the passages carry that topic.
-_GENERIC = frozenset(
-    """
-    treatment treatments treat treated treating therapy therapies therapeutic management
-    managed manage managing recommended recommend recommendation recommendations guideline
-    guidelines current first line first-line second second-line effective effectiveness
-    efficacy efficacious evidence safe safety risk risks patient patients disease diseases
-    disorder disorders condition conditions prognosis prognostic outcome outcomes diagnosed
-    diagnosis diagnostic diagnose prevention prevented prevent preventing use used using given
-    give dose doses dosing role accurate accuracy compare compared comparison better best diagnosing
-    improve improves improved common factor factors predict predicts predicting syndrome
-    acute chronic clinical study studies trial trials evidence-based indicated should
-    versus recommended options option choice preferred benefit benefits increase increases
-    reduce reduces reduced reduction rate rates level levels care primary secondary
-    """.split()  # noqa: SIM905 — a word list reads as prose
-)
+_MIN_COMPLETE_CHUNKS = 2
 _TOPIC_COVERAGE_SUFFICIENT = 0.67
 _TOPIC_COVERAGE_IRRELEVANT = 0.34
 
@@ -149,14 +96,21 @@ _COMPARISON = re.compile(
     re.I,
 )
 _RECOMMEND_POS = re.compile(
-    r"\b(?:recommend|first[-\s]?line|preferred|superior|effective|benefit|"
-    r"should\s+be\s+used|indicated|reduces?\s+(?:risk|mortality))\b",
+    r"\b(?:recommend|first[-\s]?line|preferred|superior|effective|benefit|beneficial|"
+    r"should\s+be\s+used|indicated|advised|protective|"
+    r"(?:reduc|lower)(?:e|es|ed|ing)?\s+(?:the\s+)?(?:risk|rates?|incidence|mortality|odds)|"
+    r"improv(?:e|es|ed|ing)\s+(?:overall\s+)?(?:survival|outcomes?|mortality))\b",
     re.I,
 )
 _RECOMMEND_NEG = re.compile(
     r"\b(?:not\s+recommend|no\s+benefit|insufficient\s+evidence|inferior|"
     r"should\s+not|avoid|contraindicated|no\s+significant|did\s+not\s+reduce|"
-    r"lack\s+of\s+evidence|against\s+(?:the\s+)?use)\b",
+    r"lack\s+of\s+evidence|against\s+(?:the\s+)?use|"
+    r"questioned\s+(?:the\s+)?(?:clinical\s+)?(?:benefit|value|role|use|need)|"
+    r"challenged\s+(?:the\s+)?(?:[\w-]+\s+){0,3}(?:use|benefit|role|practice|need)|"
+    r"did\s+not\s+(?:significantly\s+)?(?:reduce|improve|lower|decrease|affect|change)|"
+    r"no\s+(?:significant\s+)?(?:difference|reduction|improvement|effect)|"
+    r"failed\s+to\s+(?:reduce|improve|show|demonstrate)|no\s+longer\s+recommended)\b",
     re.I,
 )
 _QUERY_TYPE_SIGNALS: list[tuple[QueryType, re.Pattern[str]]] = [
@@ -204,26 +158,6 @@ _QUERY_TYPE_SIGNALS: list[tuple[QueryType, re.Pattern[str]]] = [
 
 def content_tokens(text: str) -> set[str]:
     return {t for t in _WORD.findall(text.lower()) if t not in _STOP and len(t) > 2}
-
-
-def _stem(token: str) -> str:
-    """Just enough to let "antibiotics" meet "antibiotic"."""
-    if len(token) > 4 and token.endswith("ies"):
-        return token[:-3] + "y"
-    if len(token) > 4 and token.endswith("es") and token[-3] in "sxz":
-        return token[:-2]
-    if len(token) > 4 and token.endswith("s") and not token.endswith("ss"):
-        return token[:-1]
-    return token
-
-
-_GENERIC_STEMS = frozenset(_stem(w) for w in _GENERIC)
-
-
-def is_generic_word(token: str) -> bool:
-    """A word that says how a question is asked, not what it is about."""
-    lowered = token.lower()
-    return lowered in _STOP or _stem(lowered) in _GENERIC_STEMS
 
 
 def _stems(text: str) -> list[str]:
@@ -357,12 +291,14 @@ class HeuristicReasoner:
         coverage = topic_coverage(query, chunks)
         if top < _IRRELEVANT_TOP or coverage < _TOPIC_COVERAGE_IRRELEVANT:
             return "irrelevant"
-        if (
-            top >= _SUFFICIENT_TOP
-            and len(chunks) >= _MIN_CHUNKS
-            and coverage >= _TOPIC_COVERAGE_SUFFICIENT
-        ):
-            return "sufficient"
+        if top >= _SUFFICIENT_TOP and coverage >= _TOPIC_COVERAGE_SUFFICIENT:
+            if len(chunks) >= _MIN_CHUNKS:
+                return "sufficient"
+            # Two passages that each carry the whole question are better
+            # evidence than six that each carry part of it — the topic filter
+            # (graph.py) is what leaves an answer with two.
+            if len(chunks) >= _MIN_COMPLETE_CHUNKS and all(covers_topic(query, c) for c in chunks):
+                return "sufficient"
         return "insufficient"
 
     async def rewrite_query(self, query: str, attempt: int, chunks: list[RetrievedChunk]) -> str:
@@ -379,6 +315,12 @@ class HeuristicReasoner:
         positive: list[tuple[int, RetrievedChunk]] = []
         negative: list[tuple[int, RetrievedChunk]] = []
         for marker, chunk in enumerate(chunks, start=1):
+            # "The sources disagree" is a strong claim: it is only made between
+            # sources that are each about the whole question, never between a
+            # fracture review and a paper on statin muscle pain that both
+            # mention vitamin D. Markers keep their places either way.
+            if not covers_topic(query, chunk):
+                continue
             text = chunk.content
             has_pos = bool(_RECOMMEND_POS.search(text))
             has_neg = bool(_RECOMMEND_NEG.search(text))
@@ -442,12 +384,27 @@ class HeuristicReasoner:
             unit="tokens",
         )
         if contradiction.detected:
-            return self._generate_conflict(used, contradiction)
+            return self._generate_conflict(query, used, contradiction)
         # Framing is its own sentence: joined to the first claim by a colon it
         # would swallow that claim's grounding check.
         lines = ["Based on the retrieved literature, the evidence is as follows."]
+        # One finding per paper, from the sources that state one; a source
+        # whose passage holds only background or methods is not cited.
+        quoted: list[tuple[RetrievedChunk, str]] = []
+        seen: set[object] = set()
+        for chunk in used:
+            sentence = best_sentence(query, chunk)
+            key = chunk.pmid or chunk.document_id
+            if sentence and key not in seen:
+                seen.add(key)
+                quoted.append((chunk, sentence))
+        if quoted:
+            for marker, (_chunk, sentence) in enumerate(quoted, start=1):
+                lines.append(_cite(sentence, marker))
+            cited = [chunk for chunk, _sentence in quoted]
+            return GenerationOutput(text=" ".join(lines), ordered_chunks=cited, mode="extractive")
         for marker, chunk in enumerate(used, start=1):
-            lines.append(_cite(_lead_sentence(chunk.content), marker))
+            lines.append(_cite(_quote(query, chunk), marker))
         return GenerationOutput(text=" ".join(lines), ordered_chunks=used, mode="extractive")
 
     async def generate_stream(
@@ -462,7 +419,7 @@ class HeuristicReasoner:
         yield output
 
     def _generate_conflict(
-        self, chunks: list[RetrievedChunk], contradiction: Contradiction
+        self, query: str, chunks: list[RetrievedChunk], contradiction: Contradiction
     ) -> GenerationOutput:
         by_marker = {i + 1: c for i, c in enumerate(chunks)}
         # Framing (matches the grounding verifier's framing rule) + cited
@@ -471,13 +428,41 @@ class HeuristicReasoner:
         # clinical sentence is introduced for the grounding check to reject.
         parts = ["Based on the retrieved evidence, the sources disagree, so this is a conflict."]
         for position in contradiction.positions:
-            marker = next((m for m in position.markers if m in by_marker), None)
-            if marker is None:
+            chosen = _position_quote(query, position, by_marker)
+            if chosen is None:
                 continue
+            marker, sentence = chosen
             year = f" ({position.year})" if position.year else ""
-            sentence = _lead_sentence(by_marker[marker].content)
             parts.append(_cite(f"One position{year} holds that {sentence}", marker))
         return GenerationOutput(text=" ".join(parts), ordered_chunks=chunks, mode="extractive")
+
+
+def _position_quote(
+    query: str, position: ContradictionPosition, by_marker: dict[int, RetrievedChunk]
+) -> tuple[int, str] | None:
+    """The sentence that states a side of a disagreement: of its sources'
+    sentences that carry that side's cue ("reduced the risk", "questioned
+    the benefit"), the one that says most about the question; else the
+    first source's quote."""
+    cue = _RECOMMEND_NEG if position.stance.startswith("does not") else _RECOMMEND_POS
+    fallback: tuple[int, str] | None = None
+    best: tuple[int, int, str] | None = None  # (topic words, marker, sentence)
+    for marker in position.markers:
+        chunk = by_marker.get(marker)
+        if chunk is None:
+            continue
+        if fallback is None:
+            fallback = (marker, _quote(query, chunk))
+        for candidate in split_sentences(chunk.content):
+            text = _LABEL.sub("", candidate.strip())
+            if len(text) < 40 or not cue.search(text):
+                continue
+            score = topic_hits(query, text)
+            if best is None or score > best[0]:
+                best = (score, marker, text)
+    if best is not None:
+        return best[1], best[2]
+    return fallback
 
 
 def _approx_tokens(text: str) -> int:
@@ -488,6 +473,13 @@ def _lead_sentence(text: str) -> str:
     match = re.split(r"(?<=[.!?])\s+", text.strip(), maxsplit=1)
     lead = match[0] if match else text
     return lead[:400].strip()
+
+
+def _quote(query: str, chunk: RetrievedChunk) -> str:
+    """What a source says about the question: the sentence that reads like its
+    finding, not the opening one ("Objective …", "We searched …"); the opening
+    sentence, without its section label, when none does."""
+    return best_sentence(query, chunk) or _LABEL.sub("", _lead_sentence(chunk.content))
 
 
 def _cite(sentence: str, marker: int) -> str:

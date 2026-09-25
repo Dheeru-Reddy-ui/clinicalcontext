@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ExternalLink, FlaskConical, Lightbulb, RefreshCw } from "lucide-react";
+import { ArrowLeft, ExternalLink, FlaskConical, Lightbulb, RefreshCw, Star } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSpecialties, useSpecialtyFeed } from "@/hooks/use-api";
 import { useChat } from "@/hooks/use-chat";
+import { usePreferences, useUpdatePreferences } from "@/hooks/use-preferences";
 import { cn } from "@/lib/utils";
 
 const DESIGN_TONE: Record<string, string> = {
@@ -29,9 +30,25 @@ export default function SpecialtyPage() {
   const specialties = useSpecialties();
   const specialty = specialties.data?.find((s) => s.slug === slug);
   const [chosenLevel, setLevel] = useState<"mbbs" | "pg" | null>(null);
-  // The specialty's own level until the reader picks one (it loads after
-  // the first render, so it cannot seed the state).
-  const level = chosenLevel ?? (specialty?.level.startsWith("pg") ? "pg" : "mbbs");
+  const { preferences, available } = usePreferences();
+  const update = useUpdatePreferences();
+  // Until the reader picks a level here: their Settings depth, or else the
+  // specialty's own level (it loads after the first render, so it cannot
+  // seed the state).
+  const level =
+    chosenLevel ??
+    (preferences.learn_depth !== "auto"
+      ? preferences.learn_depth
+      : specialty?.level.startsWith("pg")
+        ? "pg"
+        : "mbbs");
+  const following = preferences.followed_specialties.includes(slug);
+  const toggleFollow = () =>
+    update.mutate({
+      followed_specialties: following
+        ? preferences.followed_specialties.filter((s) => s !== slug)
+        : [...preferences.followed_specialties, slug],
+    });
   const chat = useChat({ kind: "learn", audience: "student", specialty: slug, level });
   const feed = useSpecialtyFeed(slug);
 
@@ -57,6 +74,19 @@ export default function SpecialtyPage() {
             </h1>
             {specialty && <p className="text-xs text-muted-foreground">{specialty.level_label}</p>}
           </div>
+          {available && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={toggleFollow}
+              aria-pressed={following}
+              aria-label={following ? "Remove from your subjects" : "Add to your subjects"}
+              title={following ? "One of your subjects" : "Add to your subjects"}
+              data-testid="follow-specialty"
+            >
+              <Star className={cn(following && "fill-amber-400 text-amber-400")} />
+            </Button>
+          )}
           <div role="radiogroup" aria-label="Level" className="inline-flex rounded-md border p-0.5">
             {(["mbbs", "pg"] as const).map((l) => (
               <button
