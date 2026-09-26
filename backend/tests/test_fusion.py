@@ -71,3 +71,34 @@ def test_limit_truncates() -> None:
 
 def test_empty_inputs_produce_empty_output() -> None:
     assert reciprocal_rank_fusion([], []) == []
+
+
+def test_a_kept_chunk_survives_the_cut() -> None:
+    """Found by one list at rank 7, a chunk scores 1/67 and falls below five
+    chunks both lists found; named in ``keep``, it takes the place of the
+    lowest-ranked of them instead."""
+    both = [uuid4() for _ in range(6)]
+    rare = uuid4()
+    dense = [_chunk(i, 1.0) for i in both]
+    lexical = [_chunk(i, 1.0) for i in both] + [_chunk(rare, 0.1)]
+
+    assert rare not in {c.chunk_id for c in reciprocal_rank_fusion(dense, lexical, limit=5)}
+    fused = reciprocal_rank_fusion(dense, lexical, limit=5, keep={rare})
+    assert [c.chunk_id for c in fused] == [*both[:4], rare]
+
+
+def test_keep_never_displaces_another_kept_chunk() -> None:
+    top = [uuid4() for _ in range(3)]
+    kept_low, rescued = uuid4(), uuid4()
+    dense = [_chunk(i, 1.0) for i in [*top, kept_low]]
+    lexical = [_chunk(i, 1.0) for i in [*top, kept_low]] + [_chunk(rescued, 0.1)]
+    fused = reciprocal_rank_fusion(dense, lexical, limit=4, keep={kept_low, rescued})
+    assert [c.chunk_id for c in fused] == [*top[:2], kept_low, rescued]
+
+
+def test_the_rare_term_flag_survives_fusion() -> None:
+    shared = uuid4()
+    flagged = _chunk(shared, 3.0)
+    flagged.components["rare_term"] = 1.0
+    [fused] = reciprocal_rank_fusion([_chunk(shared, 0.9)], [flagged])
+    assert fused.components["rare_term"] == 1.0

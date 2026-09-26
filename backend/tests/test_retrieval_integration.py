@@ -262,3 +262,93 @@ async def test_dense_search_uses_the_hnsw_index_and_is_deterministic(env: Retrie
         second = await dense_search(conn, query_vector=vector, org_id=None, limit=25)
     assert [c.chunk_id for c in first] == [c.chunk_id for c in second]
     assert len(first) == 25, "the search returns as many candidates as it was asked for"
+
+
+async def _seed_passage(env: RetrievalEnv, title: str, body: str, *, embed: bool) -> UUID:
+    """One document with one chunk under the test's strategy; its chunk id."""
+    doc_id = await env.admin.fetchval(
+        "INSERT INTO public.documents (org_id, source_type, title, content_hash) "
+        "VALUES (NULL, 'pubmed', $1, $2) RETURNING id",
+        title,
+        f"hash-{uuid4().hex}",
+    )
+    env.doc_ids.append(doc_id)
+    chunk_id: UUID = await env.admin.fetchval(
+        "INSERT INTO public.chunks (document_id, org_id, chunk_index, content, token_count, "
+        "strategy) VALUES ($1, NULL, 0, $2, $3, $4) RETURNING id",
+        doc_id,
+        body,
+        len(body) // 4,
+        env.strategy,
+    )
+    if embed:
+        [vector] = await get_embedder("local").embed_documents([body])
+        await env.admin.execute(
+            "INSERT INTO public.chunk_embeddings (chunk_id, org_id, strategy, embedding) "
+            "VALUES ($1, NULL, $2, $3::vector)",
+            chunk_id,
+            env.strategy,
+            _vector_literal(vector),
+        )
+    return chunk_id
+
+
+async def test_the_only_passage_with_a_rare_term_reaches_the_reranker(env: RetrievalEnv) -> None:
+    """The flaky-test failure, made deterministic. ts_rank_cd does not weigh a
+    term by rarity, so passages repeating a question's common words outrank
+    the only one carrying its rarest; and the vector index can miss a vector
+    (here it has none — as for a paper filed moments ago). Found by one list
+    below the cut, the passage used to be dropped at fusion, before the
+    reranker could see it."""
+    token = f"zzqx{uuid4().hex[:8]}"
+    for i in range(12):
+        await _seed_passage(
+            env,
+            f"Doxycycline and fever {i}",
+            "Doxycycline shortened fever; fever resolved on doxycycline, and doxycycline "
+            "was continued until the fever settled.",
+            embed=True,
+        )
+    rare = await _seed_passage(
+        env,
+        f"Doxycycline in {token} fever",
+        f"In {token} fever, doxycycline reduced time to defervescence.",
+        embed=False,
+    )
+    query = f"doxycycline {token} fever"
+
+    async with env.pool.acquire() as conn:
+        ranked = await lexical_search(
+            conn,
+            query_text=query,
+            org_id=None,
+            strategy=env.strategy,
+            limit=5,
+            synonyms={},
+            rare_terms=False,
+        )
+        with_rare = await lexical_search(
+            conn, query_text=query, org_id=None, strategy=env.strategy, limit=5, synonyms={}
+        )
+    assert rare not in {c.chunk_id for c in ranked}, "ranked below the common-word passages"
+    assert [c.chunk_id for c in with_rare if "rare_term" in c.components] == [rare]
+    assert len(with_rare) == 6, "the top five, then the rare-term passage"
+
+    config = RetrievalConfig(
+        strategy=env.strategy, dense_limit=5, lexical_limit=5, fused_limit=5, rerank_top_n=3
+    )
+    service = EmbeddingService(get_embedder("local"))
+    found = await RetrievalPipeline(env.pool, service, BM25Reranker(), config).retrieve(query)
+    assert found.chunks[0].chunk_id == rare, "kept through fusion, first after reranking"
+    assert found.chunks[0].components["rare_term"] == 1.0
+
+    without = RetrievalConfig(
+        strategy=env.strategy,
+        dense_limit=5,
+        lexical_limit=5,
+        fused_limit=5,
+        rerank_top_n=3,
+        rare_terms=False,
+    )
+    lost = await RetrievalPipeline(env.pool, service, BM25Reranker(), without).retrieve(query)
+    assert rare not in {c.chunk_id for c in lost.chunks}, "what happened before"

@@ -8,15 +8,23 @@ original plus one variant per matched abbreviation), so ``afib`` also matches
 
 ``websearch_to_tsquery`` parses each variant — it never raises on odd input
 and handles stop words, so the variant strings are safe to pass as parameters.
+
+ts_rank_cd does not weigh a term by its rarity, so the passages that carry a
+query's rarest term — a unique token, a rare drug name — are added after the
+top hits and flagged, whatever their rank (``rare_term_passages``).
 """
 
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from app.repositories.base import PgConnection
 from app.retrieval.types import RetrievedChunk
+
+if TYPE_CHECKING:
+    import asyncpg
 
 TS_CONFIG = "public.clinical_english"
 _MAX_VARIANTS = 6
@@ -32,6 +40,28 @@ _COMMON_DF_THRESHOLD = 2000
 # terms — bounds worst-case ts_rank_cd work regardless of query length.
 _KEEP_RAREST = 8
 _MIN_KEPT_TOKENS = 2
+# A query term found in at most this many passages makes them exact matches on
+# something rare — a unique token, a rare drug or disease name. Ranking alone
+# can bury them: ts_rank_cd has no notion of how rare a term is, so passages
+# repeating the question's common words outrank the only one that carries its
+# rarest. They come back flagged ``rare_term``; fusion keeps them (fusion.py)
+# and the reranker places them.
+RARE_TERM_PASSAGES = 10
+
+_COLUMNS = """
+            c.id            AS chunk_id,
+            c.document_id   AS document_id,
+            c.content       AS content,
+            c.section       AS section,
+            d.title         AS title,
+            d.publication_date AS publication_date,
+            d.evidence_grade::text AS evidence_grade,
+            d.study_type::text     AS study_type,
+            d.journal       AS journal,
+            d.pmid          AS pmid,
+            d.doi           AS doi,
+            d.url           AS url,
+            ts_rank_cd(c.content_tsv, q.tsq) AS rank"""
 
 
 async def load_synonyms(conn: PgConnection) -> dict[str, list[str]]:
@@ -86,37 +116,45 @@ def query_tokens(query: str, synonyms: dict[str, list[str]]) -> list[str]:
     return tokens[:_MAX_TOKENS]
 
 
-async def prune_common_tokens(
-    conn: PgConnection,
-    tokens: list[str],
-    *,
-    threshold: int = _COMMON_DF_THRESHOLD,
-    keep_rarest: int = _KEEP_RAREST,
-) -> list[str]:
-    """Drop low-information common terms, keep the most distinctive ones.
-
-    Looks up each token's stemmed document frequency in ``lexeme_stats`` and
-    removes lexemes above ``threshold`` (they match a large fraction of the
-    corpus and blow up ts_rank_cd). If everything is common, keeps the rarest
-    few so the query still matches something. Finally caps to the rarest
-    ``keep_rarest`` terms. Unknown tokens (df 0 — rare drug names, typos) are
-    treated as maximally distinctive and kept. No-op until lexeme_stats is
-    built (every df is 0).
-    """
+async def token_frequencies(conn: PgConnection, tokens: list[str]) -> dict[str, int]:
+    """Each indexed token's stemmed document frequency in ``lexeme_stats`` — 0
+    when the lexeme is unknown to it (a rare drug name, a typo, anything filed
+    since it was built) or it has not been built at all. Stop words, which
+    are never indexed, are left out."""
     if not tokens:
-        return tokens
+        return {}
     rows = await conn.fetch(
         """
         SELECT t.token, coalesce(max(s.df), 0) AS df
         FROM unnest($1::text[]) AS t(token)
         LEFT JOIN public.lexeme_stats s
           ON s.lexeme = ANY(tsvector_to_array(to_tsvector($2::regconfig, t.token)))
+        WHERE numnode(plainto_tsquery($2::regconfig, t.token)) > 0
         GROUP BY t.token
         """,
         tokens,
         TS_CONFIG,
     )
-    df = {str(r["token"]): int(r["df"]) for r in rows}
+    return {str(r["token"]): int(r["df"]) for r in rows}
+
+
+def prune_common_tokens(
+    tokens: list[str],
+    df: dict[str, int],
+    *,
+    threshold: int = _COMMON_DF_THRESHOLD,
+    keep_rarest: int = _KEEP_RAREST,
+) -> list[str]:
+    """Drop low-information common terms, keep the most distinctive ones.
+
+    Removes lexemes whose document frequency (``token_frequencies``) is above
+    ``threshold`` (they match a large fraction of the corpus and blow up
+    ts_rank_cd). If everything is common, keeps the rarest few so the query
+    still matches something. Finally caps to the rarest ``keep_rarest``
+    terms. Unknown tokens (df 0 — rare drug names, typos) are treated as
+    maximally distinctive and kept. No-op until lexeme_stats is built (every
+    df is 0).
+    """
     kept = [t for t in tokens if df.get(t, 0) <= threshold]
     if len(kept) < _MIN_KEPT_TOKENS:
         kept = sorted(tokens, key=lambda t: df.get(t, 0))[:_MIN_KEPT_TOKENS]
@@ -138,6 +176,73 @@ def _tsquery_expression(token_count: int, first_param: int) -> str:
     return " || ".join(parts)
 
 
+def _hit(row: asyncpg.Record) -> RetrievedChunk:
+    return RetrievedChunk(
+        chunk_id=row["chunk_id"],
+        document_id=row["document_id"],
+        content=row["content"],
+        section=row["section"],
+        title=row["title"],
+        publication_date=row["publication_date"],
+        evidence_grade=row["evidence_grade"],
+        study_type=row["study_type"],
+        journal=row["journal"],
+        pmid=row["pmid"],
+        doi=row["doi"],
+        url=row["url"],
+    ).with_score("lexical", float(row["rank"]))
+
+
+async def rare_term_passages(
+    conn: PgConnection,
+    *,
+    tokens: list[str],
+    terms: list[str],
+    org_id: UUID | None,
+    strategy: str = "structural",
+    most: int = RARE_TERM_PASSAGES,
+) -> list[RetrievedChunk]:
+    """The passages carrying one of ``terms`` found in at most ``most`` of
+    them, scored against the whole query (``tokens``) like any lexical hit,
+    best first (at most ``most`` in all). Occurrences are counted live and cut
+    off at ``most + 1``: lexeme_stats predates whatever was filed since it was
+    built, and a term new to the corpus is exactly the one that has to count."""
+    if not tokens or not terms:
+        return []
+    tsquery = _tsquery_expression(len(tokens), first_param=1)
+    n = len(tokens) + 1
+    sql = f"""
+        WITH q AS (SELECT ({tsquery}) AS tsq),
+        per_term AS (
+            SELECT array_agg(h.id) AS ids
+            FROM (
+                SELECT term FROM unnest(${n}::text[]) AS term
+                WHERE numnode(plainto_tsquery('{TS_CONFIG}', term)) > 0
+            ) AS t
+            CROSS JOIN LATERAL (
+                SELECT c.id FROM public.chunks c
+                WHERE c.strategy = ${n + 1}
+                  AND (c.org_id IS NULL OR c.org_id = ${n + 2})
+                  AND c.content_tsv @@ plainto_tsquery('{TS_CONFIG}', t.term)
+                LIMIT ${n + 3}
+            ) AS h
+            GROUP BY t.term
+        ),
+        rare AS (
+            SELECT DISTINCT unnest(ids) AS id FROM per_term WHERE cardinality(ids) < ${n + 3}
+        )
+        SELECT {_COLUMNS}
+        FROM rare
+        JOIN public.chunks c ON c.id = rare.id
+        JOIN public.documents d ON d.id = c.document_id
+        CROSS JOIN q
+        ORDER BY rank DESC, c.id
+        LIMIT ${n + 4}
+    """
+    rows = await conn.fetch(sql, *tokens, terms, strategy, org_id, most + 1, most)
+    return [_hit(row) for row in rows]
+
+
 async def lexical_search(
     conn: PgConnection,
     *,
@@ -146,13 +251,18 @@ async def lexical_search(
     strategy: str = "structural",
     limit: int = 50,
     synonyms: dict[str, list[str]] | None = None,
+    rare_terms: bool = True,
 ) -> list[RetrievedChunk]:
-    """Top-``limit`` chunks by ts_rank_cd against the synonym-expanded query."""
+    """Top-``limit`` chunks by ts_rank_cd against the synonym-expanded query,
+    then — with ``rare_terms`` — any passage carrying one of the query's rare
+    terms that ranked below them (see RARE_TERM_PASSAGES). Every rare-term
+    passage is flagged ``rare_term`` in its components."""
     resolved_synonyms = synonyms if synonyms is not None else await load_synonyms(conn)
     tokens = query_tokens(query_text, resolved_synonyms)
     if not tokens:
         return []
-    tokens = await prune_common_tokens(conn, tokens)
+    df = await token_frequencies(conn, tokens)
+    tokens = prune_common_tokens(tokens, df)
     if not tokens:
         return []
 
@@ -160,20 +270,7 @@ async def lexical_search(
     next_param = len(tokens) + 1
     sql = f"""
         WITH q AS (SELECT ({tsquery}) AS tsq)
-        SELECT
-            c.id            AS chunk_id,
-            c.document_id   AS document_id,
-            c.content       AS content,
-            c.section       AS section,
-            d.title         AS title,
-            d.publication_date AS publication_date,
-            d.evidence_grade::text AS evidence_grade,
-            d.study_type::text     AS study_type,
-            d.journal       AS journal,
-            d.pmid          AS pmid,
-            d.doi           AS doi,
-            d.url           AS url,
-            ts_rank_cd(c.content_tsv, q.tsq) AS rank
+        SELECT {_COLUMNS}
         FROM public.chunks c
         JOIN public.documents d ON d.id = c.document_id
         CROSS JOIN q
@@ -184,20 +281,20 @@ async def lexical_search(
         LIMIT ${next_param + 2}
     """
     rows = await conn.fetch(sql, *tokens, strategy, org_id, limit)
-    return [
-        RetrievedChunk(
-            chunk_id=row["chunk_id"],
-            document_id=row["document_id"],
-            content=row["content"],
-            section=row["section"],
-            title=row["title"],
-            publication_date=row["publication_date"],
-            evidence_grade=row["evidence_grade"],
-            study_type=row["study_type"],
-            journal=row["journal"],
-            pmid=row["pmid"],
-            doi=row["doi"],
-            url=row["url"],
-        ).with_score("lexical", float(row["rank"]))
-        for row in rows
-    ]
+    hits = [_hit(row) for row in rows]
+    if not rare_terms:
+        return hits
+    # Only a term lexeme_stats puts in few passages, or has never seen, can be
+    # rare: filings since it was built only add to a count. The rest are not
+    # counted again, so most queries pay nothing here.
+    terms = [t for t in tokens if t in df and df[t] <= RARE_TERM_PASSAGES]
+    ranked = {hit.chunk_id: hit for hit in hits}
+    for passage in await rare_term_passages(
+        conn, tokens=tokens, terms=terms, org_id=org_id, strategy=strategy
+    ):
+        hit = ranked.get(passage.chunk_id)
+        if hit is None:
+            hits.append(passage)
+            hit = passage
+        hit.components["rare_term"] = 1.0
+    return hits

@@ -57,6 +57,9 @@ class RetrievalConfig:
     lexical: bool = True
     rerank: bool = True
     boosts: bool = True
+    # Passages carrying one of the query's rare terms survive fusion (see
+    # lexical.RARE_TERM_PASSAGES).
+    rare_terms: bool = True
 
 
 @dataclass(slots=True)
@@ -163,6 +166,7 @@ class RetrievalPipeline:
                         strategy=config.strategy,
                         limit=config.lexical_limit,
                         synonyms=synonyms,
+                        rare_terms=config.rare_terms,
                     )
             record("lexical", lexical_result, start)
 
@@ -178,6 +182,7 @@ class RetrievalPipeline:
                 lexical_result,
                 weights=config.fusion_weights,
                 limit=config.fused_limit,
+                keep={c.chunk_id for c in lexical_result if "rare_term" in c.components},
             )
         else:
             fused = dense_result[: config.fused_limit]
