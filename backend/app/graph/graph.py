@@ -32,6 +32,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
 from app.core.telemetry import span
+from app.graph.declines import declines
 from app.graph.reasoner import (
     LLM_PROMPTS,
     GenerationOutput,
@@ -51,7 +52,7 @@ from app.schemas.answer import (
     EvidenceGrade,
 )
 from app.schemas.guardrails import GroundingVerdict
-from app.services.stance import assign_stances
+from app.services.stance import assign_stances, markers_in
 
 logger = structlog.stdlib.get_logger("app.graph")
 
@@ -383,9 +384,29 @@ class AgentGraph:
         chunks = state.get("ordered_chunks", []) or state.get("retrieved", [])
         contradiction = state.get("contradiction") or Contradiction(detected=False)
         abstained = state.get("abstained", False)
+        answer = state.get("answer", "")
+        update: GraphState = {}
+        model_answer = state.get("generation_mode") == "llm" and not abstained
+        if model_answer:
+            # A model is given every retrieved passage and cites some of them.
+            # Its answer rests on those, so they are the sources it lists and
+            # the evidence its grade is read from: on the live demo, an answer
+            # citing two ungraded studies was labelled grade A for a
+            # meta-analysis it never cited. (A quoted answer is built from the
+            # passages it cites already.)
+            rested_on = _rested_on(answer, contradiction, len(chunks))
+            if rested_on:
+                update["citations"] = [
+                    c for c in state.get("citations", []) if c.marker in rested_on
+                ]
+                chunks = [chunks[m - 1] for m in sorted(rested_on)]
         confidence, evidence_grade = _assess(
             chunks, contradiction, abstained, state.get("retrieval_grade", "insufficient")
         )
+        if model_answer and declines(state["query"], answer):
+            # The model says its passages do not answer the question: there is
+            # no answer to be confident in, and no evidence behind one to grade.
+            confidence, evidence_grade = "low", None
         prompt_versions = (
             {name: f"{name}.v{v}" for name, v in LLM_PROMPTS.items()}
             if self._reasoner.name == "llm"
@@ -404,6 +425,7 @@ class AgentGraph:
             ),
         )
         return {
+            **update,
             "confidence": confidence,
             "evidence_grade": evidence_grade,
             "prompt_versions": prompt_versions,
@@ -572,6 +594,16 @@ def _citation(marker: int, chunk: RetrievedChunk) -> Citation:
         url=chunk.url,
         passage=chunk.content,
     )
+
+
+def _rested_on(answer: str, contradiction: Contradiction, passages: int) -> set[int]:
+    """The markers a model's answer cites, and those of a disagreement it
+    surfaces (the conflict panel names them), among the passages it had."""
+    markers = markers_in(answer)
+    if contradiction.detected:
+        for position in contradiction.positions:
+            markers.update(position.markers)
+    return {m for m in markers if 1 <= m <= passages}
 
 
 def _assess(

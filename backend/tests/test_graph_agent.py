@@ -248,6 +248,84 @@ async def test_grounding_failure_with_nothing_to_fall_back_on_is_withheld() -> N
 # -- confidence calibration ----------------------------------------------------------
 
 
+class _WritingModel(HeuristicReasoner):
+    """A model that writes ``text`` as its answer; the rest stays offline."""
+
+    def __init__(self, text: str) -> None:
+        super().__init__()
+        self._text = text
+
+    async def generate(self, query, chunks, contradiction):  # type: ignore[no-untyped-def]
+        from app.graph.reasoner import GenerationOutput
+
+        return GenerationOutput(text=self._text, ordered_chunks=chunks, mode="llm")
+
+
+def _apixaban(grades: list[str]) -> list[RetrievedChunk]:
+    this_year = date.today().year
+    return [
+        _chunk(c.content, year=this_year, grade=g, score=c.score)
+        for c, g in zip(_APIXABAN, grades, strict=True)
+    ]
+
+
+async def test_a_model_answer_lists_and_is_graded_on_the_sources_it_cites() -> None:
+    """The model is given every passage and cites some. On the live demo an
+    answer citing two ungraded studies was labelled grade A for a
+    meta-analysis it never cited, and listed every passage as a source."""
+    graph = AgentGraph(
+        _fixed(_apixaban(["A", "C", "A", "A"])),
+        _WritingModel(
+            "In atrial fibrillation, apixaban lowered the risk of stroke or embolism [2]."
+        ),
+    )
+    result = await graph.run("Does apixaban reduce stroke in atrial fibrillation?")
+    assert result.generation_mode == "llm" and not result.abstained
+    assert [c.marker for c in result.citations] == [2]
+    assert result.evidence_grade == "C", "graded on the source it cites, not the best retrieved"
+    assert result.confidence == "moderate"
+
+
+async def test_a_model_answer_that_says_its_sources_miss_the_question_is_low() -> None:
+    """Saying the passages do not answer the question is the right thing to
+    write, and it passes grounding; it must not carry a high-confidence,
+    grade-A label computed from the retrieval."""
+    graph = AgentGraph(
+        _fixed(_apixaban(["A", "A", "A", "A"])),
+        _WritingModel(
+            "The cited studies evaluate apixaban in atrial fibrillation, but they do not "
+            "provide data on stroke prevention [1][2]."
+        ),
+    )
+    result = await graph.run("Does apixaban reduce stroke in atrial fibrillation?")
+    assert result.generation_mode == "llm" and not result.abstained
+    assert result.confidence == "low" and result.evidence_grade is None
+    assert [c.marker for c in result.citations] == [1, 2]
+
+    # The same passages answered from: high, as before.
+    answered = await AgentGraph(
+        _fixed(_apixaban(["A", "A", "A", "A"])),
+        _WritingModel("Apixaban reduces stroke in atrial fibrillation compared with warfarin [1]."),
+    ).run("Does apixaban reduce stroke in atrial fibrillation?")
+    assert answered.confidence == "high" and answered.evidence_grade == "A"
+
+
+async def test_a_model_answer_keeps_the_sources_of_a_disagreement_it_surfaces() -> None:
+    """The conflict panel names both sides' sources; an answer citing one
+    side still lists the other."""
+    graph = AgentGraph(
+        _fixed(_CONFLICT),
+        _WritingModel(
+            "The 2019 guideline recommends statins as first-line in primary prevention [1]."
+        ),
+    )
+    result = await graph.run("Should statins be used for primary prevention?")
+    assert result.contradiction.detected and result.generation_mode == "llm"
+    sides = {m for p in result.contradiction.positions for m in p.markers}
+    assert sides - {1}, "the other side of the disagreement has sources of its own"
+    assert {c.marker for c in result.citations} == sides | {1}
+
+
 async def test_high_confidence_requires_strong_recent_grounded_evidence() -> None:
     strong = [
         _chunk(

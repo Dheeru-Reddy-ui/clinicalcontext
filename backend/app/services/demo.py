@@ -44,13 +44,13 @@ DEMO_QUESTIONS: list[DemoQuestion] = [
         id="aspirin-primary-prevention",
         question="Should aspirin be used for primary prevention of cardiovascular disease?",
         shows="cited answer",
-        why="A cited, graded answer with every claim traceable to a source.",
+        why="Every claim traceable to a source, and a plain statement when the sources fall short.",
     ),
     DemoQuestion(
         id="metformin-first-line",
         question="Is metformin first-line therapy for type 2 diabetes?",
         shows="cited answer",
-        why="A high-confidence answer — and how often that label is right is published.",
+        why="A confidence label on the answer — and how often that label is right is published.",
     ),
 ]
 _BY_ID = {q.id: q for q in DEMO_QUESTIONS}

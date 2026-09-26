@@ -369,7 +369,12 @@ classify → [decompose] → retrieve → grade → (rewrite ↺ cap 2) →
   latency for the second search.
 - **Confidence** (`high`/`moderate`/`low`) and an evidence grade are derived
   from the cited sources' grades, recency, retrieval scores, and whether a
-  conflict was found.
+  conflict was found. A model-written answer lists and is graded on the
+  sources it cites (plus both sides of a disagreement it surfaces), not
+  everything it was given; one whose opening says its sources do not
+  address the question (`app/graph/declines.py`: the passages as subject,
+  coverage as what they lack, the question's topic words) is marked `low`
+  with no grade.
 
 Every reasoning step is behind a `Reasoner` protocol with two implementations:
 `LLMReasoner` (Claude, versioned prompts) and `HeuristicReasoner` (deterministic,

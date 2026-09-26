@@ -37,7 +37,9 @@ _TTL_SECONDS = 7 * 24 * 3600
 #: contradiction check; extractive answers quote each source's finding.
 #: 3 — a model's answer is written as plain prose (generate_answer v2) and,
 #: when it cannot be matched to its passages, replaced by their quotes.
-ANSWER_FORMAT_VERSION = 3
+#: 4 — a model's answer lists, and is graded on, the sources it cites, and
+#: one that says its sources do not answer the question is marked low.
+ANSWER_FORMAT_VERSION = 4
 
 
 def cache_namespace(writer: str) -> str:
