@@ -35,7 +35,9 @@ _TTL_SECONDS = 7 * 24 * 3600
 
 #: 2 — off-topic passages are kept out of answers and out of the
 #: contradiction check; extractive answers quote each source's finding.
-ANSWER_FORMAT_VERSION = 2
+#: 3 — a model's answer is written as plain prose (generate_answer v2) and,
+#: when it cannot be matched to its passages, replaced by their quotes.
+ANSWER_FORMAT_VERSION = 3
 
 
 def cache_namespace(writer: str) -> str:

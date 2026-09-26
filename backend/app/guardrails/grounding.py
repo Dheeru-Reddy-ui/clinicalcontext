@@ -33,6 +33,25 @@ _CITATION = re.compile(r"\[(\d+)\]")
 _NUMBER = re.compile(r"\b\d+(?:\.\d+)?%?\b")
 _WORD = re.compile(r"[a-z0-9]+")
 
+# How models write citations, rewritten to the one form the checks read: [n],
+# one number per bracket, before the sentence's full stop. A marker the checks
+# cannot read leaves its claim uncited, and an answer with too many uncited
+# claims is withheld (_REJECT_FRACTION).
+_LENTICULAR_MARKER = re.compile(
+    r"\N{LEFT BLACK LENTICULAR BRACKET}\s*(\d{1,2})[^\N{RIGHT BLACK LENTICULAR BRACKET}]*"
+    r"\N{RIGHT BLACK LENTICULAR BRACKET}"
+)
+_NAMED_MARKER = re.compile(r"\[\s*(?:passage|source|ref(?:erence)?)\s*(\d{1,2})\s*\]", re.I)
+_MARKER_GROUP = re.compile(
+    r"\[\s*(\d{1,2}(?:\s*(?:[,;]|and|[-\N{EN DASH}\N{EM DASH}])\s*\d{1,2})+)\s*\]"
+)
+_GROUP_PART = re.compile(r"(\d{1,2})(?:\s*[-\N{EN DASH}\N{EM DASH}]\s*(\d{1,2}))?")
+_MAX_MARKER_RANGE = 10
+_MARKERS_AFTER_STOP = re.compile(r"([.!?])((?:\s*\[\d+\])+)")
+_LIST_ITEM = re.compile(r"^\s*(?:[-*+\N{BULLET}]|\d+[.)])\s+")
+_HEADING = re.compile(r"^\s*(?:#{1,6}\s+|\*\*[^*]+\*\*:?\s*$)")
+_TABLE_RULE = re.compile(r"^[\s|:\-]*-{2,}[\s|:\-]*$")
+
 # A sentence is a clinical claim if it asserts something checkable: an effect,
 # a recommendation, a statistic, or a drug/dose. Pure framing is not.
 _CLINICAL_SIGNAL = re.compile(
@@ -107,6 +126,58 @@ def split_sentences(text: str) -> list[str]:
     if not stripped:
         return []
     return [s.strip() for s in _SENTENCE_SPLIT.split(stripped) if s.strip()]
+
+
+def as_sentences(markdown: str) -> str:
+    """Markdown as plain statements, one per line: a heading or a bullet's
+    dash would otherwise hide where one statement ends and the next begins.
+    Headings and table rules are dropped, a table row reads as its cells,
+    bold markers go, and a line without a full stop gets one."""
+    lines: list[str] = []
+    for line in markdown.splitlines():
+        if not line.strip() or _HEADING.match(line) or _TABLE_RULE.match(line):
+            continue
+        text = line.strip()
+        if text.startswith("|"):
+            text = "; ".join(cell.strip() for cell in text.strip("|").split("|") if cell.strip())
+        text = _LIST_ITEM.sub("", text).replace("**", "").strip().removesuffix(":")
+        if not text:
+            continue
+        if text[-1] not in ".!?":
+            text += "."
+        lines.append(text)
+    return "\n".join(lines)
+
+
+def _expanded_group(match: re.Match[str]) -> str:
+    numbers: list[int] = []
+    for part in _GROUP_PART.finditer(match.group(1)):
+        low = int(part.group(1))
+        high = int(part.group(2)) if part.group(2) else low
+        if low <= high <= low + _MAX_MARKER_RANGE:
+            numbers.extend(range(low, high + 1))
+        else:
+            numbers.extend((low, high))
+    return "".join(f"[{n}]" for n in dict.fromkeys(numbers))
+
+
+def _inside_stop(match: re.Match[str]) -> str:
+    markers = "".join(f"[{n}]" for n in _CITATION.findall(match.group(2)))
+    return f" {markers}{match.group(1)}"
+
+
+def normalize_answer(text: str) -> str:
+    """An answer as the checks read it: every citation written as ``[n]``
+    ("[1, 3]" → "[1][3]", "[2-4]" → "[2][3][4]", "[Passage 2]" → "[2]")
+    and moved inside its sentence's full stop ("reduced mortality. [2]" →
+    "reduced mortality [2]."), then markdown flattened into one statement per
+    line. A marker after the stop would otherwise be read as the start of the
+    next sentence, leaving its own claim uncited."""
+    text = _LENTICULAR_MARKER.sub(r"[\1]", text)
+    text = _NAMED_MARKER.sub(r"[\1]", text)
+    text = _MARKER_GROUP.sub(_expanded_group, text)
+    text = _MARKERS_AFTER_STOP.sub(_inside_stop, text)
+    return as_sentences(text)
 
 
 def is_clinical_claim(sentence: str) -> bool:
@@ -218,7 +289,8 @@ async def verify_grounding(
     passage's text.
     """
     resolved = verifier if verifier is not None else LexicalGroundingVerifier()
-    sentences = split_sentences(answer)
+    normalized = normalize_answer(answer)
+    sentences = [s for line in normalized.splitlines() for s in split_sentences(line)]
 
     verdicts: list[SentenceVerdict] = []
     for index, sentence in enumerate(sentences):
@@ -253,7 +325,7 @@ async def verify_grounding(
     kept_sentences = [v for v in verdicts if v not in removed]
     kept_answer = " ".join(v.text for v in kept_sentences).strip()
 
-    total_chars = len(answer.strip()) or 1
+    total_chars = len(normalized.strip()) or 1
     removed_chars = sum(len(v.text) for v in removed)
     removed_fraction = removed_chars / total_chars
 

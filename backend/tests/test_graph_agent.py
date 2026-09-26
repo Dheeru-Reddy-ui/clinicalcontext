@@ -13,8 +13,9 @@ from uuid import uuid4
 
 from app.graph.graph import MAX_REWRITES, AgentGraph, GraphFeatures
 from app.graph.reasoner import HeuristicReasoner
+from app.graph.state import GraphEvent
 from app.retrieval.types import RetrievedChunk
-from app.schemas.answer import Contradiction
+from app.schemas.answer import AnswerResult, Contradiction
 
 RetrieveFn = Callable[[str], Awaitable[list[RetrievedChunk]]]
 
@@ -180,24 +181,68 @@ async def test_rewrite_events_are_streamed() -> None:
 # -- grounding integration: unsupported generation routes to abstain -----------------
 
 
-async def test_grounding_failure_routes_to_abstain() -> None:
-    # A reasoner whose generation is ungrounded (claims absent from passages).
-    class UngroundedReasoner(HeuristicReasoner):
-        async def generate(self, query, chunks, contradiction):  # type: ignore[no-untyped-def]
-            from app.graph.reasoner import GenerationOutput
+class _UngroundedReasoner(HeuristicReasoner):
+    """Writes a claim its passages do not make, as ``mode`` would."""
 
-            return GenerationOutput(
-                text="Apixaban cures every cancer within days [1].",
-                ordered_chunks=chunks,
-                mode="llm",
-            )
+    def __init__(self, mode: str) -> None:
+        super().__init__()
+        self._mode = mode
 
-    graph = AgentGraph(
-        _fixed([_chunk("Apixaban reduces stroke in atrial fibrillation.", score=0.6)] * 4),
-        UngroundedReasoner(),
+    async def generate(self, query, chunks, contradiction):  # type: ignore[no-untyped-def]
+        from app.graph.reasoner import GenerationOutput
+
+        return GenerationOutput(
+            text="Apixaban cures every cancer within days [1].",
+            ordered_chunks=chunks,
+            mode=self._mode,
+        )
+
+
+# Distinct passages: copies of one chunk collapse into a single passage at
+# retrieval, which is graded too thin to answer from — the graph would then
+# abstain before it ever wrote (and checked) an answer.
+_APIXABAN = [
+    _chunk("Apixaban reduces stroke in atrial fibrillation compared with warfarin.", score=0.7),
+    _chunk("In atrial fibrillation, apixaban lowered the risk of stroke or embolism.", score=0.66),
+    _chunk("Apixaban reduced major bleeding in atrial fibrillation versus warfarin.", score=0.62),
+    _chunk("Atrial fibrillation patients on apixaban had fewer strokes.", score=0.58),
+]
+
+
+async def _run_recording(graph: AgentGraph, query: str) -> tuple[AnswerResult, list[str]]:
+    stages: list[str] = []
+
+    async def emit(event: GraphEvent) -> None:
+        stages.append(event.stage)
+
+    return await graph.run(query, emit=emit), stages
+
+
+async def test_an_ungrounded_model_answer_is_replaced_by_its_passages_words() -> None:
+    """A model's claim its passages don't make is never served. The passages
+    were good enough to answer from, so the answer quotes them instead of
+    abstaining over the model's wording."""
+    result, stages = await _run_recording(
+        AgentGraph(_fixed(_APIXABAN), _UngroundedReasoner("llm")),
+        "Does apixaban reduce stroke in atrial fibrillation?",
     )
-    result = await graph.run("Does apixaban help in atrial fibrillation?")
-    assert result.abstained
+    assert "verifying" in stages and "grounding_fallback" in stages
+    assert not result.abstained
+    assert "cures every cancer" not in result.answer
+    assert "stroke" in result.answer and result.generation_mode == "extractive"
+    assert result.citations and all(c.marker >= 1 for c in result.citations)
+
+
+async def test_grounding_failure_with_nothing_to_fall_back_on_is_withheld() -> None:
+    """Quoted answers are the fallback, so one that fails the check has none:
+    it is withheld, and the reason given is the check — not thin evidence."""
+    result, stages = await _run_recording(
+        AgentGraph(_fixed(_APIXABAN), _UngroundedReasoner("extractive")),
+        "Does apixaban reduce stroke in atrial fibrillation?",
+    )
+    assert "grounding_failed" in stages and "grounding_fallback" not in stages
+    assert result.abstained and result.retrieval_grade == "sufficient"
+    assert "withheld" in result.answer and "graded" not in result.answer
 
 
 # -- confidence calibration ----------------------------------------------------------

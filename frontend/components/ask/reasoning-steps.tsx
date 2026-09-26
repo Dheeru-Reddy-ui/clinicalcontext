@@ -32,6 +32,7 @@ const ICONS: Record<string, typeof Search> = {
   verifying: ShieldCheck,
   grounding_failed: XCircle,
   grounding_pruned: ShieldCheck,
+  grounding_fallback: ShieldCheck,
   abstaining: XCircle,
   done: Check,
   comparing: Split,
@@ -90,7 +91,8 @@ export function ReasoningSteps({
         const Icon = ICONS[step.stage] ?? Search;
         const isLast = i === steps.length - 1;
         const spinning = live && isLast && step.stage !== "done";
-        const warn = step.stage === "conflict_found" || step.stage === "escalation";
+        const warn =
+          step.stage === "conflict_found" || step.stage === "escalation" || step.stage === "grounding_fallback";
         const bad = step.stage === "grounding_failed" || step.stage === "abstaining";
         const extra = detail(step);
         return (

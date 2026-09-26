@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import date
 from uuid import uuid4
 
-from app.assistant.chat import ChatAssistant, as_sentences, rank_evidence, transient_chunks
+from app.assistant.chat import ChatAssistant, rank_evidence, transient_chunks
 from app.assistant.extractive import (
     best_sentence,
     extractive_answer,
@@ -19,6 +19,7 @@ from app.assistant.extractive import (
     us_spelling,
     word_relevance,
 )
+from app.guardrails.grounding import as_sentences
 from app.ingestion.models import RawDocument, RawSection
 from app.retrieval.types import RetrievedChunk
 from app.treatment.suggest import suggest_complaint

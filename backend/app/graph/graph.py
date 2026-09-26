@@ -9,6 +9,8 @@ abstain path.
           no rewrites left          ─► abstain
       generate ─► verify_grounding:
           accepted                  ─► assess_confidence ─► END
+          a model's answer rejected ─► the passages quoted instead, verified
+                                       the same way (abstain if that fails)
           rejected                  ─► abstain ─► assess_confidence ─► END
 
 Reasoning is delegated to a :class:`Reasoner` (LLM or heuristic); retrieval is
@@ -30,7 +32,13 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
 from app.core.telemetry import span
-from app.graph.reasoner import LLM_PROMPTS, GenerationOutput, Reasoner, StreamingReasoner
+from app.graph.reasoner import (
+    LLM_PROMPTS,
+    GenerationOutput,
+    HeuristicReasoner,
+    Reasoner,
+    StreamingReasoner,
+)
 from app.graph.relevance import on_topic, topic_query
 from app.graph.state import GraphEvent, GraphState
 from app.guardrails.grounding import GroundingVerifier, verify_grounding
@@ -42,6 +50,7 @@ from app.schemas.answer import (
     Contradiction,
     EvidenceGrade,
 )
+from app.schemas.guardrails import GroundingVerdict
 from app.services.stance import assign_stances
 
 logger = structlog.stdlib.get_logger("app.graph")
@@ -97,6 +106,9 @@ class AgentGraph:
         # generate node (the sentence pipeline gates each one on grounding
         # before it is spoken). The text path keeps its verified-only stream.
         self._stream_tokens = stream_tokens
+        # Writes from the passages' own sentences when a model's answer
+        # cannot be matched to them (verify_grounding).
+        self._extractive = HeuristicReasoner()
         self._compiled = self._build()
 
     # -- nodes -----------------------------------------------------------------
@@ -278,16 +290,28 @@ class AgentGraph:
         if not self._features.grounding:
             return {"abstained": False}
         await _emit(config, GraphEvent("verifying", "Verifying every claim against its source…"))
-        citation_map = {i + 1: c.content for i, c in enumerate(state.get("ordered_chunks", []))}
-        result = await verify_grounding(
-            state["answer"], citation_map, verifier=self._grounding_verifier
-        )
+        result = await self._verify(state["answer"], state.get("ordered_chunks", []))
+        if not result.accepted and state.get("generation_mode") == "llm":
+            # Counts, never the text: why a model's answer was withheld shows
+            # in the logs without copying the answer into them.
+            logger.warning(
+                "grounding_rejected_model_answer",
+                model=self._reasoner.name,
+                sentences=len(result.sentence_verdicts),
+                uncited=sum(v.support == "no_citation" for v in result.removed_sentences),
+                unsupported=sum(v.support == "unsupported" for v in result.removed_sentences),
+                removed_fraction=result.removed_fraction,
+            )
+            if not self._stream_tokens:
+                quoted = await self._quoted_answer(state, config)
+                if quoted is not None:
+                    return quoted
         if not result.accepted:
             await _emit(
                 config,
                 GraphEvent("grounding_failed", "The answer could not be grounded — abstaining."),
             )
-            return {"abstained": True, "answer": ""}
+            return {"abstained": True, "answer": "", "grounding_rejected": True}
         pruned = len(result.removed_sentences)
         if pruned:
             await _emit(
@@ -300,14 +324,52 @@ class AgentGraph:
             )
         return {"answer": result.kept_answer, "abstained": False}
 
-    async def abstain(self, state: GraphState, config: RunnableConfig) -> GraphState:
-        await _emit(config, GraphEvent("abstaining", "Not enough solid evidence — abstaining."))
-        retrieved = state.get("retrieved", [])
-        searched = state.get("sub_questions") or [state.get("current_query", state["query"])]
-        grade = state.get("retrieval_grade", "insufficient")
-        answer = _abstention_text(
-            state["query"], searched, retrieved, grade, state.get("rewrite_count", 0)
+    async def _quoted_answer(self, state: GraphState, config: RunnableConfig) -> GraphState | None:
+        """A model's answer that cannot be matched to its passages is never
+        served. The passages were still graded sufficient to answer from, so
+        answer in their own words — quoted sentences, grounded by construction
+        and checked the same way — rather than abstain over the model's
+        wording. None when the quotes fail the check too. Never on the voice
+        path, whose tokens have already been spoken."""
+        output = await self._extractive.generate(
+            state["query"],
+            state.get("retrieved", []),
+            state.get("contradiction") or Contradiction(detected=False),
         )
+        verdict = await self._verify(output.text, output.ordered_chunks)
+        if not verdict.accepted:
+            return None
+        await _emit(
+            config,
+            GraphEvent(
+                "grounding_fallback",
+                "The drafted answer strayed from its sources — answering in their own words.",
+            ),
+        )
+        return {
+            "answer": verdict.kept_answer,
+            "citations": [_citation(i + 1, c) for i, c in enumerate(output.ordered_chunks)],
+            "ordered_chunks": output.ordered_chunks,
+            "generation_mode": output.mode,
+            "abstained": False,
+        }
+
+    async def _verify(self, answer: str, chunks: list[RetrievedChunk]) -> GroundingVerdict:
+        citation_map = {i + 1: c.content for i, c in enumerate(chunks)}
+        return await verify_grounding(answer, citation_map, verifier=self._grounding_verifier)
+
+    async def abstain(self, state: GraphState, config: RunnableConfig) -> GraphState:
+        retrieved = state.get("retrieved", [])
+        if state.get("grounding_rejected"):
+            await _emit(config, GraphEvent("abstaining", "Withholding an unverified answer."))
+            answer = _withheld_text(len(retrieved))
+        else:
+            await _emit(config, GraphEvent("abstaining", "Not enough solid evidence — abstaining."))
+            searched = state.get("sub_questions") or [state.get("current_query", state["query"])]
+            grade = state.get("retrieval_grade", "insufficient")
+            answer = _abstention_text(
+                state["query"], searched, retrieved, grade, state.get("rewrite_count", 0)
+            )
         # Preserve a contradiction if one was already detected (don't clobber it).
         return {
             "abstained": True,
@@ -558,6 +620,15 @@ def _abstention_text(
         f"I can't answer this confidently from the available literature. "
         f"I searched the corpus{searched_note}{retries}, and {found}, which is not enough "
         f"to support a grounded answer. Rather than guess, I'm abstaining. {suggestion}"
+    )
+
+
+def _withheld_text(passages: int) -> str:
+    return (
+        "I can't give a verified answer to this from the available literature. "
+        f"An answer was drafted from {passages} retrieved passages, but its claims could not "
+        "be matched to those passages closely enough, so it is withheld rather than risk an "
+        "unsupported statement. The sources it drew on are listed with this answer."
     )
 
 

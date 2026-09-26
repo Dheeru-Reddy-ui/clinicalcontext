@@ -505,7 +505,9 @@ LLM_PROMPTS: dict[str, int] = {
     "grade_retrieval": 1,
     "rewrite_query": 1,
     "detect_contradiction": 1,
-    "generate_answer": 1,
+    # v2: plain prose, one marker per bracket, inside the full stop — the
+    # form the grounding check reads.
+    "generate_answer": 2,
     # Voice mode swaps the generation prompt for the answer-first, no-markdown
     # variant (11E.1); every other node is shared with the text path.
     "voice_answer": 1,

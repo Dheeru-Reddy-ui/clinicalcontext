@@ -38,6 +38,8 @@ class GraphState(TypedDict, total=False):
     ordered_chunks: list[RetrievedChunk]
     generation_mode: str
     abstained: bool
+    # The answer was withheld by the grounding check, not for thin evidence.
+    grounding_rejected: bool
     confidence: Confidence
     evidence_grade: EvidenceGrade | None
     prompt_versions: dict[str, str]

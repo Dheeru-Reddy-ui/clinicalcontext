@@ -131,6 +131,7 @@ export type ReasoningStage =
   | "verifying"
   | "grounding_failed"
   | "grounding_pruned"
+  | "grounding_fallback"
   | "abstaining"
   | "done"
   | "comparing"

@@ -347,6 +347,14 @@ classify → [decompose] → retrieve → grade → (rewrite ↺ cap 2) →
   the 2023 guideline recommends B [2]…"), never smoothed into false consensus.
 - **Abstention is a feature**: an honest non-answer that says what was searched,
   what was found, and why it's insufficient.
+- **Every claim is checked against the passage it cites**
+  ([grounding.py](backend/app/guardrails/grounding.py)), however the model
+  wrote it: grouped markers ("[1, 3]"), markers after the full stop, headings,
+  bullets and tables are read the way they were meant before the check runs.
+  A model's answer that still can't be matched to its passages is replaced by
+  the passages' own words — quoted, and checked the same way — so good
+  evidence is never discarded over the model's wording; only if the quotes
+  fail too is the answer withheld, and it says the check withheld it.
 - **Only on-topic passages are used** ([relevance.py](backend/app/graph/relevance.py)):
   after retrieval, a passage must carry the question's topic words — not its
   boilerplate ("recommended", "treatment") or population ("adults") — to be

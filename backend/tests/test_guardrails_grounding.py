@@ -5,6 +5,7 @@ from __future__ import annotations
 from app.guardrails.grounding import (
     LexicalGroundingVerifier,
     is_clinical_claim,
+    normalize_answer,
     split_sentences,
     verify_grounding,
 )
@@ -97,3 +98,55 @@ async def test_fully_grounded_answer_is_unchanged() -> None:
     assert result.accepted
     assert result.finding.code == "grounding_ok"
     assert result.kept_answer == answer
+
+
+REGISTRY_PASSAGE = (
+    "In a registry of older adults with atrial fibrillation, apixaban was associated "
+    "with less intracranial haemorrhage than warfarin."
+)
+
+
+def test_citations_are_read_in_the_forms_models_write_them() -> None:
+    assert normalize_answer("Stroke fell. [1] Bleeding fell.[2]") == (
+        "Stroke fell [1]. Bleeding fell [2]."
+    )
+    assert normalize_answer("Stroke fell [1, 2].") == "Stroke fell [1][2]."
+    assert normalize_answer("Stroke fell [1-3].") == "Stroke fell [1][2][3]."
+    assert normalize_answer("Stroke fell [Passage 2].") == "Stroke fell [2]."
+    lenticular = (
+        "Stroke fell \N{LEFT BLACK LENTICULAR BRACKET}2\N{DAGGER}L3-L7"
+        "\N{RIGHT BLACK LENTICULAR BRACKET}."
+    )
+    assert normalize_answer(lenticular) == "Stroke fell [2]."
+    # Bracketed numbers that are not citations are left alone.
+    assert normalize_answer("CI [1.2-3.4]; n [10,000].") == "CI [1.2-3.4]; n [10,000]."
+
+
+async def test_a_markdown_answer_with_markers_after_the_stop_is_grounded() -> None:
+    """How a model writes: a heading, bullets, each marker after its full
+    stop. Read literally, every marker opens the next line, every claim is
+    uncited, and the whole answer is withheld."""
+    answer = (
+        "## Evidence\n"
+        "- Apixaban reduced the rate of stroke compared with warfarin. [1]\n"
+        "- **Apixaban** was associated with less intracranial haemorrhage "
+        "than warfarin. [2]\n"
+    )
+    result = await verify_grounding(answer, {1: APIXABAN_PASSAGE, 2: REGISTRY_PASSAGE})
+    assert result.accepted and result.finding.code == "grounding_ok"
+    assert result.kept_answer == (
+        "Apixaban reduced the rate of stroke compared with warfarin [1]. "
+        "Apixaban was associated with less intracranial haemorrhage than warfarin [2]."
+    )
+
+
+async def test_a_table_is_read_row_by_row() -> None:
+    answer = (
+        "| Trial | Finding |\n"
+        "|---|---|\n"
+        "| ARISTOTLE-CKD | apixaban reduced the rate of stroke compared with warfarin [1] |\n"
+    )
+    result = await verify_grounding(answer, {1: APIXABAN_PASSAGE})
+    assert result.accepted
+    claims = [v for v in result.sentence_verdicts if v.is_clinical_claim]
+    assert [v.cited_markers for v in claims] == [[1]] and claims[0].support == "supported"

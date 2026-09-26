@@ -244,31 +244,11 @@ def retrieval_query_for(message: str, history: Sequence[tuple[str, str]]) -> str
     return message
 
 
-_LIST_ITEM = re.compile(r"^\s*(?:[-*\u2022]|\d+[.)])\s+")
-_HEADING = re.compile(r"^\s*(?:#{1,6}\s+|\*\*[^*]+\*\*:?\s*$)")
-
-
-def as_sentences(markdown: str) -> str:
-    """Markdown as plain sentences for the verifier: a bullet's dash and a
-    heading line would otherwise hide where one statement ends and the next
-    begins."""
-    lines: list[str] = []
-    for line in markdown.splitlines():
-        if not line.strip() or _HEADING.match(line):
-            continue
-        text = _LIST_ITEM.sub("", line).replace("**", "").strip()
-        if text and text[-1] not in ".!?":
-            text += "."
-        lines.append(text)
-    return "\n".join(lines)
-
-
 async def check_against_sources(answer: str, chunks: Sequence[RetrievedChunk]) -> dict[str, int]:
     """How the answer's statements stand against the passages they cite:
-    backed, partly backed, not matched, or general (no source cited)."""
-    verdict = await verify_grounding(
-        as_sentences(answer), {i + 1: c.content for i, c in enumerate(chunks)}
-    )
+    backed, partly backed, not matched, or general (no source cited). The
+    check reads the markdown as plain statements itself."""
+    verdict = await verify_grounding(answer, {i + 1: c.content for i, c in enumerate(chunks)})
     counts = {"backed": 0, "partly": 0, "unmatched": 0, "general": 0}
     for sentence in verdict.sentence_verdicts:
         if not sentence.is_clinical_claim:
