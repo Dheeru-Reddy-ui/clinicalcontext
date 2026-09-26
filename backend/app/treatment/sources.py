@@ -129,6 +129,7 @@ _ALL = (
     Source("nhs_back_pain", "Back pain", "NHS", "https://www.nhs.uk/conditions/back-pain/"),
     Source("nhs_sepsis", "Sepsis", "NHS", "https://www.nhs.uk/conditions/sepsis/"),
     Source("nhs_meningitis", "Meningitis", "NHS", "https://www.nhs.uk/conditions/meningitis/"),
+    Source("nhs_chickenpox", "Chickenpox", "NHS", "https://www.nhs.uk/conditions/chickenpox/"),
     Source(
         "clinicalcontext",
         "ClinicalContext safety rule (stricter than the guidance, chosen for safety)",

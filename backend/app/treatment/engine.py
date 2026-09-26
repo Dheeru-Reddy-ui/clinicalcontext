@@ -100,6 +100,18 @@ def assess(protocol: Protocol, profile: Profile, answers: Answers) -> Assessment
     if _emergency(result):
         # A rule of the complaint's (an age, a duration) made it one.
         result.self_care, result.medicines, result.doctor_may, result.tests = [], [], [], []
+    unmatched = profile.unmatched_conditions
+    if unmatched:
+        # Something the person told us that no rule here knows about: never
+        # ignored in silence — every medicine offered says to check first.
+        named = ", ".join(unmatched)
+        pronoun = "it" if len(unmatched) == 1 else "them"
+        for medicine in result.medicines:
+            if medicine.suitable:
+                medicine.notes.append(
+                    f"You also mentioned {named}. These checks don't cover {pronoun}, so ask a "
+                    "pharmacist or doctor before taking this."
+                )
     # Strongest reason first.
     result.reasons.sort(key=lambda r: -URGENCY_RANK[r.urgency])
     keys: list[str] = []

@@ -160,6 +160,7 @@ class CorpusRepository:
         content_hash: str,
         classification: Classification,
         chunks: list[Chunk],
+        metadata: dict[str, Any] | None = None,
     ) -> UUID | None:
         """Insert a tenant-private document (org_id = the caller's org).
 
@@ -167,6 +168,8 @@ class CorpusRepository:
         requires ``org_id = app.user_org_id()``, so RLS — not this code — is
         what guarantees a tenant cannot file a document under another org.
         Returns None when content_hash already exists (global dedupe).
+        ``metadata`` is merged into the row's metadata (a paper's uploader and
+        page count, for Ask-this-Paper).
         """
         classification_payload: dict[str, Any] = {
             "study_type": classification.study_type,
@@ -180,6 +183,7 @@ class CorpusRepository:
         metadata_payload: dict[str, Any] = {
             "publication_types": document.publication_types,
             "mesh_terms": document.mesh_terms,
+            **(metadata or {}),
         }
         async with conn.transaction():
             document_id = await conn.fetchval(

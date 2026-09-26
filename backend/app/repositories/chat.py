@@ -23,14 +23,16 @@ class ChatRepository:
         user_id: UUID,
         title: str,
         kind: str,
+        document_id: UUID | None = None,
     ) -> UUID:
         row = await conn.fetchval(
-            "INSERT INTO public.query_sessions (org_id, user_id, title, kind) "
-            "VALUES ($1, $2, $3, $4) RETURNING id",
+            "INSERT INTO public.query_sessions (org_id, user_id, title, kind, document_id) "
+            "VALUES ($1, $2, $3, $4, $5) RETURNING id",
             org_id,
             user_id,
             title,
             kind,
+            document_id,
         )
         return UUID(str(row))
 
@@ -93,20 +95,28 @@ class ChatRepository:
         return [(str(r["raw_query"]), str(r["answer"])) for r in reversed(rows)]
 
     async def list_sessions(
-        self, conn: PgConnection, *, user_id: UUID, kinds: list[str], limit: int = 50
+        self,
+        conn: PgConnection,
+        *,
+        user_id: UUID,
+        kinds: list[str],
+        limit: int = 50,
+        document_id: UUID | None = None,
     ) -> list[dict[str, Any]]:
         rows = await conn.fetch(
             """
-            SELECT s.id, s.title, s.kind, s.created_at, s.updated_at,
+            SELECT s.id, s.title, s.kind, s.created_at, s.updated_at, s.document_id,
                    (SELECT count(*) FROM public.queries q WHERE q.session_id = s.id) AS turns
             FROM public.query_sessions s
             WHERE s.user_id = $1 AND s.kind = ANY($2::text[])
+              AND ($4::uuid IS NULL OR s.document_id = $4)
             ORDER BY s.updated_at DESC
             LIMIT $3
             """,
             user_id,
             kinds,
             limit,
+            document_id,
         )
         return [dict(r) for r in rows]
 

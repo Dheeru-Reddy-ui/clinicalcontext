@@ -2,7 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* Midnight is a dark theme too: every dark: style applies to it. */
+@custom-variant dark (&:is(.dark *, .midnight *));
 
 /*
  * ClinicalContext design system.
@@ -209,7 +210,8 @@
   --highlight: oklch(0.93 0.11 95);
 }
 
-.dark {
+.dark,
+.midnight {
   color-scheme: dark;
   /* Night shift: true dark surfaces, slightly lifted cards, softened accents. */
   --background: oklch(0.15 0.018 272);
@@ -292,6 +294,39 @@
   --citation-bg: oklch(0.29 0.07 277);
   --citation-fg: oklch(0.9 0.06 277);
   --highlight: oklch(0.42 0.1 95);
+}
+
+/* Midnight: pure black and neutral greys instead of Dark's indigo-navy, with
+   brighter text and firmer borders — easy on an OLED phone at night, and
+   higher contrast. Everything else is Dark's. */
+.midnight {
+  --background: oklch(0 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.13 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.15 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.8 0.12 277);
+  --primary-foreground: oklch(0.14 0.03 277);
+  --secondary: oklch(0.2 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.2 0 0);
+  --muted-foreground: oklch(0.8 0 0);
+  --accent: oklch(0.24 0.035 277);
+  --accent-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 20%);
+  --input: oklch(1 0 0 / 24%);
+  --ring: oklch(0.72 0.14 277);
+  --sidebar: oklch(0.06 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.8 0.12 277);
+  --sidebar-primary-foreground: oklch(0.14 0.03 277);
+  --sidebar-accent: oklch(0.2 0.03 277);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 18%);
+  --sidebar-ring: oklch(0.72 0.14 277);
+  --cached-bg: oklch(0.2 0 0);
+  --guard-calm-bg: oklch(0.17 0.02 250);
 }
 
 @layer base {

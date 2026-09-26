@@ -17,10 +17,14 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     audience: Audience = "patient"
     session_id: UUID | None = None
-    kind: Literal["chat", "learn", "treatment"] = "chat"
-    # Learn: the specialty the conversation is about, and the level taught.
+    # "tutor": a lesson with the AI tutor; "paper": questions to one paper.
+    kind: Literal["chat", "learn", "treatment", "tutor", "paper"] = "chat"
+    # Learn and the tutor: the specialty the conversation is about, and the
+    # level taught.
     specialty: str | None = Field(default=None, max_length=64)
     level: Literal["mbbs", "pg"] | None = None
+    # Ask-this-Paper: the paper the questions are about (required for "paper").
+    document_id: UUID | None = None
 
 
 class PublicTurn(BaseModel):
@@ -43,6 +47,7 @@ class ChatSessionOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     turns: int
+    document_id: UUID | None = None
 
 
 class ChatTurnOut(BaseModel):
@@ -181,9 +186,20 @@ class TreatmentStepRequest(BaseModel):
     answers: dict[str, list[str]] = Field(default_factory=dict)
 
 
+class ConditionReadOut(BaseModel):
+    """How one condition the person typed was read: the listed conditions it
+    counts as, the illnesses with their own medicine rules, or neither."""
+
+    text: str
+    conditions: list[str]
+    flags: list[str]
+    understood: bool
+
+
 class TreatmentStepOut(BaseModel):
     complaint: ComplaintOut
     question: QuestionOut | None = None
     assessment: AssessmentOut | None = None
     answered: int
     total: int
+    conditions_read: list[ConditionReadOut] = Field(default_factory=list)

@@ -5,7 +5,7 @@ import { Download, LogOut, Pause, Play, ShieldCheck, Trash2 } from "lucide-react
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { toast } from "sonner";
 
 import { PasswordField } from "@/components/auth/password-field";
@@ -36,6 +36,7 @@ import {
 import { api } from "@/lib/api-client";
 import { createClient } from "@/lib/supabase/client";
 import { currentTextSize, setTextSize, TEXT_SIZE_LABELS, TEXT_SIZES, type TextSize } from "@/lib/text-size";
+import { isThemeLook, MATCH_DEVICE, THEME_HINTS, THEME_LABELS, THEME_LOOKS, type ThemeLook } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { SpeechQueue } from "@/lib/voice-chat";
 
@@ -244,28 +245,130 @@ export function SecuritySection() {
 
 // -- appearance --------------------------------------------------------------------------
 
-const THEMES: ReadonlyArray<Choice<"system" | "light" | "dark">> = [
-  { value: "system", label: "System" },
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
-];
+// Each look drawn in its own colours (the tokens in app/globals.css), so the
+// choice shows what it gives before it is made.
+const LOOK_PREVIEW: Record<ThemeLook, { bg: string; card: string; line: string; accent: string; border: string }> = {
+  light: {
+    bg: "oklch(0.985 0.003 250)",
+    card: "oklch(1 0 0)",
+    line: "oklch(0.86 0.01 255)",
+    accent: "oklch(0.52 0.2 277)",
+    border: "oklch(0.9 0.01 255)",
+  },
+  dark: {
+    bg: "oklch(0.15 0.018 272)",
+    card: "oklch(0.19 0.022 272)",
+    line: "oklch(0.33 0.02 265)",
+    accent: "oklch(0.74 0.13 277)",
+    border: "oklch(1 0 0 / 12%)",
+  },
+  midnight: {
+    bg: "oklch(0 0 0)",
+    card: "oklch(0.13 0 0)",
+    line: "oklch(0.32 0 0)",
+    accent: "oklch(0.8 0.12 277)",
+    border: "oklch(1 0 0 / 22%)",
+  },
+};
+
+function LookTiles({ value, onChange }: { value: ThemeLook | null; onChange: (look: ThemeLook) => void }) {
+  const refs = useRef<Array<HTMLButtonElement | null>>([]);
+  const index = value ? THEME_LOOKS.indexOf(value) : 0;
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const step = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 0;
+    if (!step) return;
+    event.preventDefault();
+    const next = (index + step + THEME_LOOKS.length) % THEME_LOOKS.length;
+    onChange(THEME_LOOKS[next]!);
+    refs.current[next]?.focus();
+  };
+  return (
+    <div role="radiogroup" aria-label="Look" onKeyDown={onKeyDown} className="grid grid-cols-3 gap-2 sm:max-w-md" data-testid="theme-looks">
+      {THEME_LOOKS.map((look, i) => {
+        const selected = look === value;
+        const colours = LOOK_PREVIEW[look];
+        return (
+          <button
+            key={look}
+            ref={(el) => {
+              refs.current[i] = el;
+            }}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            tabIndex={i === index ? 0 : -1}
+            onClick={() => onChange(look)}
+            className={cn(
+              "flex min-w-0 flex-col gap-1.5 rounded-xl border p-1.5 text-left transition-colors",
+              selected ? "border-primary ring-2 ring-primary/30" : "hover:border-primary/40",
+            )}
+            data-testid={`theme-${look}`}
+          >
+            <span
+              aria-hidden
+              className="flex h-14 flex-col gap-1 rounded-lg p-1.5"
+              style={{ background: colours.bg, border: `1px solid ${colours.border}` }}
+            >
+              <span className="flex h-full flex-col justify-center gap-1 rounded-md px-1.5" style={{ background: colours.card }}>
+                <span className="h-1.5 w-3/5 rounded-full" style={{ background: colours.accent }} />
+                <span className="h-1 w-4/5 rounded-full" style={{ background: colours.line }} />
+                <span className="h-1 w-2/5 rounded-full" style={{ background: colours.line }} />
+              </span>
+            </span>
+            <span className="px-0.5">
+              <span className="block text-xs font-medium">{THEME_LABELS[look]}</span>
+              <span className="line-clamp-2 block text-[11px] leading-4 text-muted-foreground">{THEME_HINTS[look]}</span>
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function AppearanceSection() {
-  const { theme, setTheme } = useTheme();
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [size, setSize] = useState<TextSize>("default");
   useEffect(() => {
     setMounted(true);
     setSize(currentTextSize());
   }, []);
-  const current = (mounted ? theme : "system") as "system" | "light" | "dark";
+  // "Match my device" is next-themes' "system": not a look of its own — it
+  // shows Light or Dark, whichever the device asks for.
+  const matching = !mounted || !isThemeLook(theme);
+  const shown: ThemeLook | null = !mounted
+    ? null
+    : isThemeLook(theme)
+      ? theme
+      : isThemeLook(resolvedTheme)
+        ? resolvedTheme
+        : null;
 
   return (
     <SettingsCard title="On this device" description="How ClinicalContext looks here — each phone or computer keeps its own." testId="settings-appearance">
+      <div className="flex flex-col gap-3 pb-3.5">
+        <div>
+          <p className="text-sm font-medium">Look</p>
+          <p className="mt-0.5 text-xs text-pretty text-muted-foreground" data-testid="theme-status">
+            {matching
+              ? `Following your device — ${shown ? THEME_LABELS[shown] : "Light or Dark"} right now. Pick a look to keep it.`
+              : "Three looks, each its own. Midnight is pure black — easiest on a phone at night."}
+          </p>
+        </div>
+        <LookTiles value={shown} onChange={setTheme} />
+      </div>
       <SettingRow
-        label="Theme"
-        description="System follows your phone or computer's light and dark setting."
-        control={<Segmented label="Theme" value={current ?? "system"} choices={THEMES} onChange={setTheme} testId="theme" />}
+        label="Match my device"
+        description="Light by day and Dark by night, following your phone or computer's own setting."
+        control={
+          <Switch
+            checked={matching}
+            onCheckedChange={(on) => setTheme(on ? MATCH_DEVICE : (shown ?? "light"))}
+            aria-label="Match my device"
+            data-testid="theme-match-device"
+          />
+        }
       />
       <SettingRow
         label="Text size"

@@ -13,6 +13,7 @@ export type Assessment = Schemas["AssessmentOut"];
 export type StepOut = Schemas["TreatmentStepOut"];
 export type Medicine = Schemas["MedicineOut"];
 export type Urgency = Assessment["urgency"];
+export type ConditionRead = Schemas["ConditionReadOut"];
 
 export type Condition =
   | "asthma"
@@ -33,8 +34,23 @@ export interface Profile {
   pregnant: boolean;
   breastfeeding: boolean;
   conditions: Condition[];
+  /** Anything else, in the person's own words ("CKD", "dengue", "TB"). */
+  other_conditions: string[];
   allergies: string[];
   medicines: string[];
+}
+
+/** The most a person can add, and the longest one can be (the API's limits). */
+export const MAX_OTHER_CONDITIONS = 20;
+export const MAX_CONDITION_CHARS = 80;
+
+/** How one typed condition was read, in words. */
+export function describeReading(read: ConditionRead): string {
+  const named = [
+    ...read.conditions.map((c) => CONDITION_LABELS[c as Condition]?.toLowerCase() ?? c.replace(/_/g, " ")),
+    ...read.flags.map((f) => (f === "pregnancy" ? "pregnancy" : `${f} (no ibuprofen)`)),
+  ];
+  return named.length ? `read as ${named.join(", ")}` : "not covered by the medicine checks";
 }
 
 export const CONDITION_LABELS: Record<Condition, string> = {
@@ -118,9 +134,11 @@ export function summarise(
     if (labels.length) parts.push(labels.join(", ").toLowerCase());
   }
   if (profile.pregnant) parts.push("pregnant");
-  if (profile.conditions.length) {
-    parts.push(`has ${profile.conditions.map((c) => CONDITION_LABELS[c].toLowerCase()).join(", ")}`);
-  }
+  const conditions = [
+    ...profile.conditions.map((c) => CONDITION_LABELS[c].toLowerCase()),
+    ...profile.other_conditions,
+  ];
+  if (conditions.length) parts.push(`has ${conditions.join(", ")}`);
   if (profile.medicines.length) parts.push(`takes ${profile.medicines.join(", ")}`);
   return parts.join("; ");
 }

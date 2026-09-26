@@ -39,6 +39,7 @@ from uuid import UUID
 import structlog
 
 from app.assistant.extractive import about, extractive_answer, pick_passages, word_relevance
+from app.config import get_settings
 from app.graph.graph import citation_from_chunk
 from app.graph.reasoner import HeuristicReasoner, topic_coverage
 from app.guardrails.grounding import verify_grounding
@@ -51,6 +52,7 @@ from app.knowledge.drugs import find_labels, mentions_a_medicine
 from app.knowledge.live import LiveLiterature, LiveResult, file_documents, room_to_grow
 from app.knowledge.specialties import get_specialty
 from app.knowledge.terms import asks_for_recent, search_term, with_medical_terms
+from app.learn.papers import paper_chunks, rank_paper_passages
 from app.llm.chat import ChatMessage, ChatModel, ChatResult, LLMUnavailable
 from app.prompts.loader import load_prompt
 from app.repositories.base import tenant_connection
@@ -83,6 +85,13 @@ PROMPTS: dict[Audience, tuple[str, int]] = {
     "patient": ("chat_patient", 1),
     "clinician": ("chat_clinician", 2),
     "student": ("chat_student", 1),
+}
+# Conversations with their own voice, whoever is reading: the AI tutor, which
+# teaches and questions the learner, and Ask-this-Paper, which answers from
+# one paper's passages.
+KIND_PROMPTS: dict[str, tuple[str, int]] = {
+    "tutor": ("tutor_lesson", 1),
+    "paper": ("paper_qa", 1),
 }
 MAX_MESSAGE_CHARS = 4000
 _SOURCES = 6
@@ -157,6 +166,13 @@ def _numbered_sources(chunks: Sequence[RetrievedChunk]) -> str:
         title = f"{c.title} — " if c.title else ""
         blocks.append(f"[{i}] ({year}, {kind}{grade}) {title}{c.content}")
     return "\n\n".join(blocks)
+
+
+def _numbered_passages(chunks: Sequence[RetrievedChunk]) -> str:
+    """One paper's passages, each labelled with its section and page."""
+    return "\n\n".join(
+        f"[{i}] ({c.section or 'Passage'}) {c.content}" for i, c in enumerate(chunks, start=1)
+    )
 
 
 def transient_chunks(document: RawDocument) -> list[RetrievedChunk]:
@@ -369,6 +385,23 @@ class ChatAssistant:
             evidence.coverage = topic_coverage(question, evidence.chunks)
         yield evidence
 
+    async def paper_evidence(
+        self, question: str, *, document_id: UUID, org_id: UUID
+    ) -> ChatEvidence:
+        """Ask-this-Paper: the passages of one paper that answer the question
+        — nothing from the library or PubMed."""
+        embedder = "cohere" if get_settings().ai_backend == "cloud" else "local"
+        chunks = await paper_chunks(self._pool, document_id=document_id, org_id=org_id)
+        ranked = await rank_paper_passages(
+            self._pool,
+            chunks=chunks,
+            question=question,
+            embedder=EmbeddingService(get_embedder(embedder), self._redis),
+        )
+        return ChatEvidence(
+            chunks=ranked, retrieval_query=question, coverage=1.0 if ranked else 0.0
+        )
+
     async def _as_chunks(self, documents: Sequence[RawDocument]) -> list[RetrievedChunk]:
         """Passages for freshly fetched documents: the stored ones when they
         were filed (or already there), built in memory when the corpus had no
@@ -453,8 +486,9 @@ class ChatAssistant:
         escalation: str | None,
         specialty: str | None,
         level: str | None,
+        kind: str = "chat",
     ) -> list[ChatMessage]:
-        name, version = PROMPTS[audience]
+        name, version = KIND_PROMPTS.get(kind, PROMPTS[audience])
         system = load_prompt(name, version).text
         messages = [ChatMessage("system", system)]
         for question, answer in history:
@@ -471,13 +505,22 @@ class ChatAssistant:
         topic = get_specialty(specialty) if specialty else None
         if topic:
             context.append(f"SPECIALTY: {topic.name}" + (f" (level: {level})" if level else ""))
+        elif level and kind == "tutor":
+            context.append(f"LEVEL: {'PG' if level == 'pg' else 'MBBS'}")
         if escalation:
             context.append(
                 "EMERGENCY INDICATORS were detected in this message: lead with the "
                 "emergency advice."
             )
-        sources = _numbered_sources(chunks) if chunks else "(no sources were found)"
-        context.append(f"SOURCES:\n{sources}")
+        if kind == "paper":
+            title = next((c.title for c in chunks if c.title), None)
+            if title:
+                context.append(f"PAPER: {title}")
+            passages = _numbered_passages(chunks) if chunks else "(no passage of the paper matched)"
+            context.append(f"PASSAGES:\n{passages}")
+        else:
+            sources = _numbered_sources(chunks) if chunks else "(no sources were found)"
+            context.append(f"SOURCES:\n{sources}")
         context.append(f"QUESTION: {message}")
         messages.append(ChatMessage("user", "\n\n".join(context)))
         return messages
@@ -492,6 +535,7 @@ class ChatAssistant:
         escalation: str | None,
         specialty: str | None,
         level: str | None,
+        kind: str = "chat",
     ) -> AsyncIterator[str | dict[str, Any] | ChatOutcome]:
         """Progress events, answer text as it is written (``str``), then the
         :class:`ChatOutcome`."""
@@ -505,6 +549,7 @@ class ChatAssistant:
                 escalation=escalation,
                 specialty=specialty,
                 level=level,
+                kind=kind,
             )
             yield _event("writing", "Writing the answer…")
             streamed = False
@@ -576,6 +621,13 @@ class ChatAssistant:
             "is configured):",
             "student": "What the sources say (quoted):",
         }[audience]
+        if kind == "paper":
+            lead = "What the paper says (quoted — no AI writer is configured):"
+        elif kind == "tutor":
+            lead = (
+                "The AI tutor needs its writer for a lesson, which isn't available right now. "
+                "Here is what the sources say (quoted):"
+            )
         text = f"{lead}\n\n{bullets}"
         for piece in re.findall(r"\S+\s*", text):
             yield piece
@@ -603,9 +655,11 @@ class ChatAssistant:
         level: str | None = None,
         history: Sequence[tuple[str, str]] = (),
         persist: bool = True,
+        document_id: UUID | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Stream one assistant turn as SSE-shaped events. ``persist=False``
-        (the public widget) stores nothing and takes history from the caller."""
+        (the public widget) stores nothing and takes history from the caller.
+        ``document_id`` (kind "paper") answers from that paper alone."""
         started = time.perf_counter()
         message = message.strip()[:MAX_MESSAGE_CHARS]
         with cost.collecting() as collector:
@@ -622,6 +676,7 @@ class ChatAssistant:
                     history=list(history),
                     persist=persist,
                     started=started,
+                    document_id=document_id,
                 ):
                     yield event
             finally:
@@ -642,6 +697,7 @@ class ChatAssistant:
         history: list[tuple[str, str]],
         persist: bool,
         started: float,
+        document_id: UUID | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         blocked: tuple[str, str] | None = None
         if carries_phi(message):
@@ -665,6 +721,7 @@ class ChatAssistant:
                         user_id=user_id,
                         title=withhold_phi(message)[:120],
                         kind=kind,
+                        document_id=document_id,
                     )
                 else:
                     history = await self._repo.history(conn, session_id=session_id)
@@ -710,7 +767,13 @@ class ChatAssistant:
             and audience == "patient"
             and suggest_complaint(message) is not None
         )
-        if not is_small_talk(message) and not offline_guidance:
+        if kind == "paper" and document_id is not None and org_id is not None:
+            if not is_small_talk(message):
+                yield _event("searching", "Reading the paper…")
+                evidence = await self.paper_evidence(
+                    retrieval_query_for(message, history), document_id=document_id, org_id=org_id
+                )
+        elif not is_small_talk(message) and not offline_guidance:
             question = retrieval_query_for(message, history)
             async for found in self.gather_evidence(question, org_id=org_id, specialty=specialty):
                 if isinstance(found, ChatEvidence):
@@ -727,6 +790,7 @@ class ChatAssistant:
             escalation=escalation,
             specialty=specialty,
             level=level,
+            kind=kind,
         ):
             if isinstance(item, ChatOutcome):
                 outcome = item
@@ -747,6 +811,8 @@ class ChatAssistant:
             "mode": outcome.mode,
             "audience": audience,
             "specialty": specialty,
+            "kind": kind,
+            "document_id": str(document_id) if document_id else None,
             "check": outcome.check,
             "escalation": escalation,
             "live": (
@@ -774,7 +840,7 @@ class ChatAssistant:
                 citations=citations,
                 details=details,
                 latency_ms=latency_ms,
-                prompt=PROMPTS[audience],
+                prompt=KIND_PROMPTS.get(kind, PROMPTS[audience]),
             )
         yield _event(
             "result",

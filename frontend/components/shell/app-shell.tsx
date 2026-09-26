@@ -14,6 +14,7 @@ import {
   MessagesSquare,
   Monitor,
   Moon,
+  MoonStar,
   Search,
   Settings2,
   Stethoscope,
@@ -43,6 +44,7 @@ import {
 import { Kbd } from "@/components/ui/kbd";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNotifications } from "@/hooks/use-api";
+import { isThemeLook, MATCH_DEVICE, THEME_LABELS } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -247,8 +249,9 @@ function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   // Render a neutral control until mounted so server and client markup agree.
-  const current = mounted ? theme ?? "system" : "system";
-  const Icon = current === "dark" ? Moon : current === "light" ? Sun : Monitor;
+  const current = mounted ? (theme ?? MATCH_DEVICE) : MATCH_DEVICE;
+  const Icon = current === "midnight" ? MoonStar : current === "dark" ? Moon : current === "light" ? Sun : Monitor;
+  const label = isThemeLook(current) ? THEME_LABELS[current] : "Matches your device";
   return (
     <DropdownMenu>
       <Tooltip>
@@ -261,7 +264,7 @@ function ThemeToggle() {
         >
           <Icon className="size-4" />
         </TooltipTrigger>
-        <TooltipContent>Theme: {current}</TooltipContent>
+        <TooltipContent>Theme: {label}</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="start">
         <DropdownMenuItem onClick={() => setTheme("light")}>
@@ -270,8 +273,11 @@ function ThemeToggle() {
         <DropdownMenuItem onClick={() => setTheme("dark")}>
           <Moon /> Dark
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>
-          <Monitor /> System
+        <DropdownMenuItem onClick={() => setTheme("midnight")}>
+          <MoonStar /> Midnight
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme(MATCH_DEVICE)}>
+          <Monitor /> Match my device
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

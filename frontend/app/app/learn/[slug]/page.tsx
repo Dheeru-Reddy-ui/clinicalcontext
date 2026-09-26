@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ExternalLink, FlaskConical, Lightbulb, RefreshCw, Star } from "lucide-react";
+import { ArrowLeft, ExternalLink, FlaskConical, Lightbulb, ListChecks, RefreshCw, Star } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -122,16 +122,28 @@ export default function SpecialtyPage() {
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {topics.map((t) => (
-                  <button
+                  <div
                     key={t}
-                    type="button"
-                    onClick={() => explain(t)}
-                    className="flex items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors hover:border-primary/40 hover:bg-muted/40"
-                    data-testid="learn-topic"
+                    className="flex items-stretch overflow-hidden rounded-lg border transition-colors hover:border-primary/40"
                   >
-                    <Lightbulb className="size-4 shrink-0 text-amber-500" aria-hidden />
-                    {t}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => explain(t)}
+                      className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/40"
+                      data-testid="learn-topic"
+                    >
+                      <Lightbulb className="size-4 shrink-0 text-amber-500" aria-hidden />
+                      {t}
+                    </button>
+                    <Link
+                      href={`/app/learn/tutor?mode=quiz&topic=${encodeURIComponent(t)}&specialty=${slug}&level=${level}&start=1`}
+                      className="flex shrink-0 items-center gap-1 border-l px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-primary"
+                      aria-label={`Quiz me on ${t}`}
+                      data-testid="learn-topic-quiz"
+                    >
+                      <ListChecks className="size-3.5" aria-hidden /> Quiz
+                    </Link>
+                  </div>
                 ))}
               </div>
             </div>

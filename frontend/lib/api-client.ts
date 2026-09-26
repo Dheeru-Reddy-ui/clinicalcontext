@@ -12,6 +12,30 @@ import type { Schemas } from "@/lib/domain";
 
 export type { ApiError };
 
+/** A multipart upload (one file, an optional title) with the API's error envelope. */
+async function uploadForm<T>(token: string, path: string, file: File, title?: string): Promise<T> {
+  const form = new FormData();
+  form.append("file", file);
+  if (title) form.append("title", title);
+  const response = await fetch(apiUrl(path), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  if (!response.ok) {
+    const envelope = (await response.json().catch(() => ({}))) as {
+      error?: { code?: string; message?: string; request_id?: string | null };
+    };
+    throw new ApiError(
+      response.status,
+      envelope.error?.code ?? "unknown_error",
+      envelope.error?.message ?? response.statusText,
+      envelope.error?.request_id ?? null,
+    );
+  }
+  return (await response.json()) as T;
+}
+
 export interface QueryDetail {
   query: {
     id: string;
@@ -177,28 +201,8 @@ export const api = {
     apiFetch<Schemas["DocumentChunksOut"]>(`/api/v1/documents/${id}/chunks${qs(params)}`, {
       accessToken: token,
     }),
-  uploadDocument: async (token: string, file: File, title?: string) => {
-    const form = new FormData();
-    form.append("file", file);
-    if (title) form.append("title", title);
-    const response = await fetch(apiUrl("/api/v1/documents/upload"), {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: form,
-    });
-    if (!response.ok) {
-      const envelope = (await response.json().catch(() => ({}))) as {
-        error?: { code?: string; message?: string; request_id?: string | null };
-      };
-      throw new ApiError(
-        response.status,
-        envelope.error?.code ?? "unknown_error",
-        envelope.error?.message ?? response.statusText,
-        envelope.error?.request_id ?? null,
-      );
-    }
-    return (await response.json()) as Schemas["DocumentUploadOut"];
-  },
+  uploadDocument: (token: string, file: File, title?: string) =>
+    uploadForm<Schemas["DocumentUploadOut"]>(token, "/api/v1/documents/upload", file, title),
 
   // -- analytics ------------------------------------------------------------------
   analyticsOverview: (token: string, days = 30) =>
@@ -382,6 +386,47 @@ export const api = {
     const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "clinicalcontext-export.json";
     return { blob: await response.blob(), filename };
   },
+
+  // -- learn: the AI tutor, the note summarizer, Ask-this-Paper ----------------------
+  tutorQuiz: (token: string, body: Schemas["QuizRequest"]) =>
+    apiFetch<Schemas["QuizOut"]>("/api/v1/learn/tutor/quiz", {
+      method: "POST",
+      body,
+      accessToken: token,
+    }),
+  recordAttempt: (token: string, body: Schemas["AttemptIn"]) =>
+    apiFetch<Schemas["AttemptOut"]>("/api/v1/learn/tutor/attempts", {
+      method: "POST",
+      body,
+      accessToken: token,
+    }),
+  tutorProgress: (token: string) =>
+    apiFetch<Schemas["ProgressOut"]>("/api/v1/learn/tutor/progress", { accessToken: token }),
+  clearTutorProgress: (token: string) =>
+    apiFetch<Schemas["ProgressClearedOut"]>("/api/v1/learn/tutor/progress", {
+      method: "DELETE",
+      accessToken: token,
+    }),
+  summarizeNote: (token: string, text: string) =>
+    apiFetch<Schemas["NoteSummaryOut"]>("/api/v1/learn/notes/summarize", {
+      method: "POST",
+      body: { text },
+      accessToken: token,
+    }),
+  /** A report's text, read on the server and returned — never stored. */
+  noteText: (token: string, file: File) =>
+    uploadForm<Schemas["NoteTextOut"]>(token, "/api/v1/learn/notes/text", file),
+  uploadPaper: (token: string, file: File, title?: string) =>
+    uploadForm<Schemas["PaperOut"]>(token, "/api/v1/learn/papers", file, title),
+  papers: (token: string) =>
+    apiFetch<Schemas["PaperOut"][]>("/api/v1/learn/papers", { accessToken: token }),
+  paper: (token: string, id: string) =>
+    apiFetch<Schemas["PaperDetail"]>(`/api/v1/learn/papers/${id}`, { accessToken: token }),
+  deletePaper: (token: string, id: string) =>
+    apiFetch<Schemas["PaperDeletedOut"]>(`/api/v1/learn/papers/${id}`, {
+      method: "DELETE",
+      accessToken: token,
+    }),
 
   // -- api keys (admin) -----------------------------------------------------------
   apiKeys: (token: string) =>

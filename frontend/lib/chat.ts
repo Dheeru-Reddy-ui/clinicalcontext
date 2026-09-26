@@ -11,7 +11,8 @@ import { asCitations, type Citation } from "@/lib/domain";
 import { noteResponse, traceHeaders } from "@/lib/telemetry";
 
 export type Audience = "patient" | "clinician" | "student";
-export type ChatKind = "chat" | "learn" | "treatment";
+/** "tutor": a lesson with the AI tutor; "paper": questions to one uploaded paper. */
+export type ChatKind = "chat" | "learn" | "treatment" | "tutor" | "paper";
 
 export interface ChatRequestBody {
   message: string;
@@ -20,6 +21,8 @@ export interface ChatRequestBody {
   kind?: ChatKind;
   specialty?: string | null;
   level?: "mbbs" | "pg" | null;
+  /** Ask-this-Paper: the paper the question is about. */
+  document_id?: string | null;
 }
 
 export interface PublicTurn {

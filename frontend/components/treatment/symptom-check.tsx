@@ -16,6 +16,7 @@ import {
   RotateCcw,
   ShieldAlert,
   Stethoscope,
+  X,
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
@@ -26,7 +27,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   CONDITION_LABELS,
+  describeReading,
   listComplaints,
+  MAX_CONDITION_CHARS,
+  MAX_OTHER_CONDITIONS,
   splitList,
   summarise,
   treatmentStep,
@@ -34,6 +38,7 @@ import {
   type Assessment,
   type Complaint,
   type Condition,
+  type ConditionRead,
   type Medicine,
   type Profile,
   type Question,
@@ -50,6 +55,7 @@ interface Draft {
   pregnant: boolean;
   breastfeeding: boolean;
   conditions: Condition[];
+  otherConditions: string[];
   allergies: string;
   medicines: string;
 }
@@ -62,6 +68,7 @@ const EMPTY_DRAFT: Draft = {
   pregnant: false,
   breastfeeding: false,
   conditions: [],
+  otherConditions: [],
   allergies: "",
   medicines: "",
 };
@@ -79,6 +86,7 @@ function toProfile(draft: Draft): Profile | null {
     pregnant: draft.sex === "female" && draft.pregnant,
     breastfeeding: draft.sex === "female" && draft.breastfeeding,
     conditions: draft.conditions,
+    other_conditions: draft.otherConditions,
     allergies: splitList(draft.allergies),
     medicines: splitList(draft.medicines),
   };
@@ -113,6 +121,7 @@ export function SymptomCheck({
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [conditionsRead, setConditionsRead] = useState<ConditionRead[]>([]);
   const profile = useMemo(() => toProfile(draft), [draft]);
 
   useEffect(() => {
@@ -132,6 +141,7 @@ export function SymptomCheck({
     try {
       const out = await treatmentStep(token, which, profile, nextAnswers);
       setAnswers(nextAnswers);
+      setConditionsRead(out.conditions_read ?? []);
       setProgress({ answered: out.answered, total: Math.max(out.total, 1) });
       if (out.assessment) {
         setAssessment(out.assessment);
@@ -224,6 +234,8 @@ export function SymptomCheck({
         </section>
       )}
 
+      {(stage === "questions" || stage === "result") && <ConditionsRead readings={conditionsRead} />}
+
       {stage === "questions" && question && (
         <QuestionCard
           key={question.id}
@@ -256,6 +268,138 @@ export function SymptomCheck({
 }
 
 // -- who it is for -------------------------------------------------------------------
+
+/**
+ * Health conditions: the ones the medicine checks know by name, one tap each,
+ * and anything else in the person's own words — typed, then added with Enter,
+ * a comma, or by moving on. Typing a listed condition's name ticks it. The
+ * server reads every phrase ("CKD" is kidney disease, "dengue" rules out
+ * ibuprofen) and says how, once the check starts.
+ */
+function ConditionsInput({ draft, onChange }: { draft: Draft; onChange: (draft: Draft) => void }) {
+  const [text, setText] = useState("");
+  const listed = Object.keys(CONDITION_LABELS) as Condition[];
+
+  const toggle = (condition: Condition) =>
+    onChange({
+      ...draft,
+      conditions: draft.conditions.includes(condition)
+        ? draft.conditions.filter((c) => c !== condition)
+        : [...draft.conditions, condition],
+    });
+
+  const add = (raw: string) => {
+    const items = raw
+      .split(/[,;\n]/)
+      .map((s) => s.trim().slice(0, MAX_CONDITION_CHARS))
+      .filter(Boolean);
+    setText("");
+    if (!items.length) return;
+    let conditions = draft.conditions;
+    let others = draft.otherConditions;
+    for (const item of items) {
+      const named = listed.find((c) => CONDITION_LABELS[c].toLowerCase() === item.toLowerCase());
+      if (named) {
+        if (!conditions.includes(named)) conditions = [...conditions, named];
+      } else if (!others.some((o) => o.toLowerCase() === item.toLowerCase()) && others.length < MAX_OTHER_CONDITIONS) {
+        others = [...others, item];
+      }
+    }
+    onChange({ ...draft, conditions, otherConditions: others });
+  };
+
+  const remove = (item: string) => onChange({ ...draft, otherConditions: draft.otherConditions.filter((o) => o !== item) });
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-1.5">
+        {listed.map((c) => {
+          const on = draft.conditions.includes(c);
+          return (
+            <button
+              key={c}
+              type="button"
+              aria-pressed={on}
+              onClick={() => toggle(c)}
+              className={cn(
+                "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                on ? "border-primary bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-muted",
+              )}
+            >
+              {CONDITION_LABELS[c]}
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border bg-transparent px-2 py-1 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
+        {draft.otherConditions.map((item) => (
+          <span
+            key={item}
+            className="inline-flex max-w-full items-center gap-1 rounded-full bg-primary/10 py-0.5 pr-1 pl-2.5 text-xs font-medium text-primary"
+            data-testid="other-condition"
+          >
+            <span className="truncate">{item}</span>
+            <button
+              type="button"
+              onClick={() => remove(item)}
+              className="rounded-full p-0.5 hover:bg-primary/15"
+              aria-label={`Remove ${item}`}
+            >
+              <X className="size-3" aria-hidden />
+            </button>
+          </span>
+        ))}
+        <input
+          value={text}
+          onChange={(e) => (/[,;]/.test(e.target.value) ? add(e.target.value) : setText(e.target.value))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              add(text);
+            } else if (e.key === "Backspace" && !text && draft.otherConditions.length) {
+              remove(draft.otherConditions[draft.otherConditions.length - 1]!);
+            }
+          }}
+          onBlur={() => add(text)}
+          maxLength={MAX_CONDITION_CHARS}
+          placeholder={
+            draft.otherConditions.length ? "Add another…" : "Type any illness or condition — e.g. dengue, thyroid, TB"
+          }
+          aria-label="Other health conditions"
+          aria-describedby="other-conditions-help"
+          className="h-7 min-w-[min(100%,14rem)] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          data-testid="profile-other-conditions"
+        />
+      </div>
+      <p id="other-conditions-help" className="text-xs text-muted-foreground">
+        Tap any that apply, or type your own — an illness, an infection, a long-term condition — and press
+        Enter. You’ll see how each one was read.
+      </p>
+    </div>
+  );
+}
+
+/** How the conditions the person typed were read, shown beside the questions and the result. */
+function ConditionsRead({ readings }: { readings: ConditionRead[] }) {
+  if (!readings.length) return null;
+  return (
+    <aside
+      className="rounded-lg border bg-muted/30 px-3 py-2 text-xs"
+      aria-label="How the conditions you typed were read"
+      data-testid="conditions-read"
+    >
+      <p className="font-medium text-foreground">The conditions you typed</p>
+      <ul className="mt-1 flex flex-col gap-0.5 text-muted-foreground">
+        {readings.map((r) => (
+          <li key={r.text}>
+            <span className="font-medium text-foreground">{r.text}</span>: {describeReading(r)}
+            {!r.understood && " — ask a pharmacist before taking any medicine"}.
+          </li>
+        ))}
+      </ul>
+    </aside>
+  );
+}
 
 function ProfileForm({
   draft,
@@ -371,28 +515,8 @@ function ProfileForm({
       )}
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">Long-term conditions</legend>
-        <div className="flex flex-wrap gap-1.5">
-          {(Object.keys(CONDITION_LABELS) as Condition[]).map((c) => {
-            const on = draft.conditions.includes(c);
-            return (
-              <button
-                key={c}
-                type="button"
-                aria-pressed={on}
-                onClick={() =>
-                  set("conditions", on ? draft.conditions.filter((x) => x !== c) : [...draft.conditions, c])
-                }
-                className={cn(
-                  "rounded-full border px-2.5 py-1 text-xs transition-colors",
-                  on ? "border-primary bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-muted",
-                )}
-              >
-                {CONDITION_LABELS[c]}
-              </button>
-            );
-          })}
-        </div>
+        <legend className="mb-1 text-sm font-medium">Health conditions</legend>
+        <ConditionsInput draft={draft} onChange={onChange} />
       </fieldset>
 
       <div className="grid gap-4 sm:grid-cols-2">

@@ -211,6 +211,11 @@ class SettingsService:
                 "created_at FROM public.feedback WHERE user_id = $1 ORDER BY created_at",
                 user.user_id,
             )
+            practice = await conn.fetch(
+                "SELECT mode, level, specialty, topic, question, chosen, answer, correct, "
+                "created_at FROM public.tutor_attempts WHERE user_id = $1 ORDER BY created_at",
+                user.user_id,
+            )
         exported = _jsonable(
             {
                 "format": EXPORT_FORMAT,
@@ -228,6 +233,7 @@ class SettingsService:
                 "conversations": conversations,
                 "followed_answers": [dict(r) for r in followed],
                 "feedback": [dict(r) for r in feedback],
+                "tutor_practice": [dict(r) for r in practice],
             }
         )
         assert isinstance(exported, dict)

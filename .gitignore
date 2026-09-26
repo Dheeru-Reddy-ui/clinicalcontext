@@ -21,6 +21,7 @@ backend/evals/ablation/cache/
 backend/.verify/
 frontend/e2e/.artifacts/
 frontend/e2e/.report/
+frontend/e2e/.shots/
 frontend/test-results/
 frontend/playwright-report/
 

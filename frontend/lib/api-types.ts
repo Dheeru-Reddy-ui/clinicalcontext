@@ -718,6 +718,101 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/learn/notes/summarize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Summarize
+         * @description A clinical note or report as a short summary, every point checked
+         *     against the line it came from. Identifiers are removed before the text
+         *     goes anywhere; neither the note nor the summary is stored.
+         */
+        post: operations["summarize_api_v1_learn_notes_summarize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learn/notes/text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Note Text
+         * @description The text of an uploaded report, for the person to check (and remove
+         *     anything they should not share) before it is summarized. Read in memory
+         *     and returned — never stored.
+         */
+        post: operations["note_text_api_v1_learn_notes_text_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learn/papers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Papers
+         * @description The workspace's papers, newest first.
+         */
+        get: operations["list_papers_api_v1_learn_papers_get"];
+        put?: never;
+        /**
+         * Upload Paper
+         * @description Read a paper page by page and keep it in the workspace's private
+         *     library, ready for questions.
+         */
+        post: operations["upload_paper_api_v1_learn_papers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learn/papers/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Paper
+         * @description A paper, its outline (section and page), and your conversations about it.
+         */
+        get: operations["get_paper_api_v1_learn_papers__document_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Paper
+         * @description Delete a paper you uploaded (owners: any paper), with your conversations
+         *     about it — except one whose answer is in a binder, shared or versioned,
+         *     which stays (others' conversations stay too, no longer linked).
+         */
+        delete: operations["delete_paper_api_v1_learn_papers__document_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/learn/specialties": {
         parameters: {
             query?: never;
@@ -746,6 +841,68 @@ export interface paths {
         get: operations["specialty_latest_api_v1_learn_specialties__slug__latest_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learn/tutor/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Tutor Attempt
+         * @description One answered question, for the learner's own progress.
+         */
+        post: operations["record_tutor_attempt_api_v1_learn_tutor_attempts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learn/tutor/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tutor Progress */
+        get: operations["tutor_progress_api_v1_learn_tutor_progress_get"];
+        put?: never;
+        post?: never;
+        /**
+         * Clear Tutor Progress
+         * @description Start the practice record again (your own rows only).
+         */
+        delete: operations["clear_tutor_progress_api_v1_learn_tutor_progress_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learn/tutor/quiz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tutor Quiz
+         * @description A quiz, or a staged clinical case, on a topic — written from the
+         *     evidence and checked question by question.
+         */
+        post: operations["tutor_quiz_api_v1_learn_tutor_quiz_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1620,6 +1777,47 @@ export interface components {
             /** Providers */
             providers: string[];
         };
+        /**
+         * AttemptIn
+         * @description One answered question, for the learner's own progress.
+         */
+        AttemptIn: {
+            /** Answer */
+            answer: string;
+            /** Chosen */
+            chosen: string;
+            /** Correct */
+            correct: boolean;
+            /**
+             * Explanation
+             * @default
+             */
+            explanation: string;
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "mbbs" | "pg";
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "quiz" | "case";
+            /** Question */
+            question: string;
+            /** Specialty */
+            specialty?: string | null;
+            /** Topic */
+            topic: string;
+        };
+        /** AttemptOut */
+        AttemptOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
         /** BatchQueryRequest */
         BatchQueryRequest: {
             /** Queries */
@@ -1726,11 +1924,29 @@ export interface components {
             /** Binders */
             binders: components["schemas"]["BinderOut"][];
         };
+        /** Body_note_text_api_v1_learn_notes_text_post */
+        Body_note_text_api_v1_learn_notes_text_post: {
+            /**
+             * File
+             * @description A report as PDF or plain text
+             */
+            file: string;
+        };
         /** Body_upload_document_api_v1_documents_upload_post */
         Body_upload_document_api_v1_documents_upload_post: {
             /**
              * File
              * @description A PDF to add to this org's private corpus
+             */
+            file: string;
+            /** Title */
+            title?: string | null;
+        };
+        /** Body_upload_paper_api_v1_learn_papers_post */
+        Body_upload_paper_api_v1_learn_papers_post: {
+            /**
+             * File
+             * @description A research paper as PDF
              */
             file: string;
             /** Title */
@@ -1754,12 +1970,14 @@ export interface components {
              * @enum {string}
              */
             audience: "patient" | "clinician" | "student";
+            /** Document Id */
+            document_id?: string | null;
             /**
              * Kind
              * @default chat
              * @enum {string}
              */
-            kind: "chat" | "learn" | "treatment";
+            kind: "chat" | "learn" | "treatment" | "tutor" | "paper";
             /** Level */
             level?: ("mbbs" | "pg") | null;
             /** Message */
@@ -1800,6 +2018,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Document Id */
+            document_id?: string | null;
             /**
              * Id
              * Format: uuid
@@ -1870,6 +2090,46 @@ export interface components {
             /** Token Count */
             token_count: number;
         };
+        /**
+         * Citation
+         * @description A source backing an inline ``[n]`` marker in the answer.
+         */
+        Citation: {
+            /**
+             * Chunk Id
+             * Format: uuid
+             */
+            chunk_id: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Doi */
+            doi?: string | null;
+            /** Evidence Grade */
+            evidence_grade: ("A" | "B" | "C" | "D") | null;
+            /** Journal */
+            journal?: string | null;
+            /** Marker */
+            marker: number;
+            /** Passage */
+            passage: string;
+            /** Pmid */
+            pmid?: string | null;
+            /** Publication Date */
+            publication_date: string | null;
+            /** Section */
+            section: string | null;
+            /** Stance */
+            stance?: ("supports" | "opposes" | "neutral") | null;
+            /** Study Type */
+            study_type: string | null;
+            /** Title */
+            title: string | null;
+            /** Url */
+            url?: string | null;
+        };
         /** ComplaintOut */
         ComplaintOut: {
             /** Id */
@@ -1878,6 +2138,21 @@ export interface components {
             name: string;
             /** Summary */
             summary: string;
+        };
+        /**
+         * ConditionReadOut
+         * @description How one condition the person typed was read: the listed conditions it
+         *     counts as, the illnesses with their own medicine rules, or neither.
+         */
+        ConditionReadOut: {
+            /** Conditions */
+            conditions: string[];
+            /** Flags */
+            flags: string[];
+            /** Text */
+            text: string;
+            /** Understood */
+            understood: boolean;
         };
         /** ConversationsDeletedOut */
         ConversationsDeletedOut: {
@@ -2451,6 +2726,66 @@ export interface components {
             /** Members */
             members: components["schemas"]["MemberOut"][];
         };
+        /** MistakeOut */
+        MistakeOut: {
+            /** Answer */
+            answer: string;
+            /** Chosen */
+            chosen: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Explanation */
+            explanation: string;
+            /** Question */
+            question: string;
+            /** Topic */
+            topic: string;
+        };
+        /** NoteSummarizeIn */
+        NoteSummarizeIn: {
+            /** Text */
+            text: string;
+        };
+        /** NoteSummaryOut */
+        NoteSummaryOut: {
+            /** Lines */
+            lines: string[];
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "llm" | "extractive";
+            /** Model */
+            model: string | null;
+            /** Notice */
+            notice: string | null;
+            /** Redactions */
+            redactions: {
+                [key: string]: number;
+            };
+            /** Removed */
+            removed: number;
+            /** Sections */
+            sections: components["schemas"]["SummarySectionOut"][];
+        };
+        /**
+         * NoteTextOut
+         * @description Text read from an uploaded report, for the person to check before it
+         *     is summarized. Nothing is stored.
+         */
+        NoteTextOut: {
+            /** Characters */
+            characters: number;
+            /** Pages */
+            pages: number | null;
+            /** Text */
+            text: string;
+            /** Truncated */
+            truncated: boolean;
+        };
         /** NotificationOut */
         NotificationOut: {
             /**
@@ -2521,6 +2856,88 @@ export interface components {
             outcome?: string | null;
             /** Population */
             population?: string | null;
+        };
+        /** PaperDeletedOut */
+        PaperDeletedOut: {
+            /** Conversations Deleted */
+            conversations_deleted: number;
+            /** Conversations Kept */
+            conversations_kept: number;
+            /** Deleted */
+            deleted: boolean;
+        };
+        /** PaperDetail */
+        PaperDetail: {
+            /** Abstract */
+            abstract: string | null;
+            /** Chunk Count */
+            chunk_count: number;
+            /** Conversations */
+            conversations: components["schemas"]["ChatSessionOut"][];
+            /**
+             * Deduplicated
+             * @default false
+             */
+            deduplicated: boolean;
+            /** Evidence Grade */
+            evidence_grade: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Outline */
+            outline: components["schemas"]["PaperSectionOut"][];
+            /** Pages */
+            pages: number | null;
+            /** Study Type */
+            study_type: string | null;
+            /** Title */
+            title: string;
+            /**
+             * Uploaded At
+             * Format: date-time
+             */
+            uploaded_at: string;
+            /** Uploaded By You */
+            uploaded_by_you: boolean;
+        };
+        /** PaperOut */
+        PaperOut: {
+            /** Chunk Count */
+            chunk_count: number;
+            /**
+             * Deduplicated
+             * @default false
+             */
+            deduplicated: boolean;
+            /** Evidence Grade */
+            evidence_grade: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Pages */
+            pages: number | null;
+            /** Study Type */
+            study_type: string | null;
+            /** Title */
+            title: string;
+            /**
+             * Uploaded At
+             * Format: date-time
+             */
+            uploaded_at: string;
+            /** Uploaded By You */
+            uploaded_by_you: boolean;
+        };
+        /** PaperSectionOut */
+        PaperSectionOut: {
+            /** Page */
+            page: number | null;
+            /** Title */
+            title: string;
         };
         /** PassageSnapshot */
         PassageSnapshot: {
@@ -2657,6 +3074,8 @@ export interface components {
             conditions?: ("asthma" | "kidney_disease" | "liver_disease" | "stomach_ulcer" | "heart_disease" | "diabetes" | "weak_immunity" | "bleeding_disorder" | "high_blood_pressure" | "lung_disease")[];
             /** Medicines */
             medicines?: string[];
+            /** Other Conditions */
+            other_conditions?: string[];
             /**
              * Pregnant
              * @default false
@@ -2676,6 +3095,32 @@ export interface components {
             full_name?: string | null;
             /** Specialty */
             specialty?: string | null;
+        };
+        /** ProgressClearedOut */
+        ProgressClearedOut: {
+            /** Deleted */
+            deleted: number;
+        };
+        /** ProgressOut */
+        ProgressOut: {
+            /** Accuracy */
+            accuracy: number | null;
+            /** Answered */
+            answered: number;
+            /** Correct */
+            correct: number;
+            /** Mistakes */
+            mistakes: components["schemas"]["MistakeOut"][];
+            /** Streak Days */
+            streak_days: number;
+            /** Topics */
+            topics: components["schemas"]["TopicProgressOut"][];
+            /** Weakest */
+            weakest: components["schemas"]["TopicProgressOut"][];
+            /** Week Answered */
+            week_answered: number;
+            /** Week Correct */
+            week_correct: number;
         };
         /**
          * PublicAnswerOut
@@ -2800,6 +3245,79 @@ export interface components {
             options: components["schemas"]["OptionOut"][];
             /** Text */
             text: string;
+        };
+        /** QuizOut */
+        QuizOut: {
+            /** Case */
+            case: string | null;
+            /** Dropped */
+            dropped: number;
+            /**
+             * Generated By
+             * @enum {string}
+             */
+            generated_by: "llm" | "offline";
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "mbbs" | "pg";
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "quiz" | "case";
+            /** Model */
+            model: string | null;
+            /** Notices */
+            notices: string[];
+            /** Questions */
+            questions: components["schemas"]["QuizQuestionOut"][];
+            /** Sources */
+            sources: components["schemas"]["Citation"][];
+            /** Specialty */
+            specialty: string | null;
+            /** Topic */
+            topic: string;
+        };
+        /** QuizQuestionOut */
+        QuizQuestionOut: {
+            /** Answer */
+            answer: number;
+            /** Explanation */
+            explanation: string;
+            /** Options */
+            options: string[];
+            /** Sources */
+            sources: number[];
+            /** Stage */
+            stage?: string | null;
+            /** Stem */
+            stem: string;
+        };
+        /** QuizRequest */
+        QuizRequest: {
+            /**
+             * Count
+             * @default 5
+             */
+            count: number;
+            /**
+             * Level
+             * @default mbbs
+             * @enum {string}
+             */
+            level: "mbbs" | "pg";
+            /**
+             * Mode
+             * @default quiz
+             * @enum {string}
+             */
+            mode: "quiz" | "case";
+            /** Specialty */
+            specialty?: string | null;
+            /** Topic */
+            topic: string;
         };
         /**
          * ReadinessCheck
@@ -3131,6 +3649,25 @@ export interface components {
             /** Weight */
             weight: number;
         };
+        /** SummaryPointOut */
+        SummaryPointOut: {
+            /** Lines */
+            lines: number[];
+            /**
+             * Support
+             * @enum {string}
+             */
+            support: "supported" | "partially_supported" | "quoted";
+            /** Text */
+            text: string;
+        };
+        /** SummarySectionOut */
+        SummarySectionOut: {
+            /** Heading */
+            heading: string;
+            /** Points */
+            points: components["schemas"]["SummaryPointOut"][];
+        };
         /**
          * SupersededInfo
          * @description Present when a Living Answer rerun produced a newer version.
@@ -3163,12 +3700,32 @@ export interface components {
             /** Query */
             query: string;
         };
+        /** TopicProgressOut */
+        TopicProgressOut: {
+            /** Accuracy */
+            accuracy: number;
+            /** Answered */
+            answered: number;
+            /** Correct */
+            correct: number;
+            /**
+             * Last At
+             * Format: date-time
+             */
+            last_at: string;
+            /** Specialty */
+            specialty: string | null;
+            /** Topic */
+            topic: string;
+        };
         /** TreatmentStepOut */
         TreatmentStepOut: {
             /** Answered */
             answered: number;
             assessment?: components["schemas"]["AssessmentOut"] | null;
             complaint: components["schemas"]["ComplaintOut"];
+            /** Conditions Read */
+            conditions_read?: components["schemas"]["ConditionReadOut"][];
             question?: components["schemas"]["QuestionOut"] | null;
             /** Total */
             total: number;
@@ -4556,6 +5113,7 @@ export interface operations {
             query?: {
                 kind?: string[] | null;
                 limit?: number;
+                document_id?: string | null;
             };
             header?: {
                 "X-API-Key"?: string | null;
@@ -5001,6 +5559,208 @@ export interface operations {
             };
         };
     };
+    summarize_api_v1_learn_notes_summarize_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteSummarizeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteSummaryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    note_text_api_v1_learn_notes_text_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_note_text_api_v1_learn_notes_text_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteTextOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_papers_api_v1_learn_papers_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_paper_api_v1_learn_papers_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_paper_api_v1_learn_papers_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_paper_api_v1_learn_papers__document_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_paper_api_v1_learn_papers__document_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperDeletedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_specialties_api_v1_learn_specialties_get: {
         parameters: {
             query?: never;
@@ -5054,6 +5814,138 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SpecialtyFeedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_tutor_attempt_api_v1_learn_tutor_attempts_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttemptIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tutor_progress_api_v1_learn_tutor_progress_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clear_tutor_progress_api_v1_learn_tutor_progress_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressClearedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tutor_quiz_api_v1_learn_tutor_quiz_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizOut"];
                 };
             };
             /** @description Validation Error */

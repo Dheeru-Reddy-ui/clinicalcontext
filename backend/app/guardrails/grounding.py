@@ -195,6 +195,19 @@ def _content_tokens(text: str) -> set[str]:
     return {t for t in _WORD.findall(text.lower()) if t not in _STOPWORDS and len(t) > 1}
 
 
+def invented_numbers(sentence: str, passages: list[str]) -> set[str]:
+    """The figures in ``sentence`` (citation markers aside) that none of
+    ``passages`` contains. The verifier above only withholds "supported" from
+    a sentence like that — it can still be "partially supported" — so a tool
+    that must never pass on a made-up figure (the note summarizer, the
+    tutor's explanations) checks this as well."""
+    claimed = set(_NUMBER.findall(_CITATION.sub(" ", sentence)))
+    if not claimed:
+        return set()
+    found = set(_NUMBER.findall(" ".join(passages)))
+    return claimed - found
+
+
 @runtime_checkable
 class GroundingVerifier(Protocol):
     name: str

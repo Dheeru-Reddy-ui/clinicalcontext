@@ -512,6 +512,51 @@ owners can change the organization (never its plan), invite, or manage keys
 and webhooks, and members cannot read a webhook's signing secret —
 `backend/tests/test_owner_writes.py` proves each at the SQL level.
 
+**Learn** (`/app/learn`) is four tools behind one tab bar:
+
+- **Subjects** — every MBBS subject and PG specialty, each with a teaching
+  conversation, its core topics (explain, or "Quiz" straight into the tutor)
+  and PubMed's newest high-evidence papers.
+- **AI Medical Tutor** (`/app/learn/tutor`) — a *lesson* that teaches a topic
+  in short sections and ends each turn with a question for the learner, then
+  grades the answer and asks the next one (a chat conversation of kind
+  "tutor", prompt `tutor_lesson`); *quizzes* of single-best-answer questions
+  and staged *clinical cases* written from the evidence the chat would
+  retrieve (`app/learn/quiz.py`). Every question is checked before anyone
+  sees it — four distinct options, one answer, an explanation that cites its
+  source inline, matches it under the grounding verifier and invents no
+  figure — and dropped if it fails. With no model configured, quizzes are
+  fill-in-the-blank from the sources' own sentences; cases need the model.
+  Answers go to a personal practice record (`tutor_attempts`, migration 027,
+  own-row RLS): accuracy, a daily streak, topics to revisit, the questions
+  got wrong.
+- **Summarize a note** (`/app/learn/notes`) — a discharge summary, report or
+  referral as a short summary under fixed headings, each point tied to the
+  line it came from. Unlike Ask and Chat, which refuse patient identifiers,
+  this tool's input is a patient's record by nature, so identifiers are
+  *removed* first (`app/learn/deid.py`: labelled fields, Indian phone and
+  Aadhaar formats, dates, titled names, and the Presidio name recognizer with
+  eponyms spared) and only the redacted text reaches a model. Every point is
+  verified against its lines and a made-up value fails it; if too much fails,
+  or no model answers, the summary is the note's own lines under its
+  headings. Nothing is stored.
+- **Ask a paper** (`/app/learn/papers`) — upload a research paper (PDF); it is
+  read page by page (`app/learn/papers.py`), stored as a private document of
+  the workspace, and questions to it are answered from its passages alone
+  (word match fused with meaning; a summary or appraisal always reads the
+  abstract, results and conclusion), each cited with its section and page.
+
+**The symptom check reads what people type.** Beside the listed long-term
+conditions, anything can be typed ("CKD", "dengue", "TB"): a phrase that names
+a listed condition counts as it, so its medicine rules apply; dengue and
+chickenpox rule out ibuprofen on their own (WHO, NHS); anything else is shown
+back as not covered by the checks, and every medicine offered says to ask a
+pharmacist first (`app/treatment/conditions.py`).
+
+**Themes.** Light, Dark (indigo-navy) and Midnight (pure black, higher
+contrast) are three looks; matching the device is a switch, not a fourth
+look — on a dark-mode device it would be indistinguishable from Dark.
+
 **Signature pieces.** ⌘K / Ctrl+K command palette (`cmdk`) reaches every
 screen and live-searches sessions and the library; the Evidence Timeline plots
 cited sources by year, coloured by stance and sized by grade, and draws a band

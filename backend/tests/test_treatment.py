@@ -351,3 +351,69 @@ def test_every_protocol_reaches_an_assessment_when_nothing_is_wrong() -> None:
         assert result.assessment is not None, protocol.id
         assert result.assessment.urgency in ("self_care", "soon"), protocol.id
         assert result.assessment.source_keys, protocol.id
+
+
+# -- conditions typed in the person's own words ------------------------------------------
+
+
+def test_typed_conditions_count_as_the_ones_they_name() -> None:
+    profile = _p(age_years=60, other_conditions=["CKD stage 3", "sugar", "BP", "hep B"])
+    assert set(profile.conditions) >= {
+        "kidney_disease",
+        "diabetes",
+        "high_blood_pressure",
+        "liver_disease",
+    }
+    assert profile.unmatched_conditions == ()
+    advice = ibuprofen(profile, Context())
+    assert not advice.suitable and "kidney disease" in (advice.reason_not_suitable or "")
+
+
+def test_low_bp_and_low_sugar_are_not_read_as_high() -> None:
+    profile = _p(age_years=40, other_conditions=["low BP", "low sugar"])
+    assert "high_blood_pressure" not in profile.conditions
+    assert "diabetes" not in profile.conditions
+    assert profile.unmatched_conditions == ("low BP", "low sugar")
+
+
+def test_typed_dengue_rules_out_ibuprofen_whatever_the_complaint() -> None:
+    advice = ibuprofen(_p(age_years=30, other_conditions=["dengue"]), Context())
+    assert not advice.suitable
+    assert "dengue" in (advice.reason_not_suitable or "")
+    assert "who_dengue" in advice.source_keys
+
+
+def test_typed_chickenpox_rules_out_ibuprofen() -> None:
+    advice = ibuprofen(_p(age_years=8, other_conditions=["chicken pox"]), Context())
+    assert not advice.suitable and "chickenpox" in (advice.reason_not_suitable or "")
+    assert "nhs_chickenpox" in advice.source_keys and "nhs_chickenpox" in SOURCES
+
+
+def test_an_unknown_condition_is_kept_and_every_medicine_says_to_check_first() -> None:
+    assessment = _fever(_p(age_years=30, other_conditions=["typhoid", "  typhoid "]))
+    suitable = [m for m in assessment.medicines if m.suitable]
+    assert suitable
+    for medicine in suitable:
+        assert any("typhoid" in note and "pharmacist" in note for note in medicine.notes)
+
+
+def test_typed_pregnancy_counts_for_a_woman() -> None:
+    profile = _p(age_years=28, sex="female", other_conditions=["pregnant, 12 weeks"])
+    assert profile.pregnant
+    assert _fever(profile).urgency == "urgent"
+
+
+def test_the_step_says_how_each_typed_condition_was_read() -> None:
+    from app.api.v1.assistant import run_step
+    from app.schemas.assistant import TreatmentStepRequest
+
+    out = run_step(
+        TreatmentStepRequest(
+            complaint="fever",
+            profile=_p(age_years=30, other_conditions=["dialysis", "dengue", "migraine"]),
+        )
+    )
+    read = {r.text: r for r in out.conditions_read}
+    assert read["dialysis"].conditions == ["kidney_disease"] and read["dialysis"].understood
+    assert read["dengue"].flags == ["dengue"] and read["dengue"].understood
+    assert not read["migraine"].understood

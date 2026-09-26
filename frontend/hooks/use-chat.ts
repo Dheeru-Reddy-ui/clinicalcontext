@@ -46,6 +46,8 @@ export interface UseChatOptions {
   audience?: Audience;
   specialty?: string | null;
   level?: "mbbs" | "pg" | null;
+  /** Ask-this-Paper: the paper every question in this conversation is about. */
+  documentId?: string | null;
   sessionId?: string | null;
 }
 
@@ -90,7 +92,7 @@ function applyEvent(message: AssistantMessage, event: ChatEvent): AssistantMessa
  * signed in — the stored conversation it continues.
  */
 export function useChat(options: UseChatOptions = {}) {
-  const { mode = "app", kind = "chat", specialty = null, level = null } = options;
+  const { mode = "app", kind = "chat", specialty = null, level = null, documentId = null } = options;
   // Optional: the website's chatbot runs outside the signed-in app.
   const token = useOptionalAuth()?.session?.access_token ?? "";
   const queryClient = useQueryClient();
@@ -159,7 +161,7 @@ export function useChat(options: UseChatOptions = {}) {
           mode === "public"
             ? streamPublicChat(message, audience, history, controller.signal)
             : streamChat(
-                { message, audience, session_id: sessionId, kind, specialty, level },
+                { message, audience, session_id: sessionId, kind, specialty, level, document_id: documentId },
                 token,
                 controller.signal,
               );
@@ -188,7 +190,7 @@ export function useChat(options: UseChatOptions = {}) {
         abort.current = null;
       }
     },
-    [audience, busy, kind, level, messages, mode, queryClient, sessionId, specialty, token, update],
+    [audience, busy, documentId, kind, level, messages, mode, queryClient, sessionId, specialty, token, update],
   );
 
   const stop = useCallback(() => abort.current?.abort(), []);

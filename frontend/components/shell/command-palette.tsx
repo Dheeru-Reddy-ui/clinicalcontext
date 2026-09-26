@@ -5,8 +5,10 @@ import {
   Bell,
   BookMarked,
   Clock,
+  FileText,
   FolderOpen,
   GraduationCap,
+  NotebookPen,
   History,
   LayoutList,
   Library,
@@ -14,6 +16,7 @@ import {
   MessagesSquare,
   Mic,
   Moon,
+  MoonStar,
   Settings2,
   Stethoscope,
   Sun,
@@ -35,6 +38,7 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { useDocuments, useSessions } from "@/hooks/use-api";
+import { isDarkLook } from "@/lib/theme";
 
 interface PaletteState {
   open: () => void;
@@ -134,18 +138,42 @@ function Palette({ open, onOpenChange }: { open: boolean; onOpenChange: (v: bool
             <CommandItem onSelect={() => go("/app/learn")} value="learn specialties mbbs pg teaching">
               <GraduationCap /> Learn by specialty
             </CommandItem>
+            <CommandItem
+              onSelect={() => go("/app/learn/tutor")}
+              value="ai tutor lesson quiz mcq case practice exam revise"
+            >
+              <GraduationCap /> AI tutor: lessons, quizzes and cases
+            </CommandItem>
+            <CommandItem
+              onSelect={() => go("/app/learn/notes")}
+              value="summarize summarise clinical note report discharge summary"
+            >
+              <NotebookPen /> Summarize a clinical note
+            </CommandItem>
+            <CommandItem onSelect={() => go("/app/learn/papers")} value="ask a paper research pdf upload appraise">
+              <FileText /> Ask a research paper
+            </CommandItem>
             <CommandItem onSelect={() => go("/app/chat?voice=1")} value="voice mode speak talk microphone">
               <Mic /> Talk to the assistant (voice)
             </CommandItem>
             <CommandItem
               onSelect={() => {
-                setTheme(resolvedTheme === "dark" ? "light" : "dark");
+                setTheme(isDarkLook(resolvedTheme) ? "light" : "dark");
                 onOpenChange(false);
               }}
               value="toggle theme dark mode light mode"
             >
-              {resolvedTheme === "dark" ? <Sun /> : <Moon />}
-              Switch to {resolvedTheme === "dark" ? "light" : "dark"} mode
+              {isDarkLook(resolvedTheme) ? <Sun /> : <Moon />}
+              Switch to {isDarkLook(resolvedTheme) ? "light" : "dark"} mode
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                setTheme("midnight");
+                onOpenChange(false);
+              }}
+              value="midnight theme black oled night high contrast"
+            >
+              <MoonStar /> Use the Midnight look
             </CommandItem>
           </CommandGroup>
 

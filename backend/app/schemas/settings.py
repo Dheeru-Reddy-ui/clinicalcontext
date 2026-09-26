@@ -16,7 +16,7 @@ LearnDepth = Literal["auto", "mbbs", "pg"]
 #: The assistant conversations a person may delete. Evidence searches ("ask")
 #: are the organization's record — History and the dashboard read them — so
 #: they are kept.
-DELETABLE_KINDS: tuple[str, ...] = ("chat", "learn", "treatment", "voice")
+DELETABLE_KINDS: tuple[str, ...] = ("chat", "learn", "treatment", "voice", "tutor", "paper")
 
 
 class PreferencesOut(BaseModel):

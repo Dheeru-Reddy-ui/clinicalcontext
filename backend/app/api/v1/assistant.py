@@ -36,6 +36,7 @@ from app.schemas.assistant import (
     ChatSessionDetail,
     ChatSessionOut,
     ComplaintOut,
+    ConditionReadOut,
     DoctorOptionOut,
     FeedItemOut,
     MedicineOut,
@@ -50,6 +51,7 @@ from app.schemas.assistant import (
     TreatmentStepRequest,
 )
 from app.schemas.settings import ConversationsDeletedOut
+from app.treatment.conditions import read_conditions
 from app.treatment.engine import ACTIONS, HEADLINES, UnknownComplaint, step
 from app.treatment.formulary import Profile
 from app.treatment.model import Assessment, Question
@@ -122,6 +124,17 @@ async def chat(
     assert user.org_id is not None
     if body.specialty is not None and get_specialty(body.specialty) is None:
         raise InvalidRequestError(f"unknown specialty: {body.specialty}")
+    if body.kind == "paper":
+        # Checked before the stream starts, so a wrong id is a plain 404.
+        if body.document_id is None:
+            raise InvalidRequestError("a question to a paper needs the paper's document_id")
+        async with tenant_connection(pool, user.org_id, user.user_id) as conn:
+            if not await conn.fetchval(
+                "SELECT 1 FROM public.documents WHERE id = $1 AND org_id = $2",
+                body.document_id,
+                user.org_id,
+            ):
+                raise NotFoundError("paper not found")
     assistant = ChatAssistant(pool, redis)
     return stream_events(
         assistant.reply(
@@ -133,6 +146,7 @@ async def chat(
             kind=body.kind,
             specialty=body.specialty,
             level=body.level,
+            document_id=body.document_id if body.kind == "paper" else None,
         )
     )
 
@@ -143,12 +157,21 @@ async def list_chat_sessions(
     pool: Annotated[DbPool, Depends(get_asyncpg_pool)],
     kind: Annotated[list[str] | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    document_id: Annotated[UUID | None, Query()] = None,
 ) -> list[ChatSessionOut]:
     assert user.org_id is not None
-    kinds = [k for k in (kind or ["chat"]) if k in ("chat", "learn", "treatment", "ask", "voice")]
+    kinds = [
+        k
+        for k in (kind or ["chat"])
+        if k in ("chat", "learn", "treatment", "ask", "voice", "tutor", "paper")
+    ]
     async with tenant_connection(pool, user.org_id, user.user_id) as conn:
         rows = await ChatRepository().list_sessions(
-            conn, user_id=user.user_id, kinds=kinds or ["chat"], limit=limit
+            conn,
+            user_id=user.user_id,
+            kinds=kinds or ["chat"],
+            limit=limit,
+            document_id=document_id,
         )
     return [ChatSessionOut.model_validate(r) for r in rows]
 
@@ -318,6 +341,15 @@ def run_step(body: TreatmentStepRequest) -> TreatmentStepOut:
         assessment=assessment_out(result.assessment) if result.assessment else None,
         answered=result.answered,
         total=result.total,
+        conditions_read=[
+            ConditionReadOut(
+                text=r.text,
+                conditions=list(r.conditions),
+                flags=list(r.flags),
+                understood=r.understood,
+            )
+            for r in read_conditions(body.profile.other_conditions)
+        ],
     )
 
 

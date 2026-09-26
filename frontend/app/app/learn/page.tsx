@@ -1,6 +1,6 @@
 "use client";
 
-import { GraduationCap, Search, Star } from "lucide-react";
+import { FileText, GraduationCap, NotebookPen, Search, Star, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -37,6 +37,24 @@ function SpecialtyCard({ specialty, followed }: { specialty: Schemas["SpecialtyO
         {followed && <Star className="size-3.5 fill-amber-400 text-amber-400" aria-label="One of your subjects" />}
       </span>
       <span className="line-clamp-2 text-xs text-muted-foreground">{specialty.topics.slice(0, 4).join(" · ")}</span>
+    </Link>
+  );
+}
+
+function ToolCard({ href, icon: Icon, title, text }: { href: string; icon: LucideIcon; title: string; text: string }) {
+  return (
+    <Link
+      href={href}
+      className="group flex gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/30"
+      data-testid={`learn-tool-${href.split("/").pop()}`}
+    >
+      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+        <Icon className="size-4.5" aria-hidden />
+      </span>
+      <span className="min-w-0">
+        <span className="block font-medium group-hover:text-primary">{title}</span>
+        <span className="block text-xs text-muted-foreground">{text}</span>
+      </span>
     </Link>
   );
 }
@@ -108,6 +126,27 @@ export default function LearnPage() {
           </div>
         </div>
       </header>
+
+      <section aria-label="Learning tools" className="grid gap-3 md:grid-cols-3">
+        <ToolCard
+          href="/app/learn/tutor"
+          icon={GraduationCap}
+          title="AI Tutor"
+          text="A lesson that questions you back, exam-style quizzes and clinical cases — with your progress."
+        />
+        <ToolCard
+          href="/app/learn/notes"
+          icon={NotebookPen}
+          title="Summarize a note"
+          text="A long note or report as a short, checked summary — identifiers removed first."
+        />
+        <ToolCard
+          href="/app/learn/papers"
+          icon={FileText}
+          title="Ask a paper"
+          text="Upload a research paper and ask it anything, answered with the section and page."
+        />
+      </section>
 
       {mine.length > 0 && (
         <section aria-labelledby="level-mine" className="flex flex-col gap-3" data-testid="learn-mine">

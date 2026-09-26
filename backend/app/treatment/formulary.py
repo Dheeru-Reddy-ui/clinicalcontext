@@ -18,9 +18,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr, StringConstraints, model_validator
 
 Condition = Literal[
     "asthma",
@@ -36,6 +36,9 @@ Condition = Literal[
 ]
 
 
+TypedCondition = Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)]
+
+
 class Profile(BaseModel):
     """Who the symptom check is for. No name, no date of birth: age is all
     the dosing needs, and identifiers are never collected."""
@@ -46,8 +49,31 @@ class Profile(BaseModel):
     pregnant: bool = False
     breastfeeding: bool = False
     conditions: list[Condition] = Field(default_factory=list)
+    # Anything else, in the person's own words ("CKD", "dengue", "TB"). A
+    # phrase that names a listed condition counts as ticking it; the rest is
+    # reported back as not covered by the checks (conditions.py).
+    other_conditions: list[TypedCondition] = Field(default_factory=list, max_length=20)
     allergies: list[str] = Field(default_factory=list, max_length=20)
     medicines: list[str] = Field(default_factory=list, max_length=30)
+
+    _flags: frozenset[str] = PrivateAttr(default_factory=frozenset)
+    _unmatched: tuple[str, ...] = PrivateAttr(default=())
+
+    @model_validator(mode="after")
+    def _read_other_conditions(self) -> Profile:
+        from app.treatment.conditions import read_conditions
+
+        readings = read_conditions(self.other_conditions)
+        self.other_conditions = [r.text for r in readings]
+        for reading in readings:
+            for condition in reading.conditions:
+                if condition not in self.conditions:
+                    self.conditions.append(condition)
+        self._flags = frozenset(f for r in readings for f in r.flags)
+        self._unmatched = tuple(r.text for r in readings if not r.understood)
+        if "pregnancy" in self._flags and self.sex != "male":
+            self.pregnant = True
+        return self
 
     @property
     def months(self) -> float:
@@ -55,6 +81,16 @@ class Profile(BaseModel):
 
     def has(self, condition: Condition) -> bool:
         return condition in self.conditions
+
+    def reports(self, flag: str) -> bool:
+        """Whether the person typed an illness that changes which medicines are
+        safe on its own (conditions.Flag)."""
+        return flag in self._flags
+
+    @property
+    def unmatched_conditions(self) -> tuple[str, ...]:
+        """What the person typed that the checks do not cover."""
+        return self._unmatched
 
 
 @dataclass(frozen=True, slots=True)
@@ -348,6 +384,18 @@ def ibuprofen(profile: Profile, context: Context) -> MedicineAdvice:
         return no(
             "Babies aged 3 to 5 months can only have ibuprofen if they weigh over 5 kg — "
             "add the weight, or ask a pharmacist."
+        )
+    if profile.reports("dengue"):
+        return no(
+            "Not with dengue: ibuprofen and aspirin can increase the risk of bleeding. Use "
+            "paracetamol instead.",
+            ["who_dengue"],
+        )
+    if profile.reports("chickenpox"):
+        return no(
+            "Not with chickenpox unless a doctor advises it: ibuprofen can lead to serious skin "
+            "infections. Use paracetamol instead.",
+            ["nhs_chickenpox"],
         )
     if context.dengue_possible:
         return no(

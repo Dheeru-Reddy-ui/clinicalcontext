@@ -7,6 +7,7 @@ import { Toaster } from "sonner";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { startBrowserTracing } from "@/lib/telemetry";
+import { THEME_LOOKS } from "@/lib/theme";
 
 /**
  * Everything that must wrap the whole tree, in one place.
@@ -46,7 +47,15 @@ export function AppProviders({ children, nonce }: { children: ReactNode; nonce?:
 
   return (
     // The nonce lets next-themes' no-flash inline script pass the CSP (lib/csp.ts).
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange nonce={nonce}>
+    // Three looks (lib/theme.ts); "system" follows the device between Light and Dark.
+    <ThemeProvider
+      attribute="class"
+      themes={[...THEME_LOOKS]}
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+      nonce={nonce}
+    >
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delay={200}>{children}</TooltipProvider>
         <Toaster

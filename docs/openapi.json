@@ -522,6 +522,98 @@
         "title": "AssistantStatus",
         "type": "object"
       },
+      "AttemptIn": {
+        "description": "One answered question, for the learner's own progress.",
+        "properties": {
+          "answer": {
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Answer",
+            "type": "string"
+          },
+          "chosen": {
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Chosen",
+            "type": "string"
+          },
+          "correct": {
+            "title": "Correct",
+            "type": "boolean"
+          },
+          "explanation": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Explanation",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "mbbs",
+              "pg"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "quiz",
+              "case"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "question": {
+            "maxLength": 3000,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          },
+          "specialty": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9-]{2,64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Specialty"
+          },
+          "topic": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "level",
+          "topic",
+          "question",
+          "chosen",
+          "answer",
+          "correct"
+        ],
+        "title": "AttemptIn",
+        "type": "object"
+      },
+      "AttemptOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "AttemptOut",
+        "type": "object"
+      },
       "BatchQueryRequest": {
         "properties": {
           "queries": {
@@ -861,6 +953,21 @@
         "title": "BindersOut",
         "type": "object"
       },
+      "Body_note_text_api_v1_learn_notes_text_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "A report as PDF or plain text",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_note_text_api_v1_learn_notes_text_post",
+        "type": "object"
+      },
       "Body_upload_document_api_v1_documents_upload_post": {
         "properties": {
           "file": {
@@ -885,6 +992,33 @@
           "file"
         ],
         "title": "Body_upload_document_api_v1_documents_upload_post",
+        "type": "object"
+      },
+      "Body_upload_paper_api_v1_learn_papers_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "A research paper as PDF",
+            "title": "File",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_paper_api_v1_learn_papers_post",
         "type": "object"
       },
       "BootstrapRequest": {
@@ -932,12 +1066,26 @@
             "title": "Audience",
             "type": "string"
           },
+          "document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
           "kind": {
             "default": "chat",
             "enum": [
               "chat",
               "learn",
-              "treatment"
+              "treatment",
+              "tutor",
+              "paper"
             ],
             "title": "Kind",
             "type": "string"
@@ -1051,6 +1199,18 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
           },
           "id": {
             "format": "uuid",
@@ -1245,6 +1405,163 @@
         "title": "ChunkOut",
         "type": "object"
       },
+      "Citation": {
+        "description": "A source backing an inline ``[n]`` marker in the answer.",
+        "properties": {
+          "chunk_id": {
+            "format": "uuid",
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          },
+          "evidence_grade": {
+            "anyOf": [
+              {
+                "enum": [
+                  "A",
+                  "B",
+                  "C",
+                  "D"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Grade"
+          },
+          "journal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Journal"
+          },
+          "marker": {
+            "title": "Marker",
+            "type": "integer"
+          },
+          "passage": {
+            "title": "Passage",
+            "type": "string"
+          },
+          "pmid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pmid"
+          },
+          "publication_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publication Date"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          },
+          "stance": {
+            "anyOf": [
+              {
+                "enum": [
+                  "supports",
+                  "opposes",
+                  "neutral"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stance"
+          },
+          "study_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Study Type"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "marker",
+          "chunk_id",
+          "document_id",
+          "title",
+          "section",
+          "publication_date",
+          "evidence_grade",
+          "study_type",
+          "passage"
+        ],
+        "title": "Citation",
+        "type": "object"
+      },
       "ComplaintOut": {
         "properties": {
           "id": {
@@ -1266,6 +1583,41 @@
           "summary"
         ],
         "title": "ComplaintOut",
+        "type": "object"
+      },
+      "ConditionReadOut": {
+        "description": "How one condition the person typed was read: the listed conditions it\ncounts as, the illnesses with their own medicine rules, or neither.",
+        "properties": {
+          "conditions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Conditions",
+            "type": "array"
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "understood": {
+            "title": "Understood",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "text",
+          "conditions",
+          "flags",
+          "understood"
+        ],
+        "title": "ConditionReadOut",
         "type": "object"
       },
       "ConversationsDeletedOut": {
@@ -2822,6 +3174,166 @@
         "title": "MembersOut",
         "type": "object"
       },
+      "MistakeOut": {
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "chosen": {
+            "title": "Chosen",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "question",
+          "chosen",
+          "answer",
+          "explanation",
+          "created_at"
+        ],
+        "title": "MistakeOut",
+        "type": "object"
+      },
+      "NoteSummarizeIn": {
+        "properties": {
+          "text": {
+            "maxLength": 15000,
+            "minLength": 20,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "NoteSummarizeIn",
+        "type": "object"
+      },
+      "NoteSummaryOut": {
+        "properties": {
+          "lines": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "mode": {
+            "enum": [
+              "llm",
+              "extractive"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "notice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice"
+          },
+          "redactions": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Redactions",
+            "type": "object"
+          },
+          "removed": {
+            "title": "Removed",
+            "type": "integer"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/SummarySectionOut"
+            },
+            "title": "Sections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sections",
+          "lines",
+          "redactions",
+          "mode",
+          "model",
+          "removed",
+          "notice"
+        ],
+        "title": "NoteSummaryOut",
+        "type": "object"
+      },
+      "NoteTextOut": {
+        "description": "Text read from an uploaded report, for the person to check before it\nis summarized. Nothing is stored.",
+        "properties": {
+          "characters": {
+            "title": "Characters",
+            "type": "integer"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "text",
+          "pages",
+          "characters",
+          "truncated"
+        ],
+        "title": "NoteTextOut",
+        "type": "object"
+      },
       "NotificationOut": {
         "properties": {
           "created_at": {
@@ -2994,6 +3506,234 @@
           }
         },
         "title": "PICO",
+        "type": "object"
+      },
+      "PaperDeletedOut": {
+        "properties": {
+          "conversations_deleted": {
+            "title": "Conversations Deleted",
+            "type": "integer"
+          },
+          "conversations_kept": {
+            "title": "Conversations Kept",
+            "type": "integer"
+          },
+          "deleted": {
+            "title": "Deleted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "deleted",
+          "conversations_deleted",
+          "conversations_kept"
+        ],
+        "title": "PaperDeletedOut",
+        "type": "object"
+      },
+      "PaperDetail": {
+        "properties": {
+          "abstract": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Abstract"
+          },
+          "chunk_count": {
+            "title": "Chunk Count",
+            "type": "integer"
+          },
+          "conversations": {
+            "items": {
+              "$ref": "#/components/schemas/ChatSessionOut"
+            },
+            "title": "Conversations",
+            "type": "array"
+          },
+          "deduplicated": {
+            "default": false,
+            "title": "Deduplicated",
+            "type": "boolean"
+          },
+          "evidence_grade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Grade"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "outline": {
+            "items": {
+              "$ref": "#/components/schemas/PaperSectionOut"
+            },
+            "title": "Outline",
+            "type": "array"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages"
+          },
+          "study_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Study Type"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "uploaded_at": {
+            "format": "date-time",
+            "title": "Uploaded At",
+            "type": "string"
+          },
+          "uploaded_by_you": {
+            "title": "Uploaded By You",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "pages",
+          "chunk_count",
+          "study_type",
+          "evidence_grade",
+          "uploaded_at",
+          "uploaded_by_you",
+          "abstract",
+          "outline",
+          "conversations"
+        ],
+        "title": "PaperDetail",
+        "type": "object"
+      },
+      "PaperOut": {
+        "properties": {
+          "chunk_count": {
+            "title": "Chunk Count",
+            "type": "integer"
+          },
+          "deduplicated": {
+            "default": false,
+            "title": "Deduplicated",
+            "type": "boolean"
+          },
+          "evidence_grade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Grade"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages"
+          },
+          "study_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Study Type"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "uploaded_at": {
+            "format": "date-time",
+            "title": "Uploaded At",
+            "type": "string"
+          },
+          "uploaded_by_you": {
+            "title": "Uploaded By You",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "pages",
+          "chunk_count",
+          "study_type",
+          "evidence_grade",
+          "uploaded_at",
+          "uploaded_by_you"
+        ],
+        "title": "PaperOut",
+        "type": "object"
+      },
+      "PaperSectionOut": {
+        "properties": {
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "page"
+        ],
+        "title": "PaperSectionOut",
         "type": "object"
       },
       "PassageSnapshot": {
@@ -3374,6 +4114,15 @@
             "title": "Medicines",
             "type": "array"
           },
+          "other_conditions": {
+            "items": {
+              "maxLength": 80,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Other Conditions",
+            "type": "array"
+          },
           "pregnant": {
             "default": false,
             "title": "Pregnant",
@@ -3445,6 +4194,88 @@
           }
         },
         "title": "ProfileUpdate",
+        "type": "object"
+      },
+      "ProgressClearedOut": {
+        "properties": {
+          "deleted": {
+            "title": "Deleted",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "title": "ProgressClearedOut",
+        "type": "object"
+      },
+      "ProgressOut": {
+        "properties": {
+          "accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy"
+          },
+          "answered": {
+            "title": "Answered",
+            "type": "integer"
+          },
+          "correct": {
+            "title": "Correct",
+            "type": "integer"
+          },
+          "mistakes": {
+            "items": {
+              "$ref": "#/components/schemas/MistakeOut"
+            },
+            "title": "Mistakes",
+            "type": "array"
+          },
+          "streak_days": {
+            "title": "Streak Days",
+            "type": "integer"
+          },
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/TopicProgressOut"
+            },
+            "title": "Topics",
+            "type": "array"
+          },
+          "weakest": {
+            "items": {
+              "$ref": "#/components/schemas/TopicProgressOut"
+            },
+            "title": "Weakest",
+            "type": "array"
+          },
+          "week_answered": {
+            "title": "Week Answered",
+            "type": "integer"
+          },
+          "week_correct": {
+            "title": "Week Correct",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "answered",
+          "correct",
+          "accuracy",
+          "week_answered",
+          "week_correct",
+          "streak_days",
+          "topics",
+          "weakest",
+          "mistakes"
+        ],
+        "title": "ProgressOut",
         "type": "object"
       },
       "PublicAnswerOut": {
@@ -3784,6 +4615,213 @@
           "options"
         ],
         "title": "QuestionOut",
+        "type": "object"
+      },
+      "QuizOut": {
+        "properties": {
+          "case": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case"
+          },
+          "dropped": {
+            "title": "Dropped",
+            "type": "integer"
+          },
+          "generated_by": {
+            "enum": [
+              "llm",
+              "offline"
+            ],
+            "title": "Generated By",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "mbbs",
+              "pg"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "quiz",
+              "case"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "notices": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notices",
+            "type": "array"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuizQuestionOut"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "specialty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Specialty"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "topic",
+          "level",
+          "specialty",
+          "case",
+          "questions",
+          "sources",
+          "generated_by",
+          "model",
+          "dropped",
+          "notices"
+        ],
+        "title": "QuizOut",
+        "type": "object"
+      },
+      "QuizQuestionOut": {
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "integer"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "stem": {
+            "title": "Stem",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stem",
+          "options",
+          "answer",
+          "explanation",
+          "sources"
+        ],
+        "title": "QuizQuestionOut",
+        "type": "object"
+      },
+      "QuizRequest": {
+        "properties": {
+          "count": {
+            "default": 5,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "level": {
+            "default": "mbbs",
+            "enum": [
+              "mbbs",
+              "pg"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "mode": {
+            "default": "quiz",
+            "enum": [
+              "quiz",
+              "case"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "specialty": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Specialty"
+          },
+          "topic": {
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic"
+        ],
+        "title": "QuizRequest",
         "type": "object"
       },
       "ReadinessCheck": {
@@ -4623,6 +5661,58 @@
         "title": "Suggestion",
         "type": "object"
       },
+      "SummaryPointOut": {
+        "properties": {
+          "lines": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "support": {
+            "enum": [
+              "supported",
+              "partially_supported",
+              "quoted"
+            ],
+            "title": "Support",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "lines",
+          "support"
+        ],
+        "title": "SummaryPointOut",
+        "type": "object"
+      },
+      "SummarySectionOut": {
+        "properties": {
+          "heading": {
+            "title": "Heading",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/SummaryPointOut"
+            },
+            "title": "Points",
+            "type": "array"
+          }
+        },
+        "required": [
+          "heading",
+          "points"
+        ],
+        "title": "SummarySectionOut",
+        "type": "object"
+      },
       "SupersededInfo": {
         "description": "Present when a Living Answer rerun produced a newer version.",
         "properties": {
@@ -4700,6 +5790,52 @@
         "title": "TopQuery",
         "type": "object"
       },
+      "TopicProgressOut": {
+        "properties": {
+          "accuracy": {
+            "title": "Accuracy",
+            "type": "number"
+          },
+          "answered": {
+            "title": "Answered",
+            "type": "integer"
+          },
+          "correct": {
+            "title": "Correct",
+            "type": "integer"
+          },
+          "last_at": {
+            "format": "date-time",
+            "title": "Last At",
+            "type": "string"
+          },
+          "specialty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Specialty"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "specialty",
+          "answered",
+          "correct",
+          "accuracy",
+          "last_at"
+        ],
+        "title": "TopicProgressOut",
+        "type": "object"
+      },
       "TreatmentStepOut": {
         "properties": {
           "answered": {
@@ -4718,6 +5854,13 @@
           },
           "complaint": {
             "$ref": "#/components/schemas/ComplaintOut"
+          },
+          "conditions_read": {
+            "items": {
+              "$ref": "#/components/schemas/ConditionReadOut"
+            },
+            "title": "Conditions Read",
+            "type": "array"
           },
           "question": {
             "anyOf": [
@@ -7460,6 +8603,23 @@
             }
           },
           {
+            "in": "query",
+            "name": "document_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Document Id"
+            }
+          },
+          {
             "in": "header",
             "name": "X-API-Key",
             "required": false,
@@ -8409,6 +9569,386 @@
         ]
       }
     },
+    "/api/v1/learn/notes/summarize": {
+      "post": {
+        "description": "A clinical note or report as a short summary, every point checked\nagainst the line it came from. Identifiers are removed before the text\ngoes anywhere; neither the note nor the summary is stored.",
+        "operationId": "summarize_api_v1_learn_notes_summarize_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteSummarizeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Summarize",
+        "tags": [
+          "learn"
+        ]
+      }
+    },
+    "/api/v1/learn/notes/text": {
+      "post": {
+        "description": "The text of an uploaded report, for the person to check (and remove\nanything they should not share) before it is summarized. Read in memory\nand returned \u2014 never stored.",
+        "operationId": "note_text_api_v1_learn_notes_text_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_note_text_api_v1_learn_notes_text_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteTextOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Note Text",
+        "tags": [
+          "learn"
+        ]
+      }
+    },
+    "/api/v1/learn/papers": {
+      "get": {
+        "description": "The workspace's papers, newest first.",
+        "operationId": "list_papers_api_v1_learn_papers_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PaperOut"
+                  },
+                  "title": "Response List Papers Api V1 Learn Papers Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Papers",
+        "tags": [
+          "learn"
+        ]
+      },
+      "post": {
+        "description": "Read a paper page by page and keep it in the workspace's private\nlibrary, ready for questions.",
+        "operationId": "upload_paper_api_v1_learn_papers_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_paper_api_v1_learn_papers_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload Paper",
+        "tags": [
+          "learn"
+        ]
+      }
+    },
+    "/api/v1/learn/papers/{document_id}": {
+      "delete": {
+        "description": "Delete a paper you uploaded (owners: any paper), with your conversations\nabout it \u2014 except one whose answer is in a binder, shared or versioned,\nwhich stays (others' conversations stay too, no longer linked).",
+        "operationId": "delete_paper_api_v1_learn_papers__document_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperDeletedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Paper",
+        "tags": [
+          "learn"
+        ]
+      },
+      "get": {
+        "description": "A paper, its outline (section and page), and your conversations about it.",
+        "operationId": "get_paper_api_v1_learn_papers__document_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Paper",
+        "tags": [
+          "learn"
+        ]
+      }
+    },
     "/api/v1/learn/specialties": {
       "get": {
         "operationId": "list_specialties_api_v1_learn_specialties_get",
@@ -8539,6 +10079,243 @@
         "summary": "Specialty Latest",
         "tags": [
           "assistant"
+        ]
+      }
+    },
+    "/api/v1/learn/tutor/attempts": {
+      "post": {
+        "description": "One answered question, for the learner's own progress.",
+        "operationId": "record_tutor_attempt_api_v1_learn_tutor_attempts_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttemptIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Tutor Attempt",
+        "tags": [
+          "learn"
+        ]
+      }
+    },
+    "/api/v1/learn/tutor/progress": {
+      "delete": {
+        "description": "Start the practice record again (your own rows only).",
+        "operationId": "clear_tutor_progress_api_v1_learn_tutor_progress_delete",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgressClearedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Clear Tutor Progress",
+        "tags": [
+          "learn"
+        ]
+      },
+      "get": {
+        "operationId": "tutor_progress_api_v1_learn_tutor_progress_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgressOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Tutor Progress",
+        "tags": [
+          "learn"
+        ]
+      }
+    },
+    "/api/v1/learn/tutor/quiz": {
+      "post": {
+        "description": "A quiz, or a staged clinical case, on a topic \u2014 written from the\nevidence and checked question by question.",
+        "operationId": "tutor_quiz_api_v1_learn_tutor_quiz_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Tutor Quiz",
+        "tags": [
+          "learn"
         ]
       }
     },
